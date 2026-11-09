@@ -15,7 +15,7 @@ asked about the same state, the state, the question and the options), which trai
 estimates how many optimizer steps one pass over the data takes at the recipe's 65,536 tokens per step."""
 from __future__ import annotations
 
-import argparse, gzip, hashlib, json, math, os, sys, time
+import argparse, gzip, hashlib, json, math, os, random, sys, time
 from collections import Counter
 from pathlib import Path
 
@@ -37,7 +37,8 @@ def read_rows(path: Path):
 
 
 def read_parquet(files: list[Path]):
-    import pyarrow.parquet as pq
+    try: import pyarrow.parquet as pq
+    except ImportError: raise SystemExit("reading parquet needs pyarrow: pip install pyarrow")
     for f in files:
         for batch in pq.ParquetFile(f).iter_batches(batch_size=4096):
             yield from batch.to_pylist()
@@ -150,8 +151,10 @@ def main(argv=None):
     ap.add_argument("--question", default=None, help="with --csv: the question asked about every text, e.g. 'Which team should handle this ticket?'")
     ap.add_argument("--labels", default=None, help="with --csv: option texts per label, 'id=text;id=text' (default: the label values themselves)")
     ap.add_argument("--group-col", default=None, help="with --csv: column whose value groups rows about the same text (default: each row its own group)")
+    ap.add_argument("--mix-pool", type=int, default=0, help="add this many randomly sampled Votum-Pool training rows (--pool-dir, config default) to the training file, to keep the general behaviour while fine-tuning on a narrow set")
+    ap.add_argument("--pool-dir", default="{{ORG}}/Votum-Pool", help="with --mix-pool: Votum-Pool dataset, local directory or Hub id")
     ap.add_argument("--config", default="default", choices=["default", "share_alike"], help="Pool config (with --pool)")
-    ap.add_argument("--val", help="validation rows, JSONL (with --rows); default: a --val-frac split by group")
+    ap.add_argument("--val", help="validation rows, a JSONL file in the Pool schema (with --rows or --csv); default: a --val-frac split by group")
     ap.add_argument("--val-frac", type=float, default=0.05, help="validation share when --val is not given (default 0.05)")
     ap.add_argument("--out", required=True, help="output directory: train.jsonl.gz, val.jsonl.gz, stats.json")
     ap.add_argument("--tokenizer", default=None, help="tokenizer directory (default: the Apertus snapshot in HF_HOME, or $VOTUM_TOKENIZER)")
@@ -172,6 +175,10 @@ def main(argv=None):
         train = [check(r, f"{a.rows}:{i}") for i, r in enumerate(read_rows(Path(a.rows)), 1)]
         if a.val: val = [check(r, f"{a.val}:{i}") for i, r in enumerate(read_rows(Path(a.val)), 1)]
         else: train, val = split_rows(train, a.val_frac, a.seed)
+    if a.mix_pool:
+        rng = random.Random(a.seed); pool = [check(r, f"{a.pool_dir}:train") for r in read_parquet(pool_files(a.pool_dir, "default", "train"))]
+        mix = rng.sample(pool, min(a.mix_pool, len(pool))); train += mix; rng.shuffle(train)   # shuffled: the trainer may read only a prefix of the file
+        print(f"mixed in {len(mix)} Votum-Pool training rows", flush=True)
     ids = Counter(r["id"] for r in train + val); dup = [k for k, v in ids.items() if v > 1]
     if dup: raise SystemExit(f"row ids repeat: {dup[:5]}{' ...' if len(dup) > 5 else ''}")
     print(f"{len(train)} training rows, {len(val)} validation rows", flush=True)

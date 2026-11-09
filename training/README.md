@@ -31,39 +31,50 @@ Fine-tuning from the released checkpoint (the default `finetune.py` mode) needs 
 
 Paths are read from environment variables: `VOTUM_DATA` (training data, default `data/` here), `VOTUM_RUNS`
 (checkpoints, logs and a tokenizer cache, default `runs/` here), `VOTUM_BACKBONE` (default `swiss-ai/Apertus-v1.5-8B`,
-read from the Hugging Face cache in `HF_HOME`) and `VOTUM_DISK_FLOOR_GB` (default 30).
+read from the Hugging Face cache in `HF_HOME`, pinned revision preferred), `VOTUM_TOKENIZER`, `VOTUM_REPO` (default
+for `finetune.py --from`) and `VOTUM_DISK_FLOOR_GB` (default 10).
 
 ## Fine-tune on your own data
 
-Four commands: prepare the rows, train, export, calibrate. Everything runs in the same environment as serving
-(`pip install "votum[vllm]"`: mainline transformers, PEFT, torch with FlexAttention), on one GPU, starting from the
-released checkpoint. No Apertus download and no transformers fork are needed for this path.
+Four commands: prepare the rows, train, export, calibrate. Everything runs in the environment `pip install votum`
+gives you (mainline transformers, PEFT, torch 2.5+ with FlexAttention; add `pyarrow` for the Pool options), on one GPU,
+starting from the released checkpoint. No Apertus download and no transformers fork are needed for this path.
 
-**Hardware, first.** The backbone trains in bf16 with LoRA and gradient checkpointing; there is no 4-bit or CPU path.
-The GPU decides the micro-batch (`--micro-tokens`, the padded tokens of one forward pass), and the micro-batch caps the
-prompt length you can train on: the data plan skips rows longer than one micro-batch.
+Before you start: accept the Apertus policy on the model page and `hf auth login` (as in the Quickstart); have an
+NVIDIA GPU with at least 19.5 GiB free; have about 45 GB of disk (16 GB model download, 16 GB export, 12 GB free where
+the runs go); run the commands from this `training/` directory. A local copy of the model directory serves as the
+tokenizer for the preparer: `hf download {{ORG}}/Votum-8B --local-dir ./Votum-8B`. Paths come from `VOTUM_RUNS`
+(default `training/runs`), `VOTUM_TOKENIZER` and `VOTUM_REPO` (default for `--from`).
+
+**Hardware, first.** The backbone trains in bf16 with LoRA and gradient checkpointing; 4-bit (`train.py --quant nf4`)
+is untested with this kit and there is no CPU path. The free GPU memory decides the micro-batch (`--micro-tokens`, the
+padded tokens of one forward pass), and the micro-batch caps the prompt length you can train on: the data plan skips
+rows within 16 tokens of, or longer than, one micro-batch.
 
 | GPU memory | Micro-batch | Peak measured | Trains rows up to | Speed |
 |---|---|---|---|---|
-| 24 GB (RTX 4090) | 3,072 tokens | 18.5 GiB (2,048: 17.6 GiB; 4,096: out of memory) | 3,072 tokens (99.1 % of the Votum Pool) | 1,250 padded tokens/s: about 45 s per 65k-token step |
+| 24 GB (RTX 4090), nothing else on the card | 3,072 tokens | 18.5 GiB (4,096: out of memory) | 3,072 tokens (99.1 % of the Votum Pool) | 1,250 padded tokens/s: about 52 s per 65k-token step |
+| 24 GB that also drives a display (about 20 GiB free) | 2,048 tokens | 17.6 GiB | 2,048 tokens (98 % of the Pool) | 1,400 padded tokens/s: about 47 s per step |
 | 32 GB | 4,096 tokens | not measured (between the 24 GB and 48 GB points) | 4,096 tokens (99.7 % of the Pool) | |
 | 48 GB | 8,192 tokens | not measured directly; 16,384 peaks at 46.9 GiB | 8,192 tokens | |
 | 80–96 GB (released run) | 16,384 tokens | 46.9 GiB | all rows | 1,785 padded tokens/s: 41 s per step |
 
-`finetune.py --probe` runs two steps on your card and prints the peak, so measure before a long run. Expect roughly
-one hour per 100 steps on a 24 GB card and 45 minutes on a 96 GB card; the released run was 600 steps. The first step
-compiles the FlexAttention kernels.
+The automatic choice uses the free memory at start: at least 70 GiB gives 16,384 tokens; 44 gives 8,192; 30 gives
+4,096; 21 gives 3,072; 19.5 to 21 gives 2,048; below 19.5 GiB free there is no supported configuration. `finetune.py
+--probe` runs two steps on your card (in its own `runs/<tag>_probe/`) and prints the peak, so measure before a long run.
+Expect roughly 80 minutes per 100 steps on a 24 GB card and 70 minutes on a 96 GB card; the released run was 600 steps.
+The first step compiles the FlexAttention kernels.
 
 **1. Prepare the data.** Three inputs are accepted:
 
 ```bash
 # a classification table: one text column, one label column, the same question for every row
-python prepare_data.py --csv tickets.csv --text-col text --label-col team \
+python prepare_data.py --csv tickets.csv --text-col text --label-col team --tokenizer ./Votum-8B \
     --question "Which team should handle this ticket?" --labels "billing=Billing and payments;tech=Technical support;sales=Sales" --out data/tickets
 # rows in the Votum Pool schema (any mix of choice, yes/no and score questions, several questions per state)
-python prepare_data.py --rows my_rows.jsonl --val-frac 0.05 --out data/mine        # or --val my_val.jsonl
+python prepare_data.py --rows my_rows.jsonl --val-frac 0.05 --tokenizer ./Votum-8B --out data/mine     # or --val my_val.jsonl (JSONL, same schema)
 # the published pool
-python prepare_data.py --pool {{ORG}}/Votum-Pool --config default --out data/pool    # 223,890 rows, about 4 minutes
+python prepare_data.py --pool {{ORG}}/Votum-Pool --config default --tokenizer ./Votum-8B --out data/pool   # 223,890 rows, ~4 minutes; needs pyarrow
 ```
 
 Rows in the [Votum Pool](https://huggingface.co/datasets/{{ORG}}/Votum-Pool) schema are one JSON object per line: `id`,
@@ -72,8 +83,10 @@ Rows in the [Votum Pool](https://huggingface.co/datasets/{{ORG}}/Votum-Pool) sch
 option, in option order; one-hot for a single label) and, if several rows share a state, `group` (rows of one group stay
 on the same side of the split). The preparer validates every row, computes each row's prompt length with the request
 header the trainer uses, drops rows over 8,128 tokens (the 8,192-token context minus a margin), splits by group and writes `train.jsonl.gz`,
-`val.jsonl.gz` and `stats.json`. The tokenizer is read from the model directory you pass with `--tokenizer`, or from the
-Apertus snapshot in `HF_HOME`.
+`val.jsonl.gz` and `stats.json`. The tokenizer is read from `--tokenizer <dir>` (a local Votum-8B or Apertus directory),
+else `$VOTUM_TOKENIZER`, else the Apertus snapshot in `HF_HOME`. `--val` takes a JSONL file in the Pool schema (not a
+CSV); without it `--val-frac` splits by group. A test file for step 4 is any such JSONL with `type`, `options` and
+`target`; `--rows test_rows.jsonl --val-frac 1.0 --out data/test` produces one with token counts, or write it directly.
 
 **2. Train.** `finetune.py` takes the released checkpoint as the backbone (its adapter is already folded into the
 weights), puts a new LoRA on it starting from zero, initialises the pointer head from the released one, and runs
@@ -85,15 +98,17 @@ python finetune.py --from {{ORG}}/Votum-8B --data data/tickets --tag tickets --p
 python finetune.py --from {{ORG}}/Votum-8B --data data/tickets --tag tickets            # one pass over the rows
 ```
 
-Defaults: one epoch (`--epochs`, or `--steps`), 65,536 padded tokens per step, learning rate 5e-5 for the LoRA and 5e-4
-for the head (untuned starting points), warm-up and a cosine decay sized to the run, options shuffled every step,
-headers of up to 8 questions, LoRA rank 16. The run writes `runs/<tag>/` as `train.py` does (`log.jsonl` with loss,
-accuracy and peak memory per step; `ckpt_<step>/` with the adapter and head). `--dry-run` prints the `train.py` command and writes nothing;
-`--train-arg` passes any other trainer flag.
+Defaults: one epoch (`--epochs`, or `--steps`; never fewer than 10 steps, and the real number of passes is printed),
+65,536 padded tokens per step, learning rate 5e-5 for the LoRA and 5e-4 for the head (untuned starting points), warm-up
+and a cosine decay sized to the run, options shuffled every step, headers of up to 8 questions, LoRA rank 16. The run
+writes `$VOTUM_RUNS/<tag>/` (`log.jsonl` with training loss, accuracy and peak memory per step; `ckpt_<step>/` with the
+adapter and head, the latest only; `state_<step>.pt` for resuming). `--dry-run` prints the `train.py` command and writes
+nothing; `--resume` continues a stopped or crashed run; `--train-arg=--flag=value` (the `=` form) passes any other
+trainer flag.
 
 A few thousand rows are enough to move a domain: at 65k tokens per step a 3,000-row set of 400-token prompts is about
-20 steps per epoch, so run several epochs (`--epochs 5`) and check the validation accuracy that step 4 prints.
-Mixing your rows with a slice of the Pool keeps the general behaviour.
+20 steps per epoch, so run several epochs (`--epochs 5`) and check the held-out accuracy that `calibrate.py` prints in
+step 4. Mixing your rows with a slice of the Pool keeps the general behaviour (below).
 
 `--mode adapter` is the other way: continue the released adapter itself on the Apertus base, as the released run was
 trained. It needs `swiss-ai/Apertus-v1.5-8B` in `HF_HOME` (gated on the Apertus policy) and the training fork from the
@@ -109,9 +124,9 @@ python ../scripts/export_hf.py --ckpt runs/tickets/ckpt_<step> --out /path/to/Vo
 python ../scripts/export_hf.py --ckpt runs/tickets/ckpt_<step> --out /path/to/Votum-8B-tickets --adapter-only  # 160 MB: adapter/ only
 ```
 
-The adapter-only form loads with `Votum.from_pretrained(dir, exact=True)` (it applies the LoRA to the checkpoint it was
-trained on, which must be available) and is enough for `calibrate.py --exact`; the merged form is what `votum serve`
-wants.
+The adapter-only form loads with `Votum.from_pretrained(dir, exact=True)`: it applies the LoRA to the checkpoint it
+was trained on, whose absolute path it records, so it is not portable to another machine. It is enough for
+`calibrate.py --exact --eval-only`; writing temperatures and serving need the merged form.
 
 **4. Calibrate and check.** The probabilities are `softmax(scores / T)` with one temperature per question type. After
 training the parent's temperatures no longer match, so refit them on your validation rows (minimum cross-entropy on a
@@ -122,8 +137,66 @@ and calibration error per type:
 python calibrate.py --model /path/to/Votum-8B-tickets --val data/tickets/val.jsonl.gz      # --dry-run to only report
 ```
 
-Types with fewer than 50 validation rows keep the parent's temperature. Then use the directory exactly like the
-release: `votum decide --repo /path/to/Votum-8B-tickets`, `votum serve --model ...`, or `Votum.from_pretrained(...)`.
+Types with fewer than 50 scored rows keep the parent's temperature and print no metrics (`--min-rows 1` to see
+accuracy on a small set). To measure on a held-out test file (same format as the validation rows) without writing
+anything, use the same script as an evaluator, before and after:
+
+```bash
+python calibrate.py --model {{ORG}}/Votum-8B --val data/test/val.jsonl.gz --eval-only            # before
+python calibrate.py --model /path/to/Votum-8B-tickets --val data/test/val.jsonl.gz --eval-only  # after
+```
+
+Then use the directory exactly like the release: `votum decide --repo /path/to/Votum-8B-tickets`,
+`votum serve --model ...`, or `Votum.from_pretrained(...)`. The merged export is itself a valid `--from` for a further
+fine-tune in the default mode.
+
+**Keeping the general behaviour.** A narrow fine-tune moves the model towards your rows and away from everything
+else. `--mix-pool` adds a random sample of the public pool (config `default`; needs `pyarrow`) to your training file,
+shuffled in; 1 to 3 pool rows per row of yours is a reasonable range:
+
+```bash
+python prepare_data.py --csv tickets.csv --text-col text --label-col team --question "..." --tokenizer ./Votum-8B \
+    --mix-pool 5000 --out data/tickets_mixed          # --pool-dir <local dataset dir> instead of the Hub download
+```
+
+Check a few questions outside your domain before and after.
+
+### Worked example: BANKING77
+
+Intent classification with 77 options, a set the released model has never seen (it is one of the out-of-pool
+evaluations on the model card). 2,000 of the 10,003 public training rows, converted with `--csv` as above, 200 of them
+held out for calibration; accuracy on 1,000 test rows before and after. One RTX 4090, 2,048-token micro-batches.
+
+| | Released Votum-8B | After the fine-tune |
+|---|---|---|
+| Accuracy on 1,000 held-out test rows (77-way) | 72.4 % | **82.0 %** |
+| Expected calibration error on those rows, with the checkpoint's temperatures | 0.286 | 0.035 |
+| Choice temperature | 1.516 (released) | 0.99 (refit on 192 validation rows, accuracy there 81.8 %) |
+| Training | — | 70 steps of 32 rows, 25 s each, 30 minutes; peak 16.7 GiB; about 1.2 passes over the 1,808 rows |
+
+A 1,100-token row fits a 2,048-token micro-batch alone, so each step carried 32 rows (35k tokens), not the nominal
+65k: `--epochs 2` gave 70 steps and about 1.2 passes. `finetune.py` now estimates from how many rows fit, so the same
+command today prints the honest count; pass `--steps` or `--tokens-per-step` to change it.
+
+The commands were the four above with `--val-frac 0.1`, `--epochs 2` and `--micro-tokens 2048` (the 4090 also drives a
+display); `examples/banking77.sh`
+in this directory downloads the public data and runs the whole example. Expect your own numbers to vary with the amount
+of data and the difficulty of the labels; the point is the shape of the result, a large gain on the target task from a
+short run.
+
+### Troubleshooting
+
+| Symptom | Cause and fix |
+|---|---|
+| `CUDA out of memory` in the first step | The micro-batch is too large for the free memory (a display or another process on the card counts). `--probe` first; pass a smaller `--micro-tokens` (2,048 fits a 24 GB card with about 19.5 GiB free). |
+| `disk guard: ... has X GiB free, need 2.0 GiB with a 10 GiB floor` at start | Fewer than 12 GB free where the run directory lives (`VOTUM_RUNS`). Free space, point `VOTUM_RUNS` elsewhere, or lower `VOTUM_DISK_FLOOR_GB`. The export later needs another 16 GB (`--adapter-only` avoids it). |
+| The first step takes minutes | FlexAttention compiles its kernels once per shape class; the tokenizer also loads slowly the first time (then cached under `runs/cache`). Normal. |
+| `the LoRA starts from zero on the given backbone` | Expected in the default mode: the released adapter is already inside the checkpoint's weights. |
+| Rows missing from training, fewer questions per step than expected | Rows within 16 tokens of, or longer than, `--micro-tokens` are skipped by the data plan. `stats.json` has the token percentiles; use a larger micro-batch or shorter states. |
+| The run crashed or was stopped | `finetune.py ... --tag <same tag> --resume` continues from the last `state_<step>.pt` (saved every `--save-every` steps). Without `--resume`, the same tag starts over. |
+| `temperature hit the grid edge` from `calibrate.py` | The validation rows are too few or too easy for a stable fit. Use more rows (a few hundred per type) or keep the parent's temperatures (`--min-rows` above the count). |
+| Training loss near 0 after a few steps | The set is small and the 10-step minimum repeats it many times (the pass count is printed). Pass `--steps`, add `--mix-pool`, or accept it for a narrow task and check the held-out accuracy. |
+| `this checkpoint is the Apertus 1.5 multimodal release, which needs the swiss-ai transformers fork ...` | You are in `--mode adapter` without the training fork. Use the default mode, or install the Environment above in its own venv. |
 
 **Not covered.** Changing the layout or the LoRA rank, 4-bit training, multi-GPU, prompts longer than your micro-batch,
 and quantizing the result (`scripts/quantize_fp8.py` works on any exported directory, but measure parity as on the

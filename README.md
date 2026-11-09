@@ -152,7 +152,7 @@ The diagram at the top shows the path of a request. The parts:
 ```
 src/votum/          prompt rendering · reference model (PyTorch) · request format · checkpoint builder · CLI
 src/votum/vllm/     vLLM 0.33 model · attention layout and cache · client · HTTP server
-training/           the trainer that produced Votum-8B, with the exact command
+training/           fine-tuning kit (prepare_data · finetune · calibrate) and the trainer that produced Votum-8B
 data/               source list with licences · cleaning and PII pipeline
 scripts/            export a checkpoint to the Hub layout · FP8 quantization · smoke fixture · README graphics
 tests/              masks, positions, renderer, request format (CPU) · end-to-end smoke test (GPU)
@@ -164,7 +164,7 @@ tests/              masks, positions, renderer, request format (CPU) · end-to-e
    that builds it is in `data/`.
 2. **Training:** `training/README.md` has the exact command. One 96 GB GPU, about 7 hours.
    **Fine-tuning on your own data** is covered there too: `prepare_data.py`, `finetune.py` (from the released adapter;
-   a 24 GB card trains rows up to 3,072 tokens), `export_hf.py` and `calibrate.py`.
+   a 24 GB card trains rows up to 3,072 tokens, or 2,048 if it also drives a display), `export_hf.py` and `calibrate.py`.
 3. **Export:** `python scripts/export_hf.py --ckpt <run>/ckpt_600 --out <dir>` reproduces the published repository
    byte for byte.
 

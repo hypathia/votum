@@ -53,7 +53,7 @@ def pick_micro(mem: tuple[float, float] | None) -> int:
     free, total = mem
     for floor, mt in MICRO_BY_GB:
         if free >= floor: return mt
-    if free >= 19.5: return 2048                                 # a 24 GB card that also drives a display: measured 18.5 GiB peak
+    if free >= 19.5: return 2048                                 # a 24 GB card that also drives a display: 2,048 peaks at 17.6 GiB
     raise SystemExit(f"{free:.1f} GiB of GPU memory free ({total:.0f} GiB card): below the smallest measured configuration (19.5 GiB free, 2,048-token micro-batches). Free the card or pass --micro-tokens")
 
 
@@ -86,7 +86,7 @@ def init_checkpoint(src: str, out: Path, mode: str, token=None) -> Path:
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--from", dest="src", default=os.environ.get("VOTUM_REPO"), help="Votum-8B: Hub repo id or a local checkpoint directory with adapter/ (default $VOTUM_REPO)")
+    ap.add_argument("--from", dest="src", default=os.environ.get("VOTUM_REPO"), help="Votum-8B, or your own merged export: Hub repo id or a local checkpoint directory with config.json, model*.safetensors and votum_config.json (default $VOTUM_REPO)")
     ap.add_argument("--mode", choices=["merged", "adapter"], default="merged",
                     help="merged (default): train a new LoRA on the Votum checkpoint itself, one environment, no Apertus download; "
                          "adapter: continue the released adapter on the Apertus base (needs the base in HF_HOME and the training fork)")
@@ -101,24 +101,29 @@ def main(argv=None):
     ap.add_argument("--seed", type=int, default=2)
     ap.add_argument("--save-every", type=int, default=25)
     ap.add_argument("--train-arg", action="append", default=[], help="extra train.py argument, repeatable (e.g. --train-arg=--lora-r=32 is NOT possible: the released adapter is rank 16)")
-    ap.add_argument("--probe", action="store_true", help="run 2 steps without saving and report the peak GPU memory and step time")
+    ap.add_argument("--probe", action="store_true", help="run 2 steps without saving and report the peak GPU memory and step time (in runs/<tag>_probe)")
+    ap.add_argument("--resume", action="store_true", help="continue the run <tag> from its last saved state (after a crash or a stop)")
     ap.add_argument("--dry-run", action="store_true", help="print the train.py command and exit")
     ap.add_argument("--token", default=None, help="Hub token (if the model repo is gated and you are not logged in)")
     a = ap.parse_args(argv)
     if not a.src: raise SystemExit("--from is required: the Votum-8B repo id or a local checkpoint directory")
-    data = Path(a.data); st = json.loads((data / "stats.json").read_text()); tr = st["train"]
+    if a.probe: a.tag += "_probe"                                 # its own directory: the real run's log stays clean
+    data = Path(a.data).resolve(); st = json.loads((data / "stats.json").read_text()); tr = st["train"]
     if a.mode == "adapter":
         try: C.backbone_path()
         except FileNotFoundError as e: raise SystemExit(f"{e}\nDownload swiss-ai/Apertus-v1.5-8B into HF_HOME first (huggingface-cli download swiss-ai/Apertus-v1.5-8B); it is gated on the Apertus Acceptable Use Policy")
 
     mem = gpu_gib(); mt = pick_micro(mem) if a.micro_tokens == "auto" else int(a.micro_tokens)
     if mt > a.tokens_per_step: raise SystemExit("--micro-tokens cannot exceed --tokens-per-step")
-    want = a.epochs * tr["tokens_total"] / (a.tokens_per_step * 0.85)
-    steps = a.steps or max(10, round(want)); passes = steps * a.tokens_per_step * 0.85 / max(1, tr["tokens_total"])
+    # tokens a step really holds: tokens_per_step // micro_tokens micro-batches, each with as many typical rows as fit
+    # (a 1,100-token row in a 2,048-token micro-batch fits alone, so such a step carries ~35k tokens, not 65k)
+    typical = tr["tokens_p50"] + 16; fit = max(1, mt // typical); eff = min(a.tokens_per_step * 0.85, (a.tokens_per_step // mt) * fit * tr["tokens_p50"])
+    want = a.epochs * tr["tokens_total"] / eff
+    steps = a.steps or max(10, round(want)); passes = steps * eff / max(1, tr["tokens_total"])
     warm = min(25, max(2, steps // 10)); decay = min(100, max(1, steps // 4))
     too_long = tr["tokens_p90"] > mt
     print((f"GPU: {mem[0]:.1f} of {mem[1]:.0f} GiB free" if mem else "GPU: none detected") + f" | micro-batch {mt:,} tokens | {steps} steps x {a.tokens_per_step:,} tokens "
-          f"= about {passes:.1f} passes over {tr['rows']:,} rows ({tr['tokens_total']:,} tokens) | warm-up {warm}, cosine decay over the last {decay}", flush=True)
+          f"(about {eff:,.0f} used per step with {fit} typical row{'s' if fit > 1 else ''} per micro-batch) = about {passes:.1f} passes over {tr['rows']:,} rows ({tr['tokens_total']:,} tokens) | warm-up {warm}, cosine decay over the last {decay}", flush=True)
     if not a.steps and want < 10: print(f"NOTE: {a.epochs:g} epoch would be {want:.1f} steps; the minimum is 10, so this is {passes:.0f} passes over your rows. Small sets overfit quickly: check the validation accuracy from calibrate.py, or pass --steps", flush=True)
     if a.tokens_per_step > 4 * max(1, tr["tokens_total"]): print("NOTE: one step is larger than your whole dataset; consider --tokens-per-step 16384 for a small set", flush=True)
     if too_long: print(f"WARNING: at least 10 % of the rows are longer than {mt:,} tokens (p90 = {tr['tokens_p90']}); the data plan skips rows longer than one micro-batch, so they will not be trained on", flush=True)
@@ -136,10 +141,11 @@ def main(argv=None):
               "--steps", str(steps), "--warmup", str(warm), "--final-decay", str(decay), "--tokens-per-step", str(a.tokens_per_step),
               "--micro-tokens", str(mt), "--save-every", str(a.save_every), "--init-weights", str(init), *LAYOUT, *a.train_arg]
     if a.probe: argv_t += ["--steps", "2", "--until", "2", "--no-save", "--print-every", "1", "--final-decay", "1", "--warmup", "1"]
+    if a.resume: argv_t.append("--resume")
     cmd = [sys.executable, str(ROOT / "train.py"), *argv_t]
     print("train.py " + " ".join(argv_t), flush=True)
     if a.dry_run: return
-    if a.probe and (run / "log.jsonl").exists(): (run / "log.jsonl").unlink()
+    if a.probe and (run / "log.jsonl").exists(): (run / "log.jsonl").unlink()      # a probe directory only ever holds probe lines
     rc = subprocess.call(cmd, cwd=str(ROOT))
     if rc: raise SystemExit(rc)
     if a.probe:

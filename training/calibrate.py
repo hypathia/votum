@@ -1,4 +1,5 @@
-"""Refit the per-type temperatures of an exported Votum checkpoint on labelled validation rows, and write them into it.
+"""Refit the per-type temperatures of an exported Votum checkpoint on labelled validation rows, and write them into it;
+with --eval-only, just report accuracy, cross-entropy and calibration error on any labelled file (a held-out test set).
 
     python calibrate.py --model <exported checkpoint dir> --val data/mine/val.jsonl.gz [--limit 2000] [--dry-run]
 
@@ -51,20 +52,25 @@ def ece(zs, ts, T, bins=15) -> float:
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--model", required=True, help="exported checkpoint directory (scripts/export_hf.py output)")
+    ap.add_argument("--model", required=True, help="Votum checkpoint: Hub repo id or local directory (scripts/export_hf.py output; an --adapter-only directory needs --exact)")
     ap.add_argument("--val", required=True, help="validation rows with targets (prepare_data.py's val.jsonl.gz)")
     ap.add_argument("--limit", type=int, default=None, help="use at most this many rows per type (default: all)")
     ap.add_argument("--batch", type=int, default=8); ap.add_argument("--device", default=None)
     ap.add_argument("--exact", action="store_true", help="load the adapter/ form (export_hf.py --adapter-only) on the checkpoint it was trained on")
-    ap.add_argument("--dry-run", action="store_true", help="fit and report, but do not write")
+    ap.add_argument("--dry-run", "--eval-only", dest="dry_run", action="store_true", help="report accuracy, NLL and ECE with the current temperatures and the refitted ones, write nothing (use this to evaluate on a held-out test file)")
     ap.add_argument("--min-rows", type=int, default=50, help="a type with fewer scored rows keeps its released temperature (default 50)")
-    a = ap.parse_args(argv); root = Path(a.model)
+    a = ap.parse_args(argv)
     by_type = defaultdict(list)
     for r in read_rows(Path(a.val)):
         if a.limit is None or len(by_type[r["type"]]) < a.limit: by_type[r["type"]].append(r)
     rows = [r for t in ("choice", "noul", "score") for r in by_type[t]]
     print(f"{len(rows)} rows: " + ", ".join(f"{t} {len(by_type[t])}" for t in by_type), flush=True)
-    vm = Votum.from_pretrained(str(root), exact=a.exact, device=a.device); cfg = VotumConfig.load(root / 'adapter' if a.exact and not (root / CONFIG_NAME).exists() else root)
+    from votum.build import resolve
+    root = resolve(a.model, None, None, ["config.json", CONFIG_NAME, "model*.safetensors", "model.safetensors.index.json", "adapter/*",
+                                         "tokenizer.json", "tokenizer_config.json", "special_tokens_map.json", "chat_template.jinja"])
+    adapter_only = not (root / CONFIG_NAME).exists() and (root / "adapter" / CONFIG_NAME).exists()
+    if adapter_only and not a.exact: raise SystemExit(f"{root} holds only the adapter form (export_hf.py --adapter-only): pass --exact")
+    vm = Votum.from_pretrained(str(root), exact=a.exact, device=a.device); cfg = VotumConfig.load(root / "adapter" if adapter_only else root)
     zs, ts, skipped, t0 = defaultdict(list), defaultdict(list), 0, time.time()
     for i in range(0, len(rows), a.batch):
         chunk = rows[i:i + a.batch]
@@ -84,10 +90,12 @@ def main(argv=None):
         print(f"{t:7s} {len(zs[t]):5d} {acc:5.1f}% {T0:9.3f} {T1:8.3f} {nll(zs[t], ts[t], T0):10.4f} {nll(zs[t], ts[t], T1):9.4f} {ece(zs[t], ts[t], T0):10.4f} {ece(zs[t], ts[t], T1):9.4f}")
     if skipped: print(f"{skipped} rows did not fit the context and were skipped")
     if a.dry_run: print("dry run: nothing written"); return
-    cfg.temperatures = new; cfg.save(root)
-    if (root / "adapter" / CONFIG_NAME).exists(): cfg.save(root / "adapter")
-    cj = root / "config.json"; d = json.loads(cj.read_text()); d["decision_temperatures"] = new; cj.write_text(json.dumps(d, indent=1))
-    print(f"wrote temperatures {json.dumps({k: round(v, 4) for k, v in new.items()})} to {root / CONFIG_NAME}, adapter/{CONFIG_NAME} and config.json")
+    cfg.temperatures = new; written = []
+    if (root / CONFIG_NAME).exists(): cfg.save(root); written.append(CONFIG_NAME)
+    if (root / "adapter" / CONFIG_NAME).exists(): cfg.save(root / "adapter"); written.append(f"adapter/{CONFIG_NAME}")
+    cj = root / "config.json"
+    if cj.exists(): d = json.loads(cj.read_text()); d["decision_temperatures"] = new; cj.write_text(json.dumps(d, indent=1)); written.append("config.json")
+    print(f"wrote temperatures {json.dumps({k: round(v, 4) for k, v in new.items()})} to {root}: {', '.join(written)}")
 
 
 if __name__ == "__main__":
