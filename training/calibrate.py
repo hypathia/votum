@@ -7,7 +7,8 @@ the released temperatures no longer match the new scores, so they are refitted h
 against the rows' targets over a log-spaced grid (0.25 to 20), the procedure that produced the released values. The
 result is written to votum_config.json (root and adapter/) and to the decision_temperatures field of config.json, which
 the vLLM server reads. Scoring runs the PyTorch reference (votum.Votum) on the GPU: about 20 rows/s on an RTX 4090 for
-400-token prompts; use --limit for a quick fit (a few hundred rows per type are enough for a stable temperature)."""
+400-token prompts; use --limit for a quick fit. A few hundred rows per type give a stable temperature; a type with
+fewer than --min-rows (50) keeps the released value, and a fit that hits the grid edge is flagged."""
 from __future__ import annotations
 
 import argparse, gzip, json, math, sys, time
@@ -55,6 +56,7 @@ def main(argv=None):
     ap.add_argument("--limit", type=int, default=None, help="use at most this many rows per type (default: all)")
     ap.add_argument("--batch", type=int, default=8); ap.add_argument("--device", default=None)
     ap.add_argument("--dry-run", action="store_true", help="fit and report, but do not write")
+    ap.add_argument("--min-rows", type=int, default=50, help="a type with fewer scored rows keeps its released temperature (default 50)")
     a = ap.parse_args(argv); root = Path(a.model)
     by_type = defaultdict(list)
     for r in read_rows(Path(a.val)):
@@ -74,8 +76,9 @@ def main(argv=None):
     new = dict(cfg.temperatures)
     print(f"\n{'type':7s} {'rows':>5s} {'T before':>9s} {'T after':>8s} {'NLL before':>10s} {'NLL after':>9s} {'ECE before':>10s} {'ECE after':>9s}")
     for t in ("choice", "noul", "score"):
-        if not zs[t]: print(f"{t:7s} {0:5d}  (no rows: temperature kept at {cfg.temperatures[t]:.3f})"); continue
+        if len(zs[t]) < a.min_rows: print(f"{t:7s} {len(zs[t]):5d}  only {len(zs[t])} rows (< --min-rows {a.min_rows}): temperature kept at {cfg.temperatures[t]:.3f}"); continue
         T0 = cfg.temperatures[t]; T1 = float(min(GRID, key=lambda T: nll(zs[t], ts[t], T))); new[t] = T1
+        if T1 <= GRID[0] * 1.001 or T1 >= GRID[-1] * 0.999: print(f"  warning: {t} temperature hit the grid edge ({T1:.3f}); the validation rows are probably too few or too easy")
         print(f"{t:7s} {len(zs[t]):5d} {T0:9.3f} {T1:8.3f} {nll(zs[t], ts[t], T0):10.4f} {nll(zs[t], ts[t], T1):9.4f} {ece(zs[t], ts[t], T0):10.4f} {ece(zs[t], ts[t], T1):9.4f}")
     if skipped: print(f"{skipped} rows did not fit the context and were skipped")
     if a.dry_run: print("dry run: nothing written"); return
