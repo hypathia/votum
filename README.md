@@ -150,6 +150,8 @@ tests/              masks, positions, renderer, request format (CPU) · end-to-e
 1. **Data:** the cleaned pool is [{{ORG}}/Votum-Pool](https://huggingface.co/datasets/{{ORG}}/Votum-Pool); the pipeline
    that builds it is in `data/`.
 2. **Training:** `training/README.md` has the exact command. One 96 GB GPU, about 7 hours.
+   **Fine-tuning on your own data** is covered there too: `prepare_data.py`, `finetune.py` (from the released adapter;
+   a 24 GB card trains rows up to 3,072 tokens), `export_hf.py` and `calibrate.py`.
 3. **Export:** `python scripts/export_hf.py --ckpt <run>/ckpt_600 --out <dir>` reproduces the published repository
    byte for byte.
 
