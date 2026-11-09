@@ -77,17 +77,15 @@ One decision costs one read. Median latency per answer on one RTX 4090 with the 
 | Mode | Median latency | Tokens written | Requests/s (batched) |
 |---|---:|---:|---:|
 | **Votum: a decision** | **39 ms** | **0** | **23.5** |
-| JSON: the choice (grammar-constrained) | 206 ms | 8 | 21.0 |
-| JSON: choice and probabilities (grammar-constrained) | 1.1 s | 54 | 10.9 |
+| JSON: the choice (structured output) | 206 ms | 8 | 21.0 |
+| JSON: choice and probabilities (structured output) | 1.1 s | 54 | 10.9 |
 | Reason first, then the JSON | 10.5 s | 370 | 1.9 |
 
 <sub>Decision row: these merged weights on vLLM 0.33. Generative rows: vLLM 0.12, a different 256-row sample; the last
 row batches 64 requests and times 10. Latency is one request at a time, median of 50.</sub>
 
 The questions of a request share one pass over the state, so more questions per request means more decisions per
-second:
-
-<picture><source media="(prefers-color-scheme: dark)" srcset="assets/state_once_dark.png"><img src="assets/state_once.png" alt="Decisions per second with more questions per request"></picture>
+second: on 3,200-token documents, 3.1 decisions/s with one question per request, 9.7 with four and 15.8 with eight.
 
 <details>
 <summary><b>Server settings</b></summary>

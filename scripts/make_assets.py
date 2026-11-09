@@ -148,24 +148,6 @@ def option_rows(x, y, w, opts, row=19, lab_w=0.36, size=12, bh=8):
     return "".join(b)
 
 
-# ---------------------------------------------------------------------------------------------------------- state once
-def state_once():
-    # long_q1 / long_q4 / long_q8: the released weights on vLLM 0.33, one RTX 4090, ~3,200-token states, prefix cache off
-    rows = [(1, 3.08, 322.5), (4, 9.69, 391.7), (8, 15.81, 464.5)]
-    b = [head("Throughput", "Many questions, one read", "Decisions per second on ~3,200-token documents, one RTX 4090; the questions of a request share one pass over the state")]
-    tw = (W - 2 * PAD - 2 * GAP) / 3; th = 150
-    for i, (q, v, ms) in enumerate(rows):
-        x = PAD + i * (tw + GAP); hero = q == 8; fg, fg2, fgk = (WHITE, WHITE2, WHITE2) if hero else (INK, MUTED, RED)
-        b.append(card(x, TOP, tw, th, hero))
-        b.append(eyebrow(x + 18, TOP + 26, f"{q} question{'s' if q > 1 else ''} per request", fgk))
-        b.append(big(x + 17, TOP + 70, f"{v:.1f}", 44, fg) + T(x + 17 + textw(f"{v:.1f}", 44, True) + 8, TOP + 70, "decisions / s", 14, fg2, 600))
-        trk = tw - 36; fill = WHITE if hero else (NEUTRAL if q == 1 else SUB)
-        b.append(bar(x + 18, TOP + 90, trk, 8, "rgba(255,255,255,.25)" if hero else GRID) + bar(x + 18, TOP + 90, trk * v / 16, 8, fill))
-        sp = f"×{v / rows[0][1]:.1f} throughput" if q > 1 else "baseline"
-        b.append(T(x + 18, TOP + th - 18, f"{sp}  ·  {math.floor(ms + .5)} ms median per request", 12, fg2, 500))   # half up, as in the card
-    save("state_once", TOP + th + PAD, "".join(b))
-
-
 # ---------------------------------------------------------------------------------------------------------- results (tiles + routing)
 def results():
     tiles = [("Jev Decision Index 0.3", "36.9", "public suite, 140,620 requests"), ("OpenDecisions", "59.4", "Capability"),
@@ -283,8 +265,9 @@ def architecture():
     cbot = a_bottom + 52; ch = cbot - ctop
     b.append(card(PAD, ctop, c1w, ch) + step(PAD + 16, ctop + 32, 1, "The request as one prompt"))
     b += parts
-    b.append(T(ax + 26, a_bottom + 16, "The prompt verbatim, system turn not shown. Options share position ids;", 10.5, MUTED))
-    b.append(T(ax + 26, a_bottom + 30, "each ends with an end token, where the option is read out.", 10.5, MUTED))
+    b.append(T(ax + 26, a_bottom + 16, "The prompt verbatim, system turn not shown.", 10.5, MUTED))
+    b.append(T(ax + 26, a_bottom + 30, "The header tells the state what will be asked; the question", 10.5, MUTED))
+    b.append(T(ax + 26, a_bottom + 44, "blocks are where options are scored, each at its end token.", 10.5, MUTED))
 
     # 2 who reads whom
     c2x = PAD + c1w + GAP
@@ -438,5 +421,5 @@ def flag():
 
 flag()
 for name in THEMES:
-    theme(name); results(); state_once(); architecture(); examples(); pool()
+    theme(name); results(); architecture(); examples(); pool()
 print("written to", OUT)
