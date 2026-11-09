@@ -67,7 +67,10 @@ pip install "votum[vllm] @ git+https://github.com/{{ORG}}/votum"
 VOTUM_API_KEY=... votum serve --model {{ORG}}/Votum-8B --host 0.0.0.0 --port 8011
 ```
 
-`POST /v1/systemone` takes the same request as `vm.decide` and returns the same answers. Concurrent requests are
+`POST /v1/systemone` takes the same request as `vm.decide` and returns the same answers. For 16 GB cards there is
+[{{ORG}}/Votum-8B-FP8](https://huggingface.co/{{ORG}}/Votum-8B-FP8), the same model with FP8 weights (8.5 GB; it gives
+the same answer as the bf16 weights 96–98 % of the time; `scripts/quantize_fp8.py` rebuilds it); pass it to `votum serve`
+or `VotumVLLM` in place of the bf16 repo. The PyTorch reference path does not load it. Concurrent requests are
 batched, and a short request takes about 30 ms on an RTX 4090. Start-up takes about a minute: the server compiles its
 attention kernels for every shape class first, so no request pays for one.
 
@@ -139,7 +142,7 @@ src/votum/          prompt rendering · reference model (PyTorch) · request for
 src/votum/vllm/     vLLM 0.33 model · attention layout and cache · client · HTTP server
 training/           the trainer that produced Votum-8B, with the exact command
 data/               source list with licences · cleaning and PII pipeline
-scripts/            export a checkpoint to the Hub layout · smoke fixture · README graphics
+scripts/            export a checkpoint to the Hub layout · FP8 quantization · smoke fixture · README graphics
 tests/              masks, positions, renderer, request format (CPU) · end-to-end smoke test (GPU)
 ```
 
