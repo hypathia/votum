@@ -1,0 +1,17 @@
+Votum
+Copyright 2026 {{AUTHOR}}
+
+Licensed under the Apache License, Version 2.0 (see LICENSE).
+
+Votum is a decision model fine-tuned from swiss-ai/Apertus-v1.5-8B (Apertus 1.5, Swiss AI Initiative). The base model is
+distributed under the Apache License 2.0 and the Apertus Acceptable Use Policy v1.5
+(https://huggingface.co/swiss-ai/Apertus-v1.5-8B/blob/main/USAGE_POLICY.pdf); anyone who uses or redistributes Votum
+with the base model is bound by that policy. Votum is not affiliated with or endorsed by the Swiss AI Initiative,
+EPFL, ETH Zurich or CSCS.
+
+This software contains code derived from the following projects:
+
+- jeff-serve (https://github.com/j-geuter/jeff-serve), Apache License 2.0.
+  Copyright 2026 Jonathan Geuter, Andrew Cheng, David Alvarez-Melis.
+  src/votum/request.py converts TypeSafe questions to options the way jeff's typesafe.py does (which follows
+  JevBench's semif_direct adapter, https://github.com/fstandhartinger/jevbench, MIT License).

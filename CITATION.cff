@@ -1,0 +1,10 @@
+cff-version: 1.2.0
+message: "If you use Votum, please cite it as below, and cite Apertus (see the model card)."
+title: "Votum: a single-pass decision model on a fully open backbone"
+authors:
+  - name: "{{AUTHOR}}"
+license: Apache-2.0
+repository-code: "https://github.com/{{ORG}}/votum"
+url: "https://huggingface.co/{{ORG}}/Votum-8B"
+version: 0.1.0
+date-released: "{{RELEASE_DATE}}"

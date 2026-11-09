@@ -1,0 +1,13 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.venv/
+# never commit weights or data
+*.safetensors
+*.pt
+*.jsonl.gz
+# training run outputs (training/common.py)
+training/runs/

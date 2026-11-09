@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "votum"
+version = "0.1.0"
+description = "Votum: a single-pass decision model on Apertus-1.5-8B (probabilities over the options of a question, no generation)"
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
+requires-python = ">=3.10"
+# Reference path (PyTorch): mainline transformers with the `apertus` model type (>= 4.56).
+dependencies = [
+  "torch>=2.5",
+  "transformers>=4.56",
+  "peft>=0.17",
+  "safetensors>=0.4",
+  "huggingface_hub>=0.34",
+]
+
+[project.optional-dependencies]
+# Serving: vLLM 0.33.0 exactly (the plugin hooks its attention implementation); it needs transformers 5.16-5.20.
+vllm = ["vllm==0.33.0", "fastapi>=0.110", "uvicorn>=0.29"]
+test = ["pytest>=8"]
+
+[project.scripts]
+votum = "votum.cli:main"
+
+[project.entry-points."vllm.general_plugins"]
+votum = "votum.vllm:register"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["gpu: needs a CUDA GPU and the model weights", "vllm: needs vLLM 0.33"]

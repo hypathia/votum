@@ -1,0 +1,21 @@
+[
+ {"state": "Hi, I was charged twice for my October invoice (INV-4411). Could you refund one of the two payments?",
+  "questions": {
+   "team": {"type": "choice", "instructions": "Which team should handle this ticket?",
+            "criteria": {"billing": "Billing and payments", "tech": "Technical support", "sales": "Sales", "hr": "Human resources"}},
+   "refund": {"type": "noul", "instructions": "Does the customer ask for money back?"},
+   "urgency": {"type": "score", "instructions": "How urgent is this ticket?", "criteria": ["low", "medium", "high"]}}},
+ {"state": "Der Drucker im dritten Stock ist schon wieder blockiert und zeigt den Fehler E-302.",
+  "questions": {
+   "team": {"type": "choice", "instructions": "Welches Team ist zuständig?",
+            "criteria": {"it": "IT-Support", "fac": "Facility Management", "fin": "Finanzen"}}}},
+ {"state": {"order": 1182, "items": [{"sku": "A-17", "qty": 2, "price": 12.5}, {"sku": "B-03", "qty": 1, "price": 40.0}], "coupon": "none"},
+  "questions": {
+   "total": {"type": "choice", "instructions": "What is the order total?", "criteria": ["52.5", "65.0", "40.0", "25.0"]},
+   "discount": {"type": "noul", "instructions": "Was a discount applied to this order?"}}},
+ {"state": "La réunion de lundi est déplacée à mardi 10 h, salle B. Merci de confirmer votre présence.",
+  "questions": {
+   "action": {"type": "choice", "instructions": "What does the sender ask the reader to do?",
+              "criteria": {"confirm": "Confirm attendance", "pay": "Pay an invoice", "book": "Book a room", "nothing": "Nothing"}},
+   "lang": {"type": "choice", "instructions": "In which language is the message written?", "criteria": ["English", "French", "German", "Italian"]}}}
+]

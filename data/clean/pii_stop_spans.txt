@@ -1,0 +1,317 @@
+# lowercase spans that are role words / pronouns / abbreviations and are never masked as names (from a frequency scan of NER spans)
+abgabepflichtige
+abgabepflichtigen
+ac
+admin
+administrator
+afd
+ajánlatkérő
+ajánlattevő
+ajánlattevőnek
+ak
+amtsrevisionswerberin
+amtssachverständigen
+antragsteller
+antragstellers
+appellant
+appellante
+arbeitgeber
+arbeitnehmer
+arbeitnehmers
+arkitekten
+asylwerber
+asylwerbers
+auftraggeber
+auftraggeberin
+auftraggebers
+auftragnehmer
+ausländer
+ausländers
+author
+autofahrer
+autor
+autoren
+autorin
+autors
+bauwerber
+beamte
+beamten
+belanghebbende
+belastingplichtige
+benutzer
+beschuldigten
+beschwerdeführende partei
+beschwerdeführenden partei
+beschwerdeführer
+beschwerdeführerin
+beschwerdeführern
+beschwerdeführers
+best wishes
+beställaren
+betroffenen
+betrokkene
+bieter
+bruder
+bundesminister
+bundesministerin
+bygherre
+bürgermeister
+bürgermeisters
+ceo
+claimant
+claimants
+cn
+co
+dame
+dank
+de rioolmeester
+dear
+der beschuldigte
+der beschwerdeführer
+der fremde
+der mitbeteiligte
+der mitbeteiligten
+der revisionswerber
+der steuerpflichtige
+der zusammenführende
+die beschwerdeführerin
+die mitbeteiligte
+die mitbeteiligte partei
+die revisionswerberin
+dienstgeber
+dienstnehmer
+docteur
+dodavatel
+drittrevisionswerber
+drittrevisionswerberin
+drittstaatsangehörigen
+editør
+eg
+ehegattin
+ehemann
+eigentümer
+eiser
+eiseres
+eiseressen
+eisers
+elle
+eltern
+em
+emperor
+empfänger
+employment judge
+er
+ersteller
+erstmitbeteiligten
+erstrevisionswerber
+erstrevisionswerberin
+erstrevisionswerbers
+erwerber
+fa
+fahrer
+fan
+first respondent
+frauen
+fremde
+fremden
+fruchtgenussberechtigten
+fussgänger
+ga
+gedaagde
+gedaagden
+geschäftsführer
+geschäftsführers
+gng
+gp
+grundeigentümer
+grüezi
+hauptautor
+he
+hello
+her
+hi
+hij
+him
+ib
+ich
+id
+ihr
+ik
+il
+inschrijver
+inspecteur
+ip
+je
+jemand
+judge
+ka
+kandidaten
+kinder
+klaagster
+kommanditist
+kommanditisten
+kunden
+käuferin
+künstler
+landeshauptmann
+landeshauptmannes
+landeslehrer
+lead
+lebensgefährtin
+lede
+lenker
+leser
+leute
+leverandøren
+madame
+man
+manager
+maître
+me
+megrendelő
+menschen
+menschen mit behinderung
+mfg
+mieter
+mieterin
+minister
+mitbeteiligte
+mitbeteiligte partei
+mitbeteiligten
+mitbeteiligten partei
+monsieur
+mos
+mp
+mutter
+nachbar
+nachbarn
+name
+naročnik
+naručitelj
+naručitelja
+neuer
+ng
+nn
+nom
+nominator
+nous
+ns
+nyertes ajánlattevő
+onze minister
+opdrachtgever
+opdrachtnemer
+oppose
+ordregiver
+ordregivers
+partei
+partijen
+passanten
+patienten
+people
+person
+personen
+plangroep
+pm
+pmp
+polizeibeamte
+polizeibeamten
+ponuditelj
+ponuditelja
+portaal
+premier ministre
+president
+prof
+professor
+prüfer
+prüferin
+queen
+rechtsanwalt
+rechtsmittelwerber
+rechtsvertreter
+rechtsvorgängerinnen
+respondent
+revisionswerbende partei
+revisionswerbenden partei
+revisionswerber
+revisionswerberin
+revisionswerberinnen
+revisionswerbern
+revisionswerbers
+richter
+rioolmeester
+rs
+sachverständige
+sachverständigen
+sd
+second respondent
+she
+sie
+sohn
+someone
+source
+spieler
+spielerin
+steuerpflichtigen
+subject
+support
+tarjoaja
+tarjoajalle
+tarjoajan
+teilnehmerin
+thanks
+the claimant
+the respondent
+tilaaja
+tilaajalla
+tilaajalle
+tilaajan
+tilbudsgiver
+tt
+täter
+unionsbürger
+unionsbürgers
+unternehmer
+user
+vater
+velofahrer
+verantwortliche person
+verejný obstarávateľ
+verfahrenshelfer
+verkäufer
+vermieter
+verweerder
+verweerster
+verzoeker
+verzoekers
+verzoekster
+vevő
+vorarbeiter
+vorsitzenden
+vous
+wir
+wissenschaftler
+witness
+wp
+wykonawca
+wykonawcy
+wykonawcę
+you
+zadavatel
+zadavatele
+zamawiającego
+zamawiającemu
+zamawiający
+zeugen
+zusammenführenden
+zweitrevisionswerber
+zweitrevisionswerberin
+zweitrevisionswerbers
+възложителя
+възложителят
+изпълнител
+изпълнителя
+изпълнителят
+участник
+участника
+участникът
+участниците
