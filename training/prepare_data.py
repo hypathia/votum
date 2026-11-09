@@ -191,7 +191,7 @@ def main(argv=None):
     tok = C.load_tokenizer(Path(tok_dir))
     train, d1 = count_tokens(tok, train, a.max_tokens, "train"); val, d2 = count_tokens(tok, val, a.max_tokens, "val")
     write(train, out / "train.jsonl.gz"); write(val, out / "val.jsonl.gz")
-    st = dict(source=a.pool or a.rows, config=a.config if a.pool else None, tokenizer=str(tok_dir), max_tokens=a.max_tokens,
+    st = dict(source=a.pool or a.rows or a.csv, config=a.config if a.pool else None, mixed_pool_rows=a.mix_pool, tokenizer=str(tok_dir), max_tokens=a.max_tokens,
               dropped=dict(train=dict(d1), val=dict(d2)), train=stats(train, a.tokens_per_step), val=stats(val, a.tokens_per_step))
     C.jdump(st, out / "stats.json")
     t = st["train"]

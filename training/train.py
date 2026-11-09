@@ -103,7 +103,9 @@ class Trainer:
         self.opt = torch.optim.AdamW(groups, betas=R_["betas"], weight_decay=R_["weight_decay"])
         self.plan = Plan([r["n_tok"] for r in self.rows], a.seed, a.tokens_per_step, a.plan_micro_tokens or a.micro_tokens)
         self.step = 0; self.out = C.RUNS / a.tag; self.out.mkdir(parents=True, exist_ok=True)
-        if not a.no_save: C.disk_guard(self.out, need_gb=2.0)       # fail now, not after hours of training (states ~0.6 GB, checkpoints ~0.2 GB)
+        if not a.no_save:                                             # fail now, not after hours of training (states ~0.6 GB, checkpoints ~0.2 GB)
+            try: C.disk_guard(self.out, need_gb=2.0)
+            except RuntimeError as e: raise SystemExit(str(e))
 
     # ------------------------------------------------------------------ helpers
     def encode(self, row, step):

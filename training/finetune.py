@@ -96,7 +96,8 @@ def main(argv=None):
     ap.add_argument("--epochs", type=float, default=1.0, help="passes over the training rows when --steps is not given (default 1)")
     ap.add_argument("--lr", type=float, default=5e-5, help="peak learning rate of the LoRA (default 5e-5, half the released run's 1e-4: the adapter is already trained)")
     ap.add_argument("--lr-head", type=float, default=5e-4, help="peak learning rate of the pointer head (default 5e-4)")
-    ap.add_argument("--tokens-per-step", type=int, default=C.RECIPE["tokens_per_step"], help="padded tokens per optimizer step (default 65,536)")
+    ap.add_argument("--tokens-per-step", default="auto", help="padded tokens per optimizer step: auto (65,536 for 2M+ training tokens, 32,768 for 500k+, else 16,384: small sets need many small updates) or a number")
+    ap.add_argument("--min-steps", type=int, default=40, help="never fewer optimizer steps than this (default 40: the number of updates matters more than the number of passes)")
     ap.add_argument("--micro-tokens", default="auto", help="padded tokens per micro-batch: auto (from GPU memory) or a number")
     ap.add_argument("--seed", type=int, default=2)
     ap.add_argument("--save-every", type=int, default=25)
@@ -113,26 +114,35 @@ def main(argv=None):
         try: C.backbone_path()
         except FileNotFoundError as e: raise SystemExit(f"{e}\nDownload swiss-ai/Apertus-v1.5-8B into HF_HOME first (huggingface-cli download swiss-ai/Apertus-v1.5-8B); it is gated on the Apertus Acceptable Use Policy")
 
-    mem = gpu_gib(); mt = pick_micro(mem) if a.micro_tokens == "auto" else int(a.micro_tokens)
+    mem = gpu_gib()
+    if a.micro_tokens != "auto": mt = int(a.micro_tokens)
+    elif a.dry_run and (mem is None or mem[0] < 19.5): mt = 2048; print("dry run: no suitable GPU memory free right now; assuming 2,048-token micro-batches", flush=True)
+    else: mt = pick_micro(mem)
+    tps = int(a.tokens_per_step) if a.tokens_per_step != "auto" else (65536 if tr["tokens_total"] >= 2_000_000 else 32768 if tr["tokens_total"] >= 500_000 else 16384)
+    a.tokens_per_step = max(tps, mt)
     if mt > a.tokens_per_step: raise SystemExit("--micro-tokens cannot exceed --tokens-per-step")
     # tokens a step really holds: tokens_per_step // micro_tokens micro-batches, each with as many typical rows as fit
     # (a 1,100-token row in a 2,048-token micro-batch fits alone, so such a step carries ~35k tokens, not 65k)
     typical = tr["tokens_p50"] + 16; fit = max(1, mt // typical); eff = min(a.tokens_per_step * 0.85, (a.tokens_per_step // mt) * fit * tr["tokens_p50"])
     want = a.epochs * tr["tokens_total"] / eff
-    steps = a.steps or max(10, round(want)); passes = steps * eff / max(1, tr["tokens_total"])
+    steps = a.steps or max(a.min_steps, round(want)); passes = steps * eff / max(1, tr["tokens_total"])
     warm = min(25, max(2, steps // 10)); decay = min(100, max(1, steps // 4))
     too_long = tr["tokens_p90"] > mt
     print((f"GPU: {mem[0]:.1f} of {mem[1]:.0f} GiB free" if mem else "GPU: none detected") + f" | micro-batch {mt:,} tokens | {steps} steps x {a.tokens_per_step:,} tokens "
           f"(about {eff:,.0f} used per step with {fit} typical row{'s' if fit > 1 else ''} per micro-batch) = about {passes:.1f} passes over {tr['rows']:,} rows ({tr['tokens_total']:,} tokens) | warm-up {warm}, cosine decay over the last {decay}", flush=True)
-    if not a.steps and want < 10: print(f"NOTE: {a.epochs:g} epoch would be {want:.1f} steps; the minimum is 10, so this is {passes:.0f} passes over your rows. Small sets overfit quickly: check the validation accuracy from calibrate.py, or pass --steps", flush=True)
-    if a.tokens_per_step > 4 * max(1, tr["tokens_total"]): print("NOTE: one step is larger than your whole dataset; consider --tokens-per-step 16384 for a small set", flush=True)
+    if not a.steps and want < a.min_steps: print(f"NOTE: {a.epochs:g} epoch would be {want:.1f} steps; the minimum is {a.min_steps} (--min-steps), so this is {passes:.0f} passes over your rows: a small set is learned by many small updates. Check the held-out accuracy with calibrate.py --eval-only", flush=True)
     if too_long: print(f"WARNING: at least 10 % of the rows are longer than {mt:,} tokens (p90 = {tr['tokens_p90']}); the data plan skips rows longer than one micro-batch, so they will not be trained on", flush=True)
 
     run = C.RUNS / a.tag; init = run / "init"
+    if a.resume:
+        for f in ("STOP", "STOPPED.json"):
+            if (run / f).exists(): (run / f).unlink(); print(f"removed {run / f} so the run can continue", flush=True)
     if a.dry_run and not (init / "span_head.pt").exists():
         backbone = ["--backbone", a.src] if a.mode == "merged" else []       # nothing is written in a dry run
     else:
-        run.mkdir(parents=True, exist_ok=True); C.disk_guard(run, need_gb=2.0)
+        run.mkdir(parents=True, exist_ok=True)
+        try: C.disk_guard(run, need_gb=2.0)
+        except RuntimeError as e: raise SystemExit(f"{e}\nFree space, point VOTUM_RUNS elsewhere, or lower VOTUM_DISK_FLOOR_GB (default 10)")
         if not (init / "span_head.pt").exists():
             print(f"preparing the start checkpoint from {a.src} ({a.mode})", flush=True); init_checkpoint(a.src, init, a.mode, token=a.token)
         meta = json.loads((init / "init_meta.json").read_text())
@@ -156,6 +166,8 @@ def main(argv=None):
         if mem and pk > 0.92 * mem[0]: print("the peak is within 8 % of the free memory: use a smaller --micro-tokens")
         return
     ck = sorted(run.glob("ckpt_*"), key=lambda p: int(p.name.split("_")[1]))[-1]
+    if (run / "STOPPED.json").exists():
+        st_ = json.loads((run / "STOPPED.json").read_text()); print(f"\nstopped at step {st_['stopped_at']} of {st_['planned']} (STOP file). Continue with the same command plus --resume; {ck} holds the adapter so far."); return
     print(f"\ndone. Next:\n  python ../scripts/export_hf.py --ckpt {ck} --out <out dir>           # merged checkpoint + adapter/ form"
           f"\n  python calibrate.py --model <out dir> --val {data / 'val.jsonl.gz'}      # refit the temperatures on your validation rows")
 

@@ -82,6 +82,9 @@ def main() -> None:
     for f in ("adapter_model.safetensors", "pointer_head.safetensors"): print(f"{f}: sha256 {sha256(out / f)}")
     print(f"{out}: {len(lora)} LoRA tensors on {targets}, bidirectional layers {bidir}, step {meta.get('step')}")
     if a.adapter_only: print(f"{root}: adapter form only (load with Votum.from_pretrained(..., exact=True) or votum build --exact)"); return
+    import shutil
+    free = shutil.disk_usage(root).free / 2**30
+    if free < 17: raise SystemExit(f"{free:.1f} GiB free at {root}: the merged checkpoint needs about 16 GB (plus headroom). Free space, choose another --out, or use --adapter-only")
     build(root, str(out), a.base)
 
 

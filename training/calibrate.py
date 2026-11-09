@@ -58,7 +58,8 @@ def main(argv=None):
     ap.add_argument("--batch", type=int, default=8); ap.add_argument("--device", default=None)
     ap.add_argument("--exact", action="store_true", help="load the adapter/ form (export_hf.py --adapter-only) on the checkpoint it was trained on")
     ap.add_argument("--dry-run", "--eval-only", dest="dry_run", action="store_true", help="report accuracy, NLL and ECE with the current temperatures and the refitted ones, write nothing (use this to evaluate on a held-out test file)")
-    ap.add_argument("--min-rows", type=int, default=50, help="a type with fewer scored rows keeps its released temperature (default 50)")
+    ap.add_argument("--min-rows", type=int, default=50, help="a type with fewer scored rows keeps its current temperature (default 50); --eval-only always reports metrics")
+    ap.add_argument("--force", action="store_true", help="write a temperature even if the fit hit the edge of the grid")
     a = ap.parse_args(argv)
     by_type = defaultdict(list)
     for r in read_rows(Path(a.val)):
@@ -83,9 +84,13 @@ def main(argv=None):
     new = dict(cfg.temperatures)
     print(f"\n{'type':7s} {'rows':>5s} {'acc':>6s} {'T before':>9s} {'T after':>8s} {'NLL before':>10s} {'NLL after':>9s} {'ECE before':>10s} {'ECE after':>9s}")
     for t in ("choice", "noul", "score"):
-        if len(zs[t]) < a.min_rows: print(f"{t:7s} {len(zs[t]):5d}  only {len(zs[t])} rows (< --min-rows {a.min_rows}): temperature kept at {cfg.temperatures[t]:.3f}"); continue
-        T0 = cfg.temperatures[t]; T1 = float(min(GRID, key=lambda T: nll(zs[t], ts[t], T))); new[t] = T1
-        if T1 <= GRID[0] * 1.001 or T1 >= GRID[-1] * 0.999: print(f"  warning: {t} temperature hit the grid edge ({T1:.3f}); the validation rows are probably too few or too easy")
+        if not zs[t]: continue
+        T0 = cfg.temperatures[t]; T1 = float(min(GRID, key=lambda T: nll(zs[t], ts[t], T)))
+        edge = T1 <= GRID[0] * 1.001 or T1 >= GRID[-1] * 0.999
+        if len(zs[t]) >= a.min_rows and (not edge or a.force): new[t] = T1
+        elif not a.dry_run:
+            why = f"only {len(zs[t])} rows (< --min-rows {a.min_rows})" if len(zs[t]) < a.min_rows else f"the fit hit the grid edge ({T1:.3f}); rows too few or too easy (--force to write it anyway)"
+            print(f"  {t}: temperature kept at {T0:.3f}: {why}")
         acc = 100 * float(np.mean([z.argmax() == y.argmax() for z, y in zip(zs[t], ts[t])]))
         print(f"{t:7s} {len(zs[t]):5d} {acc:5.1f}% {T0:9.3f} {T1:8.3f} {nll(zs[t], ts[t], T0):10.4f} {nll(zs[t], ts[t], T1):9.4f} {ece(zs[t], ts[t], T0):10.4f} {ece(zs[t], ts[t], T1):9.4f}")
     if skipped: print(f"{skipped} rows did not fit the context and were skipped")

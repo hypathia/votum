@@ -11,3 +11,6 @@ dist/
 *.jsonl.gz
 # training run outputs (training/common.py)
 training/runs/
+# prepare_data.py outputs
+training/data/
+training/examples/banking77_work/
