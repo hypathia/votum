@@ -131,6 +131,9 @@ The diagram at the top shows the path of a request. The parts:
 - **Pointer head.** Each option is scored from the final hidden state at its end token,
   score = ⟨q₀, W_o · LN(h)⟩ / 16; the probabilities are a softmax over those scores.
 - **Bidirectional layers** 3, 7, …, 31; the other 24 stay causal.
+- **Limits.** 8,192 tokens per question's prompt (header, state, question and options; set by training, enforced by
+  the checkpoint and the server, raisable but unverified beyond), any number of options within it (accuracy falls as
+  they grow), and up to 8 questions per request in the header. The model card's Limitations section has the details.
 
 <details>
 <summary><b>Weights and implementation</b></summary>
