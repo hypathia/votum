@@ -1,12 +1,12 @@
 #!/bin/bash
 # Worked example from training/README.md: fine-tune Votum-8B on 2,000 BANKING77 training rows (77 intents) and measure
 # accuracy on 1,000 held-out test rows before and after. Run from the training/ directory, in the environment that has
-# votum installed, with a CUDA GPU. Needs: pyarrow, huggingface_hub (both pulled in by votum), about 20 GB of disk for
-# the export, and the model downloaded (MODEL below: a Hub id or a local directory).
+# votum installed, with a CUDA GPU. Needs: pyarrow, huggingface_hub, 17 GB of free disk for the merged export, and the
+# model (MODEL below: a Hub id or a local directory). About an hour on a 24 GB card: 228 steps of 32k tokens.
 #
 #     bash examples/banking77.sh [MODEL] [OUT_DIR]
 set -euo pipefail
-MODEL=${1:-${VOTUM_REPO:-{{ORG}}/Votum-8B}}; OUT=${2:-./Votum-8B-banking77}; W=./examples/banking77_work; mkdir -p "$W"
+DEF="{{ORG}}/Votum-8B"; MODEL=${1:-${VOTUM_REPO:-$DEF}}; OUT=${2:-./Votum-8B-banking77}; W=./examples/banking77_work; mkdir -p "$W"
 PY=${PYTHON:-python}
 
 echo "== data: PolyAI/banking77 from the Hub -> CSV (2,000 training rows) and a 1,000-row test file"

@@ -9,9 +9,13 @@ GET  /v1/models, GET /health
 The questions of one request share one header and one state block (one packed prompt). Concurrent requests are batched:
 a collector gathers whatever arrives within --batch-window-ms (or up to --max-batch questions) and runs one vLLM call.
 An API key is required only if the named environment variable is set (Authorization: Bearer <key>).
+Limits (environment): VOTUM_MAX_BODY_MB (request body, default 8), VOTUM_MAX_QUESTIONS (per request, default 64),
+VOTUM_MAX_OPTIONS (per question, default 2000), VOTUM_MAX_QUEUE (questions waiting, default 4096; beyond it: HTTP 503).
 """
 
-import argparse, sys, asyncio, os, threading, time, uuid
+import argparse, sys, asyncio, hmac, json, logging, os, threading, time, uuid
+
+log = logging.getLogger("votum.serve")
 
 from .. import request as R
 
@@ -19,14 +23,17 @@ from .. import request as R
 class Batcher:
     """collects the requests of concurrent callers and runs them through one vLLM call per batch (worker thread)."""
 
-    def __init__(self, vm, window_ms: float, max_batch: int) -> None:
-        self.vm, self.window, self.max_batch = vm, window_ms / 1000, max_batch
+    def __init__(self, vm, window_ms: float, max_batch: int, max_queue: int = 4096) -> None:
+        self.vm, self.window, self.max_batch, self.max_queue = vm, window_ms / 1000, max_batch, max_queue
         self.q: list = []; self.cv = threading.Condition()
         threading.Thread(target=self._loop, daemon=True).start()
 
-    def submit(self, rows: list[dict]) -> asyncio.Future:
-        loop = asyncio.get_running_loop(); fut = loop.create_future()
-        with self.cv: self.q.append((rows, uuid.uuid4().hex, fut, loop)); self.cv.notify()
+    def submit(self, rows: list[dict]) -> asyncio.Future | None:
+        """None when the queue is full (the caller answers 503)."""
+        loop = asyncio.get_running_loop()
+        with self.cv:
+            if sum(len(x[0]) for x in self.q) + len(rows) > self.max_queue: return None
+            fut = loop.create_future(); self.q.append((rows, uuid.uuid4().hex, fut, loop)); self.cv.notify()
         return fut
 
     def _loop(self) -> None:
@@ -54,10 +61,30 @@ def _resolve(fut, o, e):
     fut.set_exception(e) if e else fut.set_result(o)
 
 
+def _env_int(name: str, default: int) -> int:
+    try: return max(1, int(float(os.environ.get(name, default))))
+    except ValueError: sys.exit(f"votum serve: {name} must be a number")
+
+
+async def _body(request, limit: int) -> bytes | None:
+    """the request body, or None if it is larger than limit bytes (checked while reading, not only from the header)."""
+    try:
+        if int(request.headers.get("content-length", 0)) > limit: return None
+    except ValueError: pass
+    buf = bytearray()
+    async for chunk in request.stream():
+        buf += chunk
+        if len(buf) > limit: return None
+    return bytes(buf)
+
+
 def build_app(vm, model_name: str, api_key: str | None, window_ms: float, max_batch: int):
     from fastapi import FastAPI, Request
     from fastapi.responses import JSONResponse
-    app = FastAPI(title="Votum"); batcher = Batcher(vm, window_ms, max_batch)
+    max_body = _env_int("VOTUM_MAX_BODY_MB", 8) * 1024 * 1024
+    max_q, max_opts = _env_int("VOTUM_MAX_QUESTIONS", 64), _env_int("VOTUM_MAX_OPTIONS", 2000)
+    app = FastAPI(title="Votum"); batcher = Batcher(vm, window_ms, max_batch, _env_int("VOTUM_MAX_QUEUE", 4096))
+    want = f"Bearer {api_key}".encode() if api_key else None
 
     def err(code, msg): return JSONResponse({"error": {"message": msg}}, status_code=code)
 
@@ -69,17 +96,23 @@ def build_app(vm, model_name: str, api_key: str | None, window_ms: float, max_ba
 
     @app.post("/v1/systemone")
     async def systemone(request: Request):
-        if api_key and request.headers.get("authorization", "") != f"Bearer {api_key}": return err(401, "invalid API key")
-        try: req = await request.json()
+        if want and not hmac.compare_digest(request.headers.get("authorization", "").encode(), want): return err(401, "invalid API key")
+        raw = await _body(request, max_body)
+        if raw is None: return err(413, f"request body larger than {max_body // (1024 * 1024)} MB (VOTUM_MAX_BODY_MB)")
+        try: req = json.loads(raw)
         except Exception: return err(400, "body must be JSON")
-        if (msg := R.validate(req)): return err(400, msg)
+        if (msg := R.validate(req, max_q, max_opts)): return err(400, msg)
         qs = req["questions"]
-        rows = [R.to_row(req["state"], q, rid=str(qid)) for qid, q in qs.items()]
-        try: res = await batcher.submit(rows)
-        except Exception as e: return err(500, str(e))
+        try: rows = [R.to_row(req["state"], q, rid=str(qid)) for qid, q in qs.items()]
+        except Exception: return err(400, "the request could not be read as questions and options")
+        fut = batcher.submit(rows)
+        if fut is None: return err(503, "the server is busy (queue full); retry shortly")
+        try: res = await fut
+        except Exception:    # the engine failed: the details go to the log, not to the caller
+            log.exception("engine error"); return err(500, "internal error while scoring the request")
         answers, used = {}, 0
         for (qid, q), r in zip(qs.items(), res):
-            if r is None: return err(413, f"{qid}: prompt longer than the maximum model length ({vm.max_model_len} tokens) or not renderable")
+            if r is None: return err(413, f"{qid}: prompt longer than the maximum model length ({vm.max_model_len} tokens)")
             answers[qid] = R.answer(q, r["probs"]); used += r["n_tokens"]
         return {"model": req.get("model", model_name), "answers": answers, "usage": {"input_tokens": used, "output_tokens": 0}}
 

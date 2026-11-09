@@ -6,8 +6,8 @@ Prompt (Apertus chat template, deliberation disabled; one question per pass):
           + for each option: "- <text>" + OPT_END + "\\n"
 OPT_END = <|fim_end|> (an existing special token of the Apertus vocabulary, from code fill-in-the-middle). The hidden state
 at each option's OPT_END token is that option's representation. Votum is trained without a decision marker: the prompt ends
-with the last option's end marker and its line break, and the pointer head uses a learned constant query. Any occurrence of
-the FIM tokens inside user text is neutralised (clean), so data cannot forge one.
+with the last option's end marker and its line break, and the pointer head uses a learned constant query. Any special
+token written out in user text is neutralised (clean), so data cannot forge an option end or a chat turn.
 
 Options are identified by their text only (no letters, no codes). Every option block "- <text><end>\\n" starts at the same
 position id (shared_positions) and option blocks never attend to each other (option_blocks + modeling.attention_masks), so
@@ -31,11 +31,18 @@ CUE = {"noul": " (Answer: the true or the false option.)", "choice": " (Choose e
        "score": " (Options are levels in increasing order; choose one.)"}
 NOUL_TXT = {"true": "Yes / true: the proposition holds.", "false": "No / false: the proposition does not hold."}
 HEADER_TITLE = "Questions in this request:"
-_ESC = re.compile(r"<\|(fim_(?:end|hole|begin)|reserved_special_token_\d+)\|>")   # as in training
+_ESC = re.compile(r"<\|([^|<>\n]{1,64})\|?>")   # every <|name|> token: option end, chat roles, reserved, image / audio
+# special tokens without the <|...|> shape, and the strings the tokenizer's normalizer rewrites into control tokens
+_ESC2 = re.compile(r"(<(?:/?(?:s|unk|pad|answer|think|thought)|audio|image|channel\||filename|gh_stars|reponame|file_sep|empty_output"
+                   r"|issue_\w+|jupyter_\w+|commit_\w+|(?:iban|email|ip)-pii|code_to_intermediate|intermediate_to_code|pr(?:_\w+)?"
+                   r"|SPECIAL_\d+)|\[/?(?:INST|AVAILABLE_TOOLS|TOOL_RESULTS|TOOL_CALLS|PREFIX|MIDDLE|SUFFIX))([>\]])")
 
 
 def clean(s: str) -> str:
-    return _ESC.sub(lambda m: f"<{m.group(1)}>", s)
+    """user text can never produce a special token: <|name|> loses its bars, the other special tokens get a space before
+    the closing bracket. Votum-8B was trained with the bars rule for the FIM and reserved tokens only; the wider rule
+    gives the same text for those and also covers the chat-role tokens."""
+    return _ESC2.sub(r"\1 \2", _ESC.sub(lambda m: f"<{m.group(1)}>", s))
 
 
 def state_text(st) -> str:

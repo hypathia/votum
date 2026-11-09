@@ -234,7 +234,7 @@ class Votum(nn.Module):
             try:
                 e = P.render(self.tok, r, header=hd)
                 out.append(e if len(e.ids) <= self.cfg.max_tokens else None)
-            except ValueError:
+            except Exception:    # a row that cannot be rendered fails alone
                 out.append(None)
         return out
 

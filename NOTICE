@@ -11,7 +11,7 @@ EPFL, ETH Zurich or CSCS.
 
 This software contains code derived from the following projects:
 
-- jeff-serve (https://github.com/j-geuter/jeff-serve), Apache License 2.0.
+- jeff-serve (https://github.com/j-geuter/Jeff, formerly j-geuter/jeff-serve), Apache License 2.0.
   Copyright 2026 Jonathan Geuter, Andrew Cheng, David Alvarez-Melis.
   src/votum/request.py converts TypeSafe questions to options the way jeff's typesafe.py does (which follows
   JevBench's semif_direct adapter, https://github.com/fstandhartinger/jevbench, MIT License).

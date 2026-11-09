@@ -15,6 +15,11 @@ Hits are stored with a <= 60 character context in AUDIT/hits_*.json (keep them l
 import argparse, collections, gzip, importlib.util, json, os, random, re
 
 
+# independent of pii_pass.py: a "+" or "00" number of nine or more digits, or eight or more digits right after a telephone word
+LOOSE_PHONE = re.compile(r"(?i)(?<![\w+])(?:\+|00)[1-9](?:[\s./()-]{0,2}\d){8,13}(?!\d)|(?:\b(?:tel|phone|fax|mobile?|natel|handy|call)\b\D{0,12})\d(?:[\s./()-]{0,2}\d){7,13}(?!\d)")
+LOOSE_EMAIL = re.compile(r"[^\s@<>()\[\],;:\"']+@[^\s@<>()\[\],;:\"']+\.[A-Za-z]{2,}")
+
+
 def load_pass(path):
     spec = importlib.util.spec_from_file_location("pii_pass", path); m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m); return m
 
@@ -65,10 +70,19 @@ def cmd_regex(a):
                     hits.append((r["id"], "email", t[max(0, m.start() - 30):m.end() + 10]))
             for m in pp.PHONE.finditer(t):
                 if pp._phone_ok(m): hits.append((r["id"], "phone", t[max(0, m.start() - 30):m.end() + 10]))
+            for rx in (pp.PHONE_INTL, pp.PHONE_NATL):
+                for m in rx.finditer(t):
+                    if pp._phone2_ok(m): hits.append((r["id"], "phone", t[max(0, m.start() - 30):m.end() + 10]))
+            for m in pp.PHONE_BARE.finditer(t): hits.append((r["id"], "phone", t[max(0, m.start() - 10):m.end() + 10]))
+            # two checks that do not use the pass's own patterns, so a form the pass cannot see still shows up here
+            # (they over-report on purpose; read the hits)
+            for m in LOOSE_PHONE.finditer(t): hits.append((r["id"], "phone (loose)", t[max(0, m.start() - 30):m.end() + 10]))
+            for m in LOOSE_EMAIL.finditer(t):
+                if not pp.EMAIL.fullmatch(m.group(0)): hits.append((r["id"], "email (loose)", t[max(0, m.start() - 30):m.end() + 10]))
             for rx in [pp.IBAN, pp.SSN] + pp.ID_BARE:
                 for m in rx.finditer(t): hits.append((r["id"], "id", t[max(0, m.start() - 30):m.end() + 10]))
             for m in pp.ID_LABEL.finditer(t):
-                if sum(c.isdigit() for c in m.group(3)) >= 4: hits.append((r["id"], "id", t[max(0, m.start() - 10):m.end() + 10]))
+                if pp._id_ok(m.group(3)): hits.append((r["id"], "id", t[max(0, m.start() - 10):m.end() + 10]))
             for m in pp.CARD.finditer(t):
                 d = re.sub(r"\D", "", m.group(0))
                 if 13 <= len(d) <= 19 and pp._luhn(d) and len(set(d)) > 2: hits.append((r["id"], "id", t[max(0, m.start() - 30):m.end() + 10]))

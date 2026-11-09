@@ -18,7 +18,8 @@ works; the command under "Reproducing the released run" reproduces the released 
 
 ## Environment
 
-Fine-tuning from the released checkpoint (the default `finetune.py` mode) needs only `pip install votum pyarrow`
+Fine-tuning from the released checkpoint (the default `finetune.py` mode) needs only
+`pip install "votum @ git+https://github.com/{{ORG}}/votum" pyarrow`
 (mainline transformers, PEFT, torch 2.5 or newer for FlexAttention; the same environment serves the model with the
 `vllm` extra). The environment below is for `--mode adapter` and for reproducing the released run from the Apertus
 base:
@@ -37,11 +38,11 @@ for `finetune.py --from`) and `VOTUM_DISK_FLOOR_GB` (default 10).
 
 ## Fine-tune on your own data
 
-Four commands: prepare the rows, train, export, calibrate. Everything runs in the environment `pip install votum`
+Four commands: prepare the rows, train, export, calibrate. Everything runs in the environment the `votum` package
 gives you (mainline transformers, PEFT, torch 2.5+ with FlexAttention; add `pyarrow` for the Pool options), on one GPU,
 starting from the released checkpoint. No Apertus download and no transformers fork are needed for this path.
 
-Before you start: `pip install votum pyarrow` (add `pytest` to run the tests); accept the Apertus policy on the
+Before you start: `pip install "votum @ git+https://github.com/{{ORG}}/votum" pyarrow` (add `pytest` to run the tests); accept the Apertus policy on the
 Votum-8B model page and `hf auth login` (as in the Quickstart); have an NVIDIA GPU with at least 19.5 GiB free; have
 about 45 GB of disk (16 GB model download, 16 GB export, 12 GB free where the runs go); run the commands from this
 `training/` directory. Download the model once into a local directory and use that directory everywhere below, as the
@@ -61,15 +62,17 @@ rows within 16 tokens of, or longer than, one micro-batch.
 | GPU memory | Micro-batch | Peak measured | Trains rows up to | Speed |
 |---|---|---|---|---|
 | 24 GB (RTX 4090), nothing else on the card | 3,072 tokens | 18.5 GiB (4,096: out of memory) | 3,072 tokens (99.1 % of the Votum Pool) | 1,250 padded tokens/s: about 52 s per 65k-token step |
-| 24 GB that also drives a display (about 20 GiB free) | 2,048 tokens | 17.6 GiB | 2,048 tokens (98 % of the Pool) | 1,400 padded tokens/s: about 47 s per step |
+| 24 GB that also drives a display (about 20 GiB free) | 2,048 tokens | 17.6 GiB | 2,048 tokens (98 % of the Pool) | 1,400 padded tokens/s: about 47 s per 65k-token step, 13 s per 16k-token step |
 | 32 GB | 4,096 tokens | not measured (between the 24 GB and 48 GB points) | 4,096 tokens (99.7 % of the Pool) | |
-| 48 GB | 8,192 tokens | not measured directly; 16,384 peaks at 46.9 GiB | 8,192 tokens | |
-| 80–96 GB (released run) | 16,384 tokens | 46.9 GiB | all rows | 1,785 padded tokens/s: 41 s per step |
+| 48 GB | 8,192 tokens | not measured at this setting (below the released run's 46.9 GiB, see next row) | 8,192 tokens | |
+| 80–96 GB | 16,384 tokens | not measured at this setting; the released run peaked at 46.9 GiB on a 96 GB card, with micro-batches planned at 8,192 tokens that reached 13,600 padded tokens once rendered | all rows | released run: 1,785 padded tokens/s, 41 s per step |
 
 The automatic choice uses the free memory at start: at least 70 GiB gives 16,384 tokens; 44 gives 8,192; 30 gives
-4,096; 21 gives 3,072; 19.5 to 21 gives 2,048; below 19.5 GiB free there is no supported configuration. `finetune.py
---probe` runs two steps on your card (in its own `runs/<tag>_probe/`) and prints the peak, so measure before a long run.
-Expect roughly 80 minutes per 100 steps on a 24 GB card and 70 minutes on a 96 GB card; the released run was 600 steps.
+4,096; 21 gives 3,072; 19.5 to 21 gives 2,048; below 19.5 GiB free there is no supported configuration. Only the two
+24 GB rows are measured as such, so on a larger card run `finetune.py --probe` first: it runs two steps (in its own
+`runs/<tag>_probe/`) and prints the peak.
+Expect roughly 80 minutes per 100 steps of 65k tokens on a 24 GB card and 70 minutes on a 96 GB card (a quarter of
+that for 16k-token steps); the released run was 600 steps.
 The first step compiles the FlexAttention kernels.
 
 **1. Prepare the data.** Three inputs are accepted:
@@ -152,7 +155,10 @@ python calibrate.py --model /path/to/Votum-8B-tickets --val data/tickets/val.jso
 ```
 
 Types with fewer than 50 scored rows (`--min-rows`), or whose fit lands on the edge of the grid (rows too few or too
-easy), keep the parent's temperature; `--force` writes such a fit anyway. To measure on a held-out test file (same
+easy), keep the parent's temperature, and the report marks them "fitted value not written". `--force` writes a
+grid-edge fit anyway; lower `--min-rows` to accept fewer rows. The model must be a local directory here, because the
+temperatures are written into its files (a Hub id works with `--eval-only`). Questions about the same state are scored
+together, as in a request, so the result does not depend on `--batch`. To measure on a held-out test file (same
 format as the validation rows) without writing anything, use the same script as an evaluator, before and after; in
 this mode it always reports accuracy, cross-entropy and calibration error, whatever the row count:
 
@@ -179,22 +185,24 @@ Check a few questions outside your domain before and after.
 ### Worked example: BANKING77
 
 Intent classification with 77 options, a set the released model has never seen (it is one of the out-of-pool
-evaluations on the model card). 2,000 of the 10,003 public training rows, converted with `--csv` as above, 200 of them
-held out for calibration; accuracy on 1,000 test rows before and after. One RTX 4090, 2,048-token micro-batches.
+evaluations on the model card). 2,000 of the 10,003 public training rows, converted with `--csv` as above, 180 of them
+held out for calibration; accuracy on 1,000 test rows before and after. One RTX 4090 that also drives a display,
+2,048-token micro-batches, measured by a fresh clone and environment running `examples/banking77.sh` as shipped.
 
 | | Released Votum-8B | After the fine-tune |
 |---|---|---|
-| Accuracy on 1,000 held-out test rows (77-way) | 72.4 % | **82.0 %** |
-| Expected calibration error on those rows, with the checkpoint's temperatures | 0.286 | 0.035 |
-| Choice temperature | 1.516 (released) | 0.99 (refit on 192 validation rows, accuracy there 81.8 %) |
-| Training | — | 70 steps of 32 rows, 25 s each, 30 minutes; peak 16.7 GiB; about 1.2 passes over the 1,808 rows |
+| Accuracy on 1,000 held-out test rows (77-way) | 72.4 % | **84.7 %** |
+| Expected calibration error on those rows, with the checkpoint's temperatures | 0.286 | 0.040 |
+| Choice temperature | 1.516 (released) | 1.22 (refit on the 180 validation rows, accuracy there 81.7 %) |
+| Training | — | 228 steps of 16 rows (32k-token steps, the automatic size for 2M training tokens), 13 s each, 51 minutes; peak 16.7 GiB; 2 passes over the 1,820 rows |
 
-A 1,100-token row fits a 2,048-token micro-batch alone, so each step carried 32 rows (35k tokens), not the nominal
-65k: `--epochs 2` gave 70 steps and about 1.2 passes. `finetune.py` estimates from how many rows fit, so the command
-prints the honest count; pass `--steps` or `--tokens-per-step` to change it.
+A 1,100-token row fits a 2,048-token micro-batch alone, so a step carries 16 rows; `finetune.py` estimates from how
+many rows fit and prints the honest pass count. An earlier run with `--tokens-per-step 65536` (70 steps of 32 rows, 30
+minutes) reached 82.0 %: more, smaller updates helped, as on the small set above. These runs used the released data
+plan; `finetune.py` now trains with the fifo plan (every row once per pass), which visits short rows that the released
+plan under-sampled, so expect the same or slightly better.
 
-The commands were the four above with `--val-frac 0.1`, `--epochs 2`, `--tokens-per-step 65536` and `--micro-tokens
-2048` (the 4090 also drives a display); `examples/banking77.sh`
+The commands were the four above with `--val-frac 0.1`, `--epochs 2` and `--micro-tokens 2048`; `examples/banking77.sh`
 in this directory downloads the public data and runs the whole example. Expect your own numbers to vary with the amount
 of data and the difficulty of the labels; the point is the shape of the result, a large gain on the target task from a
 short run.
@@ -208,11 +216,20 @@ short run.
 | The first step takes minutes | FlexAttention compiles its kernels once per shape class; the tokenizer also loads slowly the first time (then cached under `runs/cache`). Normal. |
 | `the LoRA starts from zero on the given backbone` | Expected in the default mode: the released adapter is already inside the checkpoint's weights. |
 | Rows missing from training, fewer questions per step than expected | Rows within 16 tokens of, or longer than, `--micro-tokens` are skipped by the data plan. `stats.json` has the token percentiles; use a larger micro-batch or shorter states. |
-| The run crashed or was stopped | `finetune.py ... --tag <same tag> --resume` continues from the last `state_<step>.pt` (saved every `--save-every` steps). Without `--resume`, the same tag starts over. |
-| `temperature hit the grid edge` from `calibrate.py` | The validation rows are too few or too easy for a stable fit. Use more rows (a few hundred per type) or keep the parent's temperatures (`--min-rows` above the count). |
+| The run crashed or was stopped | `finetune.py ... --tag <same tag> --resume` continues from the last `state_<step>.pt` (saved every `--save-every` steps), with the schedule and micro-batch of the first launch. |
+| `runs/<tag> already holds a run` | A tag is never reused silently. `--resume` continues that run, `--fresh` deletes its directory and starts over, or pick another `--tag`. |
+| `CUDA out of memory` in `calibrate.py` | The evaluator loads the 16 GB model and scores `--batch` rows at a time; on a 24 GB card that also drives a display, the default `--batch 4` is close to the edge and a retry usually passes; `--batch 2` is safe. |
+| `temperature kept at ...: the fit hit the grid edge` from `calibrate.py` | The validation rows are too few or too easy for a stable fit. Use more rows (a few hundred per type) or keep the parent's temperatures (`--min-rows` above the count). |
 | Training loss near 0 after a few steps | The set is small and the 40-step minimum repeats it many times (the pass count is printed). That is usually fine for a narrow task; check the held-out accuracy, and add `--mix-pool` to keep the general behaviour. |
 | Held-out accuracy did not improve | Too few optimizer updates: with `--steps` below 40 or a huge `--tokens-per-step`, a small set gets a handful of updates. Use the defaults, or more steps with a smaller `--tokens-per-step`. |
 | `this checkpoint is the Apertus 1.5 multimodal release, which needs the swiss-ai transformers fork ...` | You are in `--mode adapter` without the training fork. Use the default mode, or install the Environment above in its own venv. |
+
+**How a fine-tune differs from the release.** Two details, both deliberate. Training sees the prompt's last line break
+outside the option blocks, while inference (`close_last` in `votum_config.json`) counts it as part of the last option;
+the released model was trained and is served the same way, and the difference did not move its accuracy beyond noise,
+but it has not been measured on fine-tunes. And `finetune.py` walks your rows with `--plan fifo` (every row once per
+pass, in random order); the released run's plan, still the default of `train.py`, takes the longest rows of a
+look-ahead window first, which is fine over a large pool but under-trains the short rows of a small set.
 
 **Not covered.** Changing the layout or the LoRA rank, 4-bit training, multi-GPU, prompts longer than your micro-batch,
 and quantizing the result (`scripts/quantize_fp8.py` works on any exported directory, but measure parity as on the
@@ -231,7 +248,9 @@ The command below is reconstructed from the `args` block of `train_meta.json` in
 (`ckpt_600/train_meta.json`). It lists the flags whose recorded value differs from the default, plus the data path
 (`<pool v7 train.jsonl.gz>` stands for the pool v7 training file). Three flags are renamed or gone: the run's
 `--startlux` is `--bidir-layers` here; `--no-marker` and `--no-kl` are no longer flags because the no-marker layout and
-the absence of a KL term are now the only behaviour. `--tag` only names the output directory (`runs/<tag>/`).
+the absence of a KL term are now the only behaviour. `--tag` only names the output directory (`runs/<tag>/`). Without `--repack` the micro-batches are the data plan's, so
+`--plan-micro-tokens 8192` is what sized them (9,100 padded tokens on average once rendered, 13,600 at most);
+`--micro-tokens 16384` is recorded but had no effect.
 
 ```
 python train.py \

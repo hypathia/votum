@@ -19,11 +19,16 @@ SPAN_SYSTEM = ("Read the state and the question, then judge which of the listed 
 CUE = {"noul": " (Answer: the true or the false option.)", "choice": " (Choose exactly one option.)",
        "score": " (Options are levels in increasing order; choose one.)"}
 NOUL_TXT = {"true": "Yes / true: the proposition holds.", "false": "No / false: the proposition does not hold."}
-_ESC = re.compile(r"<\|(fim_(?:end|hole|begin)|reserved_special_token_\d+)\|>")
+_ESC = re.compile(r"<\|([^|<>\n]{1,64})\|?>")   # every <|name|> token: option end, chat roles, reserved, image / audio
+# special tokens without the <|...|> shape, and the strings the tokenizer's normalizer rewrites into control tokens
+_ESC2 = re.compile(r"(<(?:/?(?:s|unk|pad|answer|think|thought)|audio|image|channel\||filename|gh_stars|reponame|file_sep|empty_output"
+                   r"|issue_\w+|jupyter_\w+|commit_\w+|(?:iban|email|ip)-pii|code_to_intermediate|intermediate_to_code|pr(?:_\w+)?"
+                   r"|SPECIAL_\d+)|\[/?(?:INST|AVAILABLE_TOOLS|TOOL_RESULTS|TOOL_CALLS|PREFIX|MIDDLE|SUFFIX))([>\]])")
 
 
 def clean(s):
-    return _ESC.sub(lambda m: f"<{m.group(1)}>", s)
+    """the same rule as votum.prompt.clean (tests/test_prompt.py compares them): user text never produces a special token."""
+    return _ESC2.sub(r"\1 \2", _ESC.sub(lambda m: f"<{m.group(1)}>", s))
 
 
 def state_text(st):

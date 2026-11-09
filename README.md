@@ -22,7 +22,7 @@
 
 **Votum** turns <img src="assets/flag.svg" height="14" alt="Swiss flag"> [Apertus-1.5-8B](https://huggingface.co/swiss-ai/Apertus-v1.5-8B)
 into a decision model. Give it a state, a question and the options; it returns a probability for every option in one
-forward pass. Nothing is generated, so a decision costs one prompt read (about 50 ms on an RTX 4090) and the
+forward pass. Nothing is generated, so a decision costs one prompt read (about 40 ms on an RTX 4090) and the
 probabilities always sum to one.
 
 <picture><source media="(prefers-color-scheme: dark)" srcset="assets/architecture_dark.png"><img src="assets/architecture.png" alt="The request as one prompt, the attention mask, the backbone and the pointer head"></picture>
@@ -70,7 +70,7 @@ request and the answers, field by field:
 | `{"type": "score", "instructions": str, "criteria": [level texts, low to high]}` | `{"type": "score", "score": expected level index (float), "confidence": p of the most likely level, "legend": {"0": text, ...}, "probabilities": {"0": p, ...}}` |
 
 `state` is a string or any JSON object (serialised with sorted keys). The response also carries `usage.output_tokens: 0`
-(nothing is generated); a question whose prompt exceeds 8,192 tokens is an error (HTTP 400 on the server).
+(nothing is generated); a question whose prompt exceeds 8,192 tokens is an error (HTTP 413 on the server; a malformed request is 400).
 
 ## Serve
 
@@ -83,7 +83,7 @@ VOTUM_API_KEY=... votum serve --model {{ORG}}/Votum-8B --host 0.0.0.0 --port 801
 [{{ORG}}/Votum-8B-FP8](https://huggingface.co/{{ORG}}/Votum-8B-FP8), the same model with FP8 weights (8.5 GB; it gives
 the same answer as the bf16 weights 96–98 % of the time; `scripts/quantize_fp8.py` rebuilds it); pass it to `votum serve`
 or `VotumVLLM` in place of the bf16 repo. The PyTorch reference path does not load it. Concurrent requests are
-batched, and a short request takes about 30 ms on an RTX 4090. Start-up takes about a minute: the server compiles its
+batched. Start-up takes about a minute: the server compiles its
 attention kernels for every shape class first, so no request pays for one.
 
 One decision costs one read. Median latency per answer on one RTX 4090 with the same Apertus-8B backbone, on
@@ -112,6 +112,10 @@ All through the environment:
 | `VOTUM_API_KEY` | unset | when set, requests need `Authorization: Bearer <key>` |
 | `VOTUM_PREFIX_CACHE_MB` | 512 | exact cache of header blocks across requests |
 | `VOTUM_STATE_CACHE_MB` | 0 (off) | exact cache of state blocks across requests |
+| `VOTUM_MAX_BODY_MB` | 8 | largest request body; beyond it HTTP 413 |
+| `VOTUM_MAX_QUESTIONS` | 64 | questions per request; beyond it HTTP 400 |
+| `VOTUM_MAX_OPTIONS` | 2000 | options per question; beyond it HTTP 400 |
+| `VOTUM_MAX_QUEUE` | 4096 | questions waiting for the GPU; beyond it HTTP 503 |
 | `VOTUM_HEADER_CHUNK` | 0 (off) | `1` splits requests of more than 8 questions into separate headers (not measured on labelled data) |
 
 vLLM's own prefix cache and chunked prefill stay off: a bidirectional layer needs the whole prompt at once, so the

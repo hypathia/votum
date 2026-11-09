@@ -15,13 +15,15 @@ What it does
      If masking makes two option texts of a row identical, the row is dropped (counted, ids in pii_dropped.tsv).
   4. Writes train/val .jsonl.gz in the original row format (all fields), a report and a drop list.
 
-Per-chunk checkpoints (CHUNK input rows each) are written under OUT/ckpt; re-running the same command resumes.
+Per-chunk checkpoints (CHUNK input rows each) are written under OUT/ckpt; re-running the same command resumes. A
+checkpoint is reused only if its key matches: the chunk's input lines, this script, the model, the thresholds, the stop
+spans, --no-ner and the policy entries (origin, names, excluded) of the chunk's sources. Anything else is recomputed.
 
 Usage (needs gliner and torch):
   python3 -I pii_pass.py \\
       --train clean/train.jsonl.gz --val clean/val.jsonl.gz \\
       --policy pii_policy.json --stop-spans pii_stop_spans.txt --out-dir clean_pii \\
-      [--device cuda] [--chunk 4000] [--no-ner] [--part k/N] [--mem-fraction F]
+      [--device cuda] [--chunk 4000] [--no-ner] [--part k/N] [--mem-fraction F] [--batch 24]
 
 Arguments
   --train/--val   input jsonl.gz (one JSON row per line; fields id, source, state, question, options[{id,text}], ...)
@@ -33,11 +35,18 @@ Arguments
   --part k/N      process only chunks with index % N == k (run N processes, then rerun without --part to assemble)
   --mem-fraction  cap on the GPU memory share per process
 """
-import argparse, collections, gzip, json, os, re, time
+import argparse, collections, gzip, hashlib, json, os, re, time
 
 # ----------------------------------------------------------------------------------------------- regex layer
 EMAIL = re.compile(r"(?<![\w.+-])[A-Za-z0-9._%+-]+@[A-Za-z0-9_.-]+\.[A-Za-z]{2,}(?![\w-])")
 PHONE = re.compile(r"(?<![\w./-])(?:\+\d{1,3}[\s.-]?)?(?:\(\d{2,4}\)[\s.-]?)?\d{2,4}(?:[\s.-]\d{2,4}){1,4}(?![\w./-])")
+# forms the grouped pattern above cannot see: +41791234567, +49 170 1234567, 030/12345678, 07911 123456, 555.123.4567,
+# and a bare national number (0791234567) when a telephone word precedes it
+PHONE_INTL = re.compile(r"(?<![\w.+/-])\+\d{1,3}(?:[\s.-]?\(0\))?(?:[\s./-]?\d){7,13}(?![\w/-])(?!\.\d)")
+PHONE_NATL = re.compile(r"(?<![\w./-])0\d{1,5}(?:\s?/\s?|\s)\d{5,9}(?![\w/-])(?!\.\d)|(?<![\w./-])\d{3}\.\d{3}\.\d{4}(?![\w/-])(?!\.\d)")
+PHONE_BARE = re.compile(r"(?i)((?:\btel(?:efon|ephone|éphone|\.)?|\bt[ée]l[ée]phone|\bphone|\bmobile?|\bnatel|\bhandy|\bfax|\bcall(?:ed|ing)?|\bwhatsapp|\bportable)"
+                        r"[\s:.#-]{0,6}(?:(?:nr|no|n°|number|nummer|numéro)\.?[\s:]{0,3})?)(0\d{8,11})(?!\d)")
+_NUM_CTX = re.compile(r"(?i)(?:\bversion|\bver\.?|\bv|\brelease|\bbuild|\bfirmware|§|\bart(?:icle|ikel|\.)?|\bsection|\bpara(?:graph)?\.?|\bchapter|\bkapitel|\bziff(?:er|\.)?|\bnr\.?|\bno\.?)\s*$")
 IBAN = re.compile(r"\b[A-Z]{2}\d{2}(?: ?[A-Z0-9]{4}){3,7}(?: ?[A-Z0-9]{1,3})?\b")
 SSN = re.compile(r"\b\d{3}-\d{2}-\d{4}\b")
 CARD = re.compile(r"\b(?:\d[ -]?){13,19}\b")
@@ -57,7 +66,7 @@ ID_LABEL = re.compile(
     r"konto(?:nummer)?|numéro de compte|social security(?: n(?:o|r|umber))?|sozialversicherungsnummer|tax (?:id|number|no\.?)|steuernummer|"
     r"driver'?s? licen[cs]e(?: n(?:o|r|umber))?|national id(?: number)?|identity card(?: n(?:o|r|umber))?|policy (?:number|no\.?)|"
     r"customer (?:number|id|no\.?)|member (?:number|id)|insurance (?:number|no\.?))"
-    r"(\s*[:#]?\s*)((?-i:[A-Z0-9][A-Z0-9 ./-]{3,22}[A-Z0-9]))", re.I)
+    r"(\s*[:#]?\s*)((?-i:[A-Z0-9][A-Z0-9 ./-]{3,22}[A-Z0-9]))(?![A-Za-z0-9])", re.I)
 _PROD_CTX = re.compile(r"(?i)(?:NDC|UPC|UDI|GTIN|EAN|SKU|\(01\)|lot|batch|serial|catalog(?:ue)?|model|part|ref|code|barcode|CIG|CUP|CPV|nomenclature|tariff|HTS)\W{0,8}$")
 URL = re.compile(r"(?i)\b(?:https?://|www\.)[^\s<>\"'\]\[)}{|]+")
 URL_PERSONAL = re.compile(
@@ -66,14 +75,23 @@ URL_PERSONAL = re.compile(
     r"[?&;](?:uid|user|userid|user_id|username|email|account|acct|token|key|session|sid|profile|member)=|\d{9,}|/[a-z0-9-]*[a-z]\d[a-z0-9]{10,}")
 WIKI_USER = re.compile(r"(?i)((?:\[\[:?)?\b(?:User(?: talk)?|Benutzer(?:in)?(?: Diskussion)?|Utilisateur(?:rice)?|Usuario|Gebruiker)\s*:\s*)"
                        r"(?!\[)([^\s|\]\[)(,;/]+(?: [A-Z][\w.-]+)?)")
+_COURT = r"(?:Supreme|High|District|Appeals?|Appellate|Crown|County|Circuit|Federal|Constitutional|European|International|Criminal|Civil|Family|Magistrates'?|Juvenile|Tax|Bankruptcy|Administrative|Labou?r|Commercial|Superior|Municipal|Royal)"
+_MONTH = r"(?:January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sept?|Oct|Nov|Dec|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)"
+_NOT_STREET_DE = (r"(?!(?:Park|Arbeits|Sitz|Steh|Stell|Studien|Ausbildungs|Kita|Krippen|Heim|Pflege|Liege|Schlaf|Lager|Start|Tabellen|Listen|Rang|Spiel|Sport|Bau|Stand|Wohn|Abstell|Lande|Flug)platz\b)"
+                  r"(?!(?:Aus|Rechts|Um|Rück|Hin|Heim|Dienst|Instanzen|Klage|Beschwerde|Verwaltungs|Zivil|Straf|Schul|Arbeits|Lebens|Bildungs|Lösungs|Mittel|Flucht|Transport|Verkehrs|Wasser|Luft|See|Land|Post|Amts|Gerichts|Versand)weg\b)")
 _STREET_W = r"[A-Z][\w'.-]*"
 ADDR = [
-    re.compile(r"\b\d{1,5}(?:[-/]\d{1,4})?[A-Za-z]?,?\s+(?:" + _STREET_W + r"\s+){1,3}(?:Street|St|Road|Rd|Avenue|Ave|Lane|Ln|Drive|Dr|Boulevard|Blvd|"
-               r"Court|Ct|Place|Pl|Way|Terrace|Close|Crescent|Gardens|Square|Highway|Hwy|Parkway|Pkwy)\b\.?(?:,?\s+(?:Apt|Unit|Suite|Flat|Ste|#)\.?\s*\w+)?"),
-    re.compile(r"\b[A-ZÄÖÜ][\wäöüß.-]*(?:strasse|straße|str\.|gasse|weg|platz|allee|damm|ufer|quai|promenade)\s+\d{1,4}[a-z]?\b"),
+    # "12 Baker Street": not a court ("2019 Supreme Court") and not a date ("12 June Dr. Meyer")
+    re.compile(r"\b\d{1,5}(?:[-/]\d{1,4})?[A-Za-z]?,?\s+(?:(?!" + _MONTH + r"\b)(?!" + _COURT + r"\s+Court\b)" + _STREET_W + r"\s+){1,3}"
+               r"(?:Street|St|Road|Rd|Avenue|Ave|Lane|Ln|Drive|Dr|Boulevard|Blvd|Court|Ct|Place|Pl|Way|Terrace|Close|Crescent|Gardens|Square|Highway|Hwy|"
+               r"Parkway|Pkwy)\b\.?(?:,?\s+(?:Apt|Unit|Suite|Flat|Ste|#)\.?\s*\w+)?"),
+    re.compile(r"\b" + _NOT_STREET_DE + r"[A-ZÄÖÜ][\wäöüß.-]*(?:strasse|straße|str\.|gasse|weg|platz|allee|damm|ufer|quai|promenade)\s+\d{1,4}[a-z]?\b"),
     re.compile(r"\b[A-Z][a-zà-ÿ]+(?:straat|laan|plein|gracht|singel|kade)\s+\d{1,4}[a-z]?\b"),
-    re.compile(r"(?i)\b\d{1,4}(?:\s?(?:bis|ter))?,?\s+(?:rue|avenue|av\.|boulevard|bd|chemin|route|place|impasse|allée|quai|cours)\s+"
-               r"(?:de\s+la\s+|de\s+l'|du\s+|des\s+|de\s+|d')?[A-ZÉÈ][\w'-]+(?:\s+[A-ZÉÈ][\w'-]+){0,2}"),
+    # "12 rue de la Paix", "5, rue primeurs"; the words that are also English (place, route, cours) need a capitalised
+    # name after them, so "1 place in the race" is not an address
+    re.compile(r"\b\d{1,4}(?:\s?(?:bis|ter))?,?\s+(?:(?i:rue|avenue|av\.|boulevard|bd|chemin|impasse|allée|quai)\s+"
+               r"(?:(?i:de\s+la|des|du|de)\s+|(?i:de\s+l'|d'))?(?i:[A-ZÉÈ])|(?i:route|place|cours)\s+(?:(?i:de\s+la|des|du|de)\s+|(?i:de\s+l'|d'))?[A-ZÉÈ])"
+               r"[\w'-]+(?:\s+(?:(?:de\s+la|des|du|de)\s+|(?:de\s+l'|d'))?[A-ZÉÈ][\w'-]+){0,2}"),
     re.compile(r"\b(?:[Cc]alle|C/|[Aa]venida|Avda\.?|[Pp]aseo|[Pp]laza|[Rr]ua|[Tt]ravessa)\s+(?:de\s+(?:la\s+|los\s+)?)?[A-ZÁÉÍÓÚ][\w'-]+"
                r"(?:\s+[A-ZÁÉÍÓÚ][\w'-]+){0,2},?\s+(?:n[º°.]?\s*)?\d{1,4}"),
     re.compile(r"\bul\.\s+[A-ZŁŚŻŹĆŃÓ][\w.-]+(?:\s+[A-ZŁŚŻŹĆŃÓ][\w.-]+)?\s+\d{1,4}[a-z]?\b"),            # Polish "ul. Name 12"
@@ -101,7 +119,24 @@ def _phone_ok(m):
     if re.fullmatch(r"\d{1,2}[-./]\d{1,2}[-./](?:19|20)\d\d", t): return False
     if re.fullmatch(r"(?:19|20)\d\d[\s.-](?:19|20)\d\d", t): return False
     if re.fullmatch(r"\d{1,4}(?:\.\d{1,4}){2,}", t): return False
+    # a number written in groups of three ("1 250 000 000 francs", "250 000 000") is an amount, not a telephone number
+    if not t.startswith(("+", "0", "(")):
+        if re.fullmatch(r"\d{1,3}(?:[\s.]\d{3})+", t): return False
+        if "-" not in t and (re.search(r"\d[\s.]$", m.string[max(0, m.start() - 2):m.start()]) or re.match(r"[\s.]\d", m.string[m.end():m.end() + 2])): return False
+    if re.fullmatch(r"\d{4}-\d{2}-\d{3}-\d{4}", t): return False            # NATO stock number
     return bool(t.startswith("+") or re.search(r"[\s-]", t))
+
+
+def _phone2_ok(m):
+    d = re.sub(r"\D", "", m.group(0))
+    if not 9 <= len(d) <= 15 or _PROD_CTX.search(m.string[max(0, m.start() - 24):m.start()]): return False
+    # a group inside a longer run of digit groups (a product code such as "UPC 7 08152 32988 7") is not a telephone number
+    return not (re.search(r"\d\s$", m.string[max(0, m.start() - 2):m.start()]) or re.match(r"\s\d", m.string[m.end():m.end() + 2]))
+
+
+def _id_ok(v):
+    """a labelled identifier: at least four digits and six characters, and not a year followed by a word ("account 2015 A...")"""
+    return sum(c.isdigit() for c in v) >= 4 and sum(c.isalnum() for c in v) >= 6 and not re.fullmatch(r"(?:19|20)\d\d[ ./-]+[A-Z]+", v)
 
 
 def _url_ok(m):
@@ -130,12 +165,16 @@ def regex_mask(s, names=False):
     s = sub(IBAN, "IBAN", s, lambda m: sum(c.isdigit() for c in m.group(0)) >= 10)
     s = sub(SSN, "ID", s)
     for rx in ID_BARE: s = sub(rx, "ID", s)
-    s = ID_LABEL.sub(lambda m: (n.update(ID=1) or m.group(1) + m.group(2) + "[ID]") if sum(c.isdigit() for c in m.group(3)) >= 4 else m.group(0), s)
+    s = ID_LABEL.sub(lambda m: (n.update(ID=1) or m.group(1) + m.group(2) + "[ID]") if _id_ok(m.group(3)) else m.group(0), s)
     s = sub(CARD, "CARD", s, lambda m: 13 <= len(re.sub(r"\D", "", m.group(0))) <= 19 and _luhn(re.sub(r"\D", "", m.group(0)))
             and len(set(re.sub(r"\D", "", m.group(0)))) > 2 and not _ISBN.match(re.sub(r"\D", "", m.group(0)))
             and m.string[max(0, m.start() - 1):m.start()] not in ".," and not _PROD_CTX.search(m.string[max(0, m.start() - 24):m.start()]))
-    s = sub(IPV4, "IP", s, lambda m: not _PRIVATE_IP.match(m.group(0)) and max(map(int, m.group(0).split("."))) >= 32)
+    s = sub(IPV4, "IP", s, lambda m: not _PRIVATE_IP.match(m.group(0)) and max(map(int, m.group(0).split("."))) >= 32
+            and not _NUM_CTX.search(m.string[max(0, m.start() - 12):m.start()]))
+    s = sub(PHONE_INTL, "PHONE", s, _phone2_ok)
     s = sub(PHONE, "PHONE", s, _phone_ok)
+    s = sub(PHONE_NATL, "PHONE", s, _phone2_ok)
+    s = PHONE_BARE.sub(lambda m: n.update(PHONE=1) or m.group(1) + "[PHONE]", s)
     for rx in ADDR: s = sub(rx, "ADDRESS", s)
     if names:
         s = WIKI_USER.sub(lambda m: (n.update(NAME=1) or m.group(1) + "[NAME]"), s)
@@ -307,7 +346,16 @@ def process_chunk(lines, pol, ner, no_ner):
     return out, {k: dict(v) for k, v in stats.items()}, dropped
 
 
-def run_split(name, path, pol, out_dir, chunk, ner, no_ner, part=None):
+def chunk_key(lines, pol, fingerprint):
+    """what a cached chunk depends on: its input lines, the run's fingerprint and the policy of the sources in it"""
+    h = hashlib.blake2b(fingerprint.encode(), digest_size=16)
+    srcs = sorted({json.loads(l)["source"] for l in lines})
+    h.update(json.dumps([[s, (pol.get(s) or {}).get("origin"), bool((pol.get(s) or {}).get("names")), bool((pol.get(s) or {}).get("excluded"))] for s in srcs]).encode())
+    for l in lines: h.update(l.encode("utf-8", "surrogatepass")); h.update(b"\n")
+    return h.hexdigest()
+
+
+def run_split(name, path, pol, out_dir, chunk, ner, no_ner, part=None, fingerprint=""):
     ck = os.path.join(out_dir, "ckpt"); os.makedirs(ck, exist_ok=True)
     buf, ci, total = [], 0, collections.defaultdict(collections.Counter); dropped_all = []; t0 = time.time()
 
@@ -315,11 +363,15 @@ def run_split(name, path, pol, out_dir, chunk, ner, no_ner, part=None):
         nonlocal buf, ci
         base = os.path.join(ck, f"{name}_{ci:04d}")
         if part and ci % part[1] != part[0]: buf = []; ci += 1; return
-        if not os.path.exists(base + ".json"):
+        key = chunk_key(buf, pol, fingerprint); have = None
+        if os.path.exists(base + ".json"):
+            try: have = json.load(open(base + ".json")).get("key")
+            except ValueError: pass
+        if have != key:
             out, st, dr = process_chunk(buf, pol, ner() if not no_ner else None, no_ner)
             with open(base + ".jsonl", "w", encoding="utf-8") as f:
                 for l in out: f.write(l.rstrip("\n") + "\n")
-            json.dump({"stats": st, "dropped": dr, "rows_in": len(buf)}, open(base + ".json.tmp", "w"))
+            json.dump({"key": key, "stats": st, "dropped": dr, "rows_in": len(buf)}, open(base + ".json.tmp", "w"))
             os.replace(base + ".json.tmp", base + ".json")
             print(f"[{name}] chunk {ci} in={len(buf)} out={len(out)} t={time.time() - t0:.0f}s", flush=True)
         buf = []; ci += 1
@@ -338,11 +390,7 @@ def run_split(name, path, pol, out_dir, chunk, ner, no_ner, part=None):
                 for a, b in st.items(): total[s][a] += b
             dropped_all += meta["dropped"]
             with open(base + ".jsonl", encoding="utf-8") as h:
-                for l in h:
-                    src = json.loads(l)["source"]
-                    if pol[src]["excluded"]:   # excluded after this chunk was cached: apply the current policy
-                        total[src]["licence_excluded"] += 1; total[src]["rows_out"] -= 1; continue
-                    g.write(l)
+                for l in h: g.write(l)
     return rows_in, {s: dict(v) for s, v in total.items()}, dropped_all
 
 
@@ -356,6 +404,7 @@ def main():
     ap.add_argument("--stop-spans", help="text file, one lowercase span per line, never masked as a name (role words such as 'claimant')")
     ap.add_argument("--part", help="k/N: only process chunks with index %% N == k (run N processes, then rerun without --part to assemble)")
     ap.add_argument("--mem-fraction", type=float, default=None, help="cap on GPU memory share per process")
+    ap.add_argument("--batch", type=int, default=24, help="NER batch size (lower it on a shared or small GPU)")
     a = ap.parse_args()
     pol = json.load(open(a.policy)); os.makedirs(a.out_dir, exist_ok=True)
     part = tuple(int(x) for x in a.part.split("/")) if a.part else None
@@ -363,12 +412,15 @@ def main():
     def ner():
         if "n" not in holder:
             stop = [l.strip() for l in open(a.stop_spans, encoding="utf-8")] if a.stop_spans else []
-            holder["n"] = NER(a.model, a.device, a.th_person, a.th_address, stop=[x for x in stop if x and not x.startswith("#")], mem_fraction=a.mem_fraction)
+            holder["n"] = NER(a.model, a.device, a.th_person, a.th_address, stop=[x for x in stop if x and not x.startswith("#")], mem_fraction=a.mem_fraction, batch=a.batch)
         return holder["n"]
     t0 = time.time(); rep = {"model": None if a.no_ner else a.model, "thresholds": {"person": a.th_person, "address": a.th_address}}
     dropped = []
+    stop_txt = open(a.stop_spans, encoding="utf-8").read() if a.stop_spans else ""
+    fingerprint = hashlib.blake2b(json.dumps([open(__file__, encoding="utf-8").read(), a.model, a.th_person, a.th_address, stop_txt, a.no_ner]).encode(),
+                                  digest_size=16).hexdigest()
     for name, path in (("val", a.val), ("train", a.train)):
-        n_in, st, dr = run_split(name, path, pol, a.out_dir, a.chunk, ner, a.no_ner, part)
+        n_in, st, dr = run_split(name, path, pol, a.out_dir, a.chunk, ner, a.no_ner, part, fingerprint)
         agg = collections.Counter()
         for s in st.values():
             for k, v in s.items(): agg[k] += v

@@ -20,8 +20,6 @@ from typing import Any
 from .. import prompt as P
 from .. import request as R
 
-os.environ.setdefault("VLLM_ENABLE_V1_MULTIPROCESSING", "0")   # the client registers prompt layouts in-process
-
 
 def register() -> None:
     """vLLM plugin hook (entry point vllm.general_plugins) and in-process registration."""
@@ -34,6 +32,9 @@ class VotumVLLM:
     def __init__(self, path: str | Path, *, max_model_len: int = 8192, gpu_memory_utilization: float = 0.75,
                  max_num_seqs: int = 256, pack: bool = True, prefix_cache_mb: float | None = None,
                  state_cache_mb: float | None = None, warmup: bool = True, **engine_kwargs: Any) -> None:
+        # the client registers prompt layouts in-process, so the engine must run in this process. Set here, not at
+        # import: the plugin entry point imports this module for every vLLM run in the environment.
+        os.environ.setdefault("VLLM_ENABLE_V1_MULTIPROCESSING", "0")
         from transformers import AutoTokenizer
         from vllm import LLM
         from vllm.lora.request import LoRARequest
@@ -86,7 +87,7 @@ class VotumVLLM:
             try:
                 e = P.render(self.tok, r, header=h)
                 encs.append(e if len(e.ids) <= self.max_model_len else None)
-            except ValueError:
+            except Exception:    # a row that cannot be rendered fails alone, not the batch it shares with other requests
                 encs.append(None)
         cache = isolate.CACHE
         prompts, members, used, saved = isolate.build_prompts(encs, self.pack, self.max_model_len, cache)

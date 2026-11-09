@@ -14,3 +14,4 @@ training/runs/
 # prepare_data.py outputs
 training/data/
 training/examples/banking77_work/
+training/Votum-8B*/

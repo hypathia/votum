@@ -6,6 +6,10 @@ usage: python3 -I build_hf.py --pool-dir clean_pii --policy pii_policy.json --ou
 Writes data/{default,share_alike}/{train,validation}-XXXXX-of-YYYYY.parquet (zstd) and SOURCES.csv into --out-dir, and
 build_hf_stats.json (counts used by the dataset card) into --pool-dir, so --out-dir holds only repository files.
 README.md is written separately. Needs pyarrow.
+
+A policy entry may carry "license_fix": [[text found in the row's license_detail, licence tag], ...] (first match wins,
+"" matches every row): the tag replaces the row's `license` where the pool's own tag was wrong. A row that lands in the
+`default` config with a share-alike licence stops the build.
 """
 import argparse, collections, csv, gzip, json, os, glob
 import pyarrow as pa, pyarrow.parquet as pq
@@ -40,9 +44,14 @@ class Sharder:
         return N
 
 
-def conv(r):
+SHARE_ALIKE = ("share-alike", "cc-by-sa", "odbl", "gpl")
+
+
+def conv(r, fix=()):
     st = r["state"]
     o = {k: r.get(k) for k in KEEP}
+    for needle, tag in fix:
+        if needle in (r.get("license_detail") or ""): o["license"] = tag; break
     o["state"] = st if isinstance(st, str) else json.dumps(st, sort_keys=True, ensure_ascii=False)
     o["options"] = [{"id": str(x["id"]), "text": x["text"]} for x in r["options"]]
     o["target"] = [float(x) for x in r["target"]]
@@ -72,8 +81,11 @@ def main():
                 c = p["config"]
                 for k in r:
                     if k not in KEEP: stats["dropped_fields"][k] += 1
-                buf[c].append(conv(r)); stats["rows"][(c, split)] += 1; stats["src"][r["source"]][split] += 1
-                stats["lang"][(c, r.get("lang") or "unknown")] += 1; stats["lic"][c][r["license"]] += 1
+                o = conv(r, p.get("license_fix") or ())
+                if c == "default" and any(k in (o["license"] or "").lower() for k in SHARE_ALIKE):
+                    raise SystemExit(f"{r['id']} ({r['source']}): licence {o['license']!r} is share-alike but the policy puts the source in `default`")
+                buf[c].append(o); stats["rows"][(c, split)] += 1; stats["src"][r["source"]][split] += 1
+                stats["lang"][(c, r.get("lang") or "unknown")] += 1; stats["lic"][c][o["license"]] += 1
                 if len(buf[c]) >= 5000: sh[c].write(buf[c]); buf[c] = []
         for c in sh:
             sh[c].write(buf[c]); shards[(c, split)] = sh[c].close()

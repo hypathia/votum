@@ -59,6 +59,34 @@ class Plan:
             yield mbs
 
 
+class FifoPlan(Plan):
+    """every row once per pass, in the pass's random order: a step takes the next rows of the queue for as long as they
+    pack into its micro-batches (sorted by length only inside the step). Plan fills each step with the longest rows of a
+    look-ahead window and carries the shortest over, which is fine over hundreds of steps of a large pool but leaves
+    the short rows of a small set under-trained; finetune.py uses this plan."""
+    def _pack(self, rows):
+        mbs, cur, mx = [], [], 0
+        for i in sorted(rows, key=lambda i: -self.ntok[i]):
+            n = self.ntok[i]
+            if cur and max(mx, n) * (len(cur) + 1) > self.mt: mbs.append(cur); cur, mx = [], 0
+            cur.append(i); mx = max(mx, n)
+        return mbs + ([cur] if cur else [])
+
+    def __iter__(self):
+        ok = [i for i in range(len(self.ntok)) if self.ntok[i] <= self.mt]
+        if not ok: raise SystemExit(f"no training row fits a micro-batch of {self.mt} tokens (rows need their length plus 16): use a larger --micro-tokens or shorter rows")
+        epoch = 0; queue: list = []; budget = self.n_mb * self.mt
+        while True:
+            take, tok = [], 0
+            while True:
+                if not queue:
+                    queue = [ok[j] for j in np.random.default_rng(self.seed + 1000 * epoch).permutation(len(ok))]; epoch += 1
+                i = queue[0]; n = self.ntok[i]
+                if take and (tok + n > budget or (tok + n > budget // 2 and len(self._pack(take + [i])) > self.n_mb)): break
+                take.append(queue.pop(0)); tok += n
+            yield self._pack(take)
+
+
 class Trainer:
     def __init__(self, a):
         self.a = a; R_ = C.RECIPE; self.R = R_; self.dev = "cuda"
@@ -76,7 +104,8 @@ class Trainer:
                 k = hashlib.md5(st.encode()).hexdigest(); r["_sk"] = k; lst = g.setdefault(k, [])
                 if all(q["question"] != r["question"] for q in lst): lst.append(dict(question=r["question"], type=r["type"], options=r["options"]))
             self.hdr_groups = g
-        n = a.n_rows or C.train_subset_size([r["n_tok"] for r in rows], a.steps, a.tokens_per_step); self.rows = rows[:n]
+        # the sorted plan of a long run reads the leading rows it will consume; the fifo plan walks every row
+        n = a.n_rows or (len(rows) if a.plan == "fifo" else C.train_subset_size([r["n_tok"] for r in rows], a.steps, a.tokens_per_step)); self.rows = rows[:n]
         print(f"[{a.tag}] {len(self.rows)} training rows", flush=True)
         self.model = M.load_backbone(path, a.quant)
         self.model = M.add_lora(self.model, a.seed, r=a.lora_r, alpha=2 * a.lora_r if a.lora_r else None)
@@ -101,7 +130,7 @@ class Trainer:
         groups = [dict(params=lora, lr=a.lr, base_lr=a.lr, name="lora"),
                   dict(params=list(self.span.parameters()), lr=a.lr_span, base_lr=a.lr_span, name="span", weight_decay=0.0)]
         self.opt = torch.optim.AdamW(groups, betas=R_["betas"], weight_decay=R_["weight_decay"])
-        self.plan = Plan([r["n_tok"] for r in self.rows], a.seed, a.tokens_per_step, a.plan_micro_tokens or a.micro_tokens)
+        self.plan = (FifoPlan if a.plan == "fifo" else Plan)([r["n_tok"] for r in self.rows], a.seed, a.tokens_per_step, a.plan_micro_tokens or a.micro_tokens)
         self.step = 0; self.out = C.RUNS / a.tag; self.out.mkdir(parents=True, exist_ok=True)
         if not a.no_save:                                             # fail now, not after hours of training (states ~0.6 GB, checkpoints ~0.2 GB)
             try: C.disk_guard(self.out, need_gb=2.0)
@@ -228,6 +257,7 @@ class Trainer:
         while self.step < end:
             s = self.step; mbs = next(plan); lrm = self.set_lr(s, decay_start, decay_len)
             nq = sum(len(mb) for mb in mbs); t0 = time.time(); agg = dict(ce=0.0, acc=0.0, pad_tok=0, tok=0)
+            if not nq: raise SystemExit(f"[{a.tag}] step {s + 1} has no rows: every row is longer than a micro-batch ({a.plan_micro_tokens or a.micro_tokens} tokens, less a 16-token margin)")
             pre = {}
             if a.repack:   # same rows as the plan's step; regroup into micro-batches by the RENDERED length (less padding)
                 flat = [i for mb in mbs for i in mb]; pre = {i: self.encode(self.rows[i], s) for i in flat}
@@ -305,6 +335,7 @@ def build_parser():
     ap.add_argument("--final-decay", type=int, default=R_["final_decay"]); ap.add_argument("--warmup", type=int, default=R_["warmup"])
     ap.add_argument("--tokens-per-step", type=int, default=R_["tokens_per_step"]); ap.add_argument("--micro-tokens", type=int, default=R_["micro_tokens"])
     ap.add_argument("--plan-micro-tokens", type=int, default=None, help="micro-batch size the data plan is built with (default --micro-tokens); set to the parent run's value to resume its exact data order with smaller runtime micro-batches (needs --repack)")
+    ap.add_argument("--plan", choices=["sorted", "fifo"], default="sorted", help="data plan: sorted (the released run: each step takes the longest rows of a look-ahead window) or fifo (every row once per pass, in random order; what finetune.py uses)")
     ap.add_argument("--n-rows", type=int, default=None); ap.add_argument("--print-every", type=int, default=5); ap.add_argument("--save-every", type=int, default=R_["save_every"])
     ap.add_argument("--resume", action="store_true"); ap.add_argument("--no-save", action="store_true")
     ap.add_argument("--deterministic", action="store_true"); ap.add_argument("--lora-r", type=int, default=None)

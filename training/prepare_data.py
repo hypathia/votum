@@ -64,6 +64,8 @@ def csv_rows(path: Path, text_col: str, label_col: str, question: str, labels: s
     for c in (text_col, label_col):
         if c not in recs[0]: raise SystemExit(f"{path}: no column {c!r}; columns are {list(recs[0])}")
     if labels:
+        bad = [kv for kv in labels.split(";") if kv.strip() and "=" not in kv]
+        if bad: raise SystemExit(f"--labels: {bad[0].strip()!r} has no '='; the form is \"id=Description;id2=Description 2\"")
         opts = [{"id": kv.split("=", 1)[0].strip(), "text": kv.split("=", 1)[1].strip()} for kv in labels.split(";") if kv.strip()]
     else:
         opts = [{"id": v, "text": v} for v in sorted({r[label_col].strip() for r in recs})]
@@ -72,7 +74,8 @@ def csv_rows(path: Path, text_col: str, label_col: str, question: str, labels: s
     if unknown: raise SystemExit(f"{path}: labels not in --labels: {unknown[:8]}")
     stem = path.stem
     for i, r in enumerate(recs):
-        y = r[label_col].strip(); grp = r[group_col].strip() if group_col else f"{stem}/{i}"
+        # without a group column, rows with the same text form one group, so a repeated text never sits on both sides of the split
+        y = r[label_col].strip(); grp = r[group_col].strip() if group_col else f"{stem}/" + hashlib.sha1(r[text_col].strip().encode()).hexdigest()[:16]
         yield dict(id=f"{stem}/{i}", group=grp, type="choice", state=r[text_col], question=question, options=[dict(o) for o in opts],
                    target=[1.0 if k == y else 0.0 for k in ids])
 
@@ -98,7 +101,8 @@ def check(r: dict, where: str) -> dict:
     s = sum(t); r["target"] = [x / s for x in t]                            # normalised to one
     if not isinstance(r["question"], str) or not r["question"].strip(): raise SystemExit(f"{rid}: empty question")
     if isinstance(r["state"], str) and not r["state"].strip(): raise SystemExit(f"{rid}: empty state")
-    r.setdefault("group", r["id"]); r.setdefault("soft", any(0 < x < 1 for x in r["target"]))
+    if r.get("group") is None: r["group"] = r["id"]
+    r.setdefault("soft", any(0 < x < 1 for x in r["target"]))
     return r
 
 
@@ -159,7 +163,7 @@ def main(argv=None):
     ap.add_argument("--out", required=True, help="output directory: train.jsonl.gz, val.jsonl.gz, stats.json")
     ap.add_argument("--tokenizer", default=None, help="tokenizer directory (default: the Apertus snapshot in HF_HOME, or $VOTUM_TOKENIZER)")
     ap.add_argument("--max-tokens", type=int, default=8192 - 64, help="drop rows whose prompt is longer (default 8128: the model's 8,192 context with a margin)")
-    ap.add_argument("--tokens-per-step", type=int, default=C.RECIPE["tokens_per_step"], help="for the steps-per-epoch estimate (default 65,536)")
+    ap.add_argument("--tokens-per-step", default="auto", help="for the steps-per-epoch estimate: auto (finetune.py's rule: 65,536 for 2M+ tokens, 32,768 for 500k+, else 16,384) or a number")
     ap.add_argument("--seed", type=int, default=0)
     a = ap.parse_args(argv); out = Path(a.out)
 
@@ -177,8 +181,14 @@ def main(argv=None):
         else: train, val = split_rows(train, a.val_frac, a.seed)
     if a.mix_pool:
         rng = random.Random(a.seed); pool = [check(r, f"{a.pool_dir}:train") for r in read_parquet(pool_files(a.pool_dir, "default", "train"))]
-        mix = rng.sample(pool, min(a.mix_pool, len(pool))); train += mix; rng.shuffle(train)   # shuffled: the trainer may read only a prefix of the file
+        mix = rng.sample(pool, min(a.mix_pool, len(pool))); train += mix
         print(f"mixed in {len(mix)} Votum-Pool training rows", flush=True)
+    random.Random(a.seed).shuffle(train)             # always shuffled: a file sorted by label must not train label by label
+    if a.val and not a.pool:                         # an explicit validation file is not split by group, so check it
+        gt = {r["group"] for r in train}; st_tr = {json.dumps(r["state"], sort_keys=True, ensure_ascii=False) for r in train}
+        leak = [r["id"] for r in val if r["group"] in gt or json.dumps(r["state"], sort_keys=True, ensure_ascii=False) in st_tr]
+        if leak: print(f"WARNING: {len(leak)} validation rows share a group or a state with training rows (e.g. {leak[:3]}); their accuracy will look better than it is", flush=True)
+    if not val: print("WARNING: no validation rows (raise --val-frac or pass --val): calibrate.py will have nothing to fit or report on", flush=True)
     ids = Counter(r["id"] for r in train + val); dup = [k for k, v in ids.items() if v > 1]
     if dup: raise SystemExit(f"row ids repeat: {dup[:5]}{' ...' if len(dup) > 5 else ''}")
     print(f"{len(train)} training rows, {len(val)} validation rows", flush=True)
@@ -191,12 +201,14 @@ def main(argv=None):
     tok = C.load_tokenizer(Path(tok_dir))
     train, d1 = count_tokens(tok, train, a.max_tokens, "train"); val, d2 = count_tokens(tok, val, a.max_tokens, "val")
     write(train, out / "train.jsonl.gz"); write(val, out / "val.jsonl.gz")
+    tot = sum(r["n_tok_span"] for r in train)
+    tps = int(a.tokens_per_step) if a.tokens_per_step != "auto" else (65536 if tot >= 2_000_000 else 32768 if tot >= 500_000 else 16384)
     st = dict(source=a.pool or a.rows or a.csv, config=a.config if a.pool else None, mixed_pool_rows=a.mix_pool, tokenizer=str(tok_dir), max_tokens=a.max_tokens,
-              dropped=dict(train=dict(d1), val=dict(d2)), train=stats(train, a.tokens_per_step), val=stats(val, a.tokens_per_step))
+              tokens_per_step_estimate=tps, dropped=dict(train=dict(d1), val=dict(d2)), train=stats(train, tps), val=stats(val, tps))
     C.jdump(st, out / "stats.json")
     t = st["train"]
     print(f"wrote {out}/train.jsonl.gz ({t['rows']} rows, {t['tokens_total']:,} tokens, p50 {t['tokens_p50']}, p90 {t['tokens_p90']}) and val.jsonl.gz ({st['val']['rows']} rows)")
-    print(f"dropped: {dict(d1)} / {dict(d2)}; one pass over the training rows is about {t['steps_per_epoch']} steps of {a.tokens_per_step:,} tokens")
+    print(f"dropped: {dict(d1)} / {dict(d2)}; one pass over the training rows is about {t['steps_per_epoch']} steps of {tps:,} tokens (finetune.py's default step size for this amount of data; a minimum of 40 steps applies)")
 
 
 if __name__ == "__main__":

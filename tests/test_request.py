@@ -18,3 +18,13 @@ def test_validate():
     assert R.validate({"state": "x", "questions": {"a": {"type": "choice", "instructions": "?", "criteria": {}}}}) is not None
     assert R.validate({"state": "x", "questions": {"a": {"type": "noul", "instructions": "?"}}}) is None
     assert R.as_text({"type": "noul", "instructions": {"ask": "x"}})["instructions"] == '{"ask": "x"}'
+
+
+def test_validate_shapes():
+    q = lambda **kw: {"state": "x", "questions": {"a": {"type": "choice", "instructions": "?", "criteria": ["a", "b"], **kw}}}
+    assert R.validate(q()) is None and R.validate(q(criteria={"a": "A", "b": None})) is None
+    for bad in ("abc", 5, ["a"], ["a", "a"], [1, "1"], {"a": "only"}): assert R.validate(q(criteria=bad)) is not None, bad
+    assert R.validate(q(type="noul", criteria=["a"])) is not None and R.validate(q(type="noul", criteria={"true": "yes"})) is None
+    assert R.validate(q(type="score", criteria=["low"])) is not None and R.validate(q(type="score", criteria=["low", "high"])) is None
+    assert R.validate({"state": "\ud800", "questions": q()["questions"]}) is not None          # a lone surrogate cannot be tokenized
+    assert R.validate(q(), max_questions=1, max_options=2) is None and R.validate(q(), max_options=1) is not None

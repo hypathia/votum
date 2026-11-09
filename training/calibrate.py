@@ -55,44 +55,61 @@ def main(argv=None):
     ap.add_argument("--model", required=True, help="Votum checkpoint: Hub repo id or local directory (scripts/export_hf.py output; an --adapter-only directory needs --exact)")
     ap.add_argument("--val", required=True, help="validation rows with targets (prepare_data.py's val.jsonl.gz)")
     ap.add_argument("--limit", type=int, default=None, help="use at most this many rows per type (default: all)")
-    ap.add_argument("--batch", type=int, default=8); ap.add_argument("--device", default=None)
+    ap.add_argument("--batch", type=int, default=4, help="rows per forward pass (default 4; 8 fits a card with nothing else on it)"); ap.add_argument("--device", default=None)
     ap.add_argument("--exact", action="store_true", help="load the adapter/ form (export_hf.py --adapter-only) on the checkpoint it was trained on")
     ap.add_argument("--dry-run", "--eval-only", dest="dry_run", action="store_true", help="report accuracy, NLL and ECE with the current temperatures and the refitted ones, write nothing (use this to evaluate on a held-out test file)")
     ap.add_argument("--min-rows", type=int, default=50, help="a type with fewer scored rows keeps its current temperature (default 50); --eval-only always reports metrics")
-    ap.add_argument("--force", action="store_true", help="write a temperature even if the fit hit the edge of the grid")
+    ap.add_argument("--force", action="store_true", help="write a temperature even if the fit hit the edge of the grid (does not override --min-rows)")
     a = ap.parse_args(argv)
     by_type = defaultdict(list)
     for r in read_rows(Path(a.val)):
         if a.limit is None or len(by_type[r["type"]]) < a.limit: by_type[r["type"]].append(r)
-    rows = [r for t in ("choice", "noul", "score") for r in by_type[t]]
+    # the questions of one state are scored together, with the header they would share in a request: whole groups per
+    # call, whatever --batch is, so the result does not depend on the batch size
+    groups = defaultdict(list)
+    for t in ("choice", "noul", "score"):
+        for r in by_type[t]: groups[str(r.get("group") or r["id"])].append(r)
+    calls, cur = [], []
+    for g in groups.values():
+        cur += g
+        if len(cur) >= a.batch: calls.append(cur); cur = []
+    if cur: calls.append(cur)
+    rows = [r for c in calls for r in c]
     print(f"{len(rows)} rows: " + ", ".join(f"{t} {len(by_type[t])}" for t in by_type), flush=True)
     from votum.build import resolve
+    if not Path(a.model).exists() and not a.dry_run:
+        raise SystemExit(f"{a.model} is not a local directory. Temperatures are written into the checkpoint's files, so download it first "
+                         f"(hf download {a.model} --local-dir <dir>) and pass that directory; a Hub id can only be evaluated (--eval-only)")
     root = resolve(a.model, None, None, ["config.json", CONFIG_NAME, "model*.safetensors", "model.safetensors.index.json", "adapter/*",
                                          "tokenizer.json", "tokenizer_config.json", "special_tokens_map.json", "chat_template.jinja"])
     adapter_only = not (root / CONFIG_NAME).exists() and (root / "adapter" / CONFIG_NAME).exists()
     if adapter_only and not a.exact: raise SystemExit(f"{root} holds only the adapter form (export_hf.py --adapter-only): pass --exact")
     vm = Votum.from_pretrained(str(root), exact=a.exact, device=a.device); cfg = VotumConfig.load(root / "adapter" if adapter_only else root)
+    import torch
+    if torch.cuda.is_available(): torch.cuda.empty_cache()                 # loading leaves transient buffers; a 24 GB card with a display is close to the edge
     zs, ts, skipped, t0 = defaultdict(list), defaultdict(list), 0, time.time()
-    for i in range(0, len(rows), a.batch):
-        chunk = rows[i:i + a.batch]
-        for r, o in zip(chunk, vm.decide_rows(chunk)):
+    for n_call, chunk in enumerate(calls):
+        i = sum(len(c) for c in calls[:n_call])
+        for r, o in zip(chunk, vm.decide_rows(chunk, keys=[str(r.get("group") or r["id"]) for r in chunk])):
             if o is None: skipped += 1; continue
             pos = {oid: k for k, oid in enumerate(o["ids"])}; tgt = np.zeros(len(o["ids"]))
             for oid, p in zip([x["id"] for x in r["options"]], r["target"]): tgt[pos[str(oid)]] = p
             zs[r["type"]].append(np.array(o["scores"], dtype=np.float64)); ts[r["type"]].append(tgt)
-        if (i // a.batch) % 25 == 0: print(f"  {min(i + a.batch, len(rows))}/{len(rows)} scored ({time.time() - t0:.0f} s)", flush=True)
+        if n_call % 25 == 0: print(f"  {i + len(chunk)}/{len(rows)} scored ({time.time() - t0:.0f} s)", flush=True)
     new = dict(cfg.temperatures)
-    print(f"\n{'type':7s} {'rows':>5s} {'acc':>6s} {'T before':>9s} {'T after':>8s} {'NLL before':>10s} {'NLL after':>9s} {'ECE before':>10s} {'ECE after':>9s}")
+    print(f"\n{'type':7s} {'rows':>5s} {'acc':>6s} {'T now':>9s} {'T fitted':>8s} {'NLL now':>10s} {'NLL fit':>9s} {'ECE now':>10s} {'ECE fit':>9s}")
     for t in ("choice", "noul", "score"):
         if not zs[t]: continue
         T0 = cfg.temperatures[t]; T1 = float(min(GRID, key=lambda T: nll(zs[t], ts[t], T)))
         edge = T1 <= GRID[0] * 1.001 or T1 >= GRID[-1] * 0.999
-        if len(zs[t]) >= a.min_rows and (not edge or a.force): new[t] = T1
+        kept = not (len(zs[t]) >= a.min_rows and (not edge or a.force))
+        if not kept: new[t] = T1
         elif not a.dry_run:
             why = f"only {len(zs[t])} rows (< --min-rows {a.min_rows})" if len(zs[t]) < a.min_rows else f"the fit hit the grid edge ({T1:.3f}); rows too few or too easy (--force to write it anyway)"
             print(f"  {t}: temperature kept at {T0:.3f}: {why}")
         acc = 100 * float(np.mean([z.argmax() == y.argmax() for z, y in zip(zs[t], ts[t])]))
-        print(f"{t:7s} {len(zs[t]):5d} {acc:5.1f}% {T0:9.3f} {T1:8.3f} {nll(zs[t], ts[t], T0):10.4f} {nll(zs[t], ts[t], T1):9.4f} {ece(zs[t], ts[t], T0):10.4f} {ece(zs[t], ts[t], T1):9.4f}")
+        print(f"{t:7s} {len(zs[t]):5d} {acc:5.1f}% {T0:9.3f} {T1:8.3f} {nll(zs[t], ts[t], T0):10.4f} {nll(zs[t], ts[t], T1):9.4f} {ece(zs[t], ts[t], T0):10.4f} {ece(zs[t], ts[t], T1):9.4f}"
+              + ("   (fitted value not written)" if kept and not a.dry_run else ""))
     if skipped: print(f"{skipped} rows did not fit the context and were skipped")
     if a.dry_run: print("dry run: nothing written"); return
     cfg.temperatures = new; written = []

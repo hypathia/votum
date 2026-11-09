@@ -17,7 +17,7 @@ Apertus base, as the released run was trained; it needs the base in HF_HOME and 
 
 Hardware. The backbone is loaded in bf16 (about 16 GB) with gradient checkpointing; the LoRA and head add under 1 GB.
 What remains is activation memory, which grows with --micro-tokens, the padded size of one micro-batch. The released run
-used 16,384 on a 96 GB card and peaked at 46.9 GiB. The automatic choice looks at the FREE memory of the card (a display or
+(96 GB card) planned 8,192-token micro-batches that reached 13,600 padded tokens once rendered, and peaked at 46.9 GiB. The automatic choice looks at the FREE memory of the card (a display or
 another process counts). Rows longer than --micro-tokens are never trained (the data plan
 skips them), so a small micro-batch also caps the prompt length you can learn from. --micro-tokens auto picks a value
 from the GPU's memory (see MICRO_BY_GB); use --probe to measure the peak on your card before a long run."""
@@ -30,12 +30,14 @@ ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT)); sys.path.insert(0, str(ROOT.parent / "src"))
 import common as C                                          # noqa: E402
 
-# GPU memory (GiB, total) -> micro-batch tokens. Measured: 16,384 peaks at 46.9 GiB (released run, 96 GB card); on an
-# RTX 4090 (24 GB) 2,048 peaks at 17.6 GiB and 3,072 at 18.5 GiB, while 4,096 runs out of memory. The 32 GB and 48 GB
-# entries are interpolated from those points, not measured; check them with --probe.
+# free GPU memory (GiB) -> micro-batch tokens. Measured: on an RTX 4090 (24 GB) 2,048 peaks at 17.6 GiB and 3,072 at
+# 18.5 GiB, while 4,096 runs out of memory; the released run (96 GB card) peaked at 46.9 GiB with micro-batches of up to
+# 13,600 padded tokens. The 4,096, 8,192 and 16,384 entries lie between or beyond those points and are not measured;
+# check them with --probe.
 MICRO_BY_GB = [(70, 16384), (44, 8192), (30, 4096), (21, 3072)]
 LAYOUT = ["--opt-block", "--opt-isolate", "--shared-positions", "--bidir-layers", "--attn", "flex",
-          "--header", "group", "--header-blind", "--header-max-opts", "999", "--loss-norm", "constant", "--tok-field", "n_tok_span", "--repack"]
+          "--header", "group", "--header-blind", "--header-max-opts", "999", "--loss-norm", "constant", "--tok-field", "n_tok_span", "--repack",
+          "--plan", "fifo"]                                 # every row once per pass (the released run's plan favours long rows on small sets)
 
 
 def gpu_gib() -> tuple[float, float] | None:
@@ -45,6 +47,12 @@ def gpu_gib() -> tuple[float, float] | None:
         if not torch.cuda.is_available(): return None
         free, total = torch.cuda.mem_get_info(0); return free / 2**30, total / 2**30
     except Exception: return None
+
+
+def same_src(a, b) -> bool:
+    """the same checkpoint: equal Hub ids, or the same directory however it was written"""
+    pa, pb = Path(str(a)), Path(str(b))
+    return str(a) == str(b) or (pa.exists() and pb.exists() and pa.resolve() == pb.resolve())
 
 
 def pick_micro(mem: tuple[float, float] | None) -> int:
@@ -103,7 +111,8 @@ def main(argv=None):
     ap.add_argument("--save-every", type=int, default=25)
     ap.add_argument("--train-arg", action="append", default=[], help="extra train.py argument, repeatable (e.g. --train-arg=--lora-r=32 is NOT possible: the released adapter is rank 16)")
     ap.add_argument("--probe", action="store_true", help="run 2 steps without saving and report the peak GPU memory and step time (in runs/<tag>_probe)")
-    ap.add_argument("--resume", action="store_true", help="continue the run <tag> from its last saved state (after a crash or a stop)")
+    ap.add_argument("--resume", action="store_true", help="continue the run <tag> from its last saved state (after a crash or a stop), with the schedule and micro-batch it started with")
+    ap.add_argument("--fresh", action="store_true", help="delete an existing run directory of this tag and start over")
     ap.add_argument("--dry-run", action="store_true", help="print the train.py command and exit")
     ap.add_argument("--token", default=None, help="Hub token (if the model repo is gated and you are not logged in)")
     a = ap.parse_args(argv)
@@ -112,41 +121,55 @@ def main(argv=None):
     data = Path(a.data).resolve(); st = json.loads((data / "stats.json").read_text()); tr = st["train"]
     if a.mode == "adapter":
         try: C.backbone_path()
-        except FileNotFoundError as e: raise SystemExit(f"{e}\nDownload swiss-ai/Apertus-v1.5-8B into HF_HOME first (huggingface-cli download swiss-ai/Apertus-v1.5-8B); it is gated on the Apertus Acceptable Use Policy")
+        except FileNotFoundError as e: raise SystemExit(f"{e}\nDownload swiss-ai/Apertus-v1.5-8B into HF_HOME first (hf download swiss-ai/Apertus-v1.5-8B); it is gated on the Apertus Acceptable Use Policy")
 
+    run = C.RUNS / a.tag; init = run / "init"; launch = run / "launch.json"
+    prev = json.loads(launch.read_text()) if a.resume and launch.exists() else None
+    if prev:                                                    # a resumed run replays the same data plan and schedule
+        if not same_src(prev["src"], a.src) or prev["mode"] != a.mode: raise SystemExit(f"run {a.tag} was started with --from {prev['src']} --mode {prev['mode']}; resume it with the same, or use another --tag")
+        a.micro_tokens, a.tokens_per_step, a.steps = str(prev["micro_tokens"]), str(prev["tokens_per_step"]), prev["steps"]
     mem = gpu_gib()
     if a.micro_tokens != "auto": mt = int(a.micro_tokens)
     elif a.dry_run and (mem is None or mem[0] < 19.5): mt = 2048; print("dry run: no suitable GPU memory free right now; assuming 2,048-token micro-batches", flush=True)
     else: mt = pick_micro(mem)
     tps = int(a.tokens_per_step) if a.tokens_per_step != "auto" else (65536 if tr["tokens_total"] >= 2_000_000 else 32768 if tr["tokens_total"] >= 500_000 else 16384)
     a.tokens_per_step = max(tps, mt)
-    if mt > a.tokens_per_step: raise SystemExit("--micro-tokens cannot exceed --tokens-per-step")
     # tokens a step really holds: tokens_per_step // micro_tokens micro-batches, each with as many typical rows as fit
     # (a 1,100-token row in a 2,048-token micro-batch fits alone, so such a step carries ~35k tokens, not 65k)
     typical = tr["tokens_p50"] + 16; fit = max(1, mt // typical); eff = min(a.tokens_per_step * 0.85, (a.tokens_per_step // mt) * fit * tr["tokens_p50"])
     want = a.epochs * tr["tokens_total"] / eff
     steps = a.steps or max(a.min_steps, round(want)); passes = steps * eff / max(1, tr["tokens_total"])
     warm = min(25, max(2, steps // 10)); decay = min(100, max(1, steps // 4))
-    too_long = tr["tokens_p90"] > mt
+    too_long = tr["tokens_p90"] + 16 > mt
     print((f"GPU: {mem[0]:.1f} of {mem[1]:.0f} GiB free" if mem else "GPU: none detected") + f" | micro-batch {mt:,} tokens | {steps} steps x {a.tokens_per_step:,} tokens "
           f"(about {eff:,.0f} used per step with {fit} typical row{'s' if fit > 1 else ''} per micro-batch) = about {passes:.1f} passes over {tr['rows']:,} rows ({tr['tokens_total']:,} tokens) | warm-up {warm}, cosine decay over the last {decay}", flush=True)
     if not a.steps and want < a.min_steps: print(f"NOTE: {a.epochs:g} epoch would be {want:.1f} steps; the minimum is {a.min_steps} (--min-steps), so this is {passes:.0f} passes over your rows: a small set is learned by many small updates. Check the held-out accuracy with calibrate.py --eval-only", flush=True)
-    if too_long: print(f"WARNING: at least 10 % of the rows are longer than {mt:,} tokens (p90 = {tr['tokens_p90']}); the data plan skips rows longer than one micro-batch, so they will not be trained on", flush=True)
+    if too_long: print(f"WARNING: at least 10 % of the rows are longer than {mt - 16:,} tokens (p90 = {tr['tokens_p90']}); the data plan skips rows that do not fit one micro-batch with a 16-token margin, so they will not be trained on", flush=True)
 
-    run = C.RUNS / a.tag; init = run / "init"
-    if a.resume:
-        for f in ("STOP", "STOPPED.json"):
-            if (run / f).exists(): (run / f).unlink(); print(f"removed {run / f} so the run can continue", flush=True)
-    if a.dry_run and not (init / "span_head.pt").exists():
-        backbone = ["--backbone", a.src] if a.mode == "merged" else []       # nothing is written in a dry run
+    old = [p for pat in ("state_*.pt", "ckpt_*", "log.jsonl") for p in run.glob(pat)] if not a.probe else []
+    if old and not a.resume and not a.fresh and not a.dry_run:
+        raise SystemExit(f"{run} already holds a run ({len(old)} files: states, checkpoints, log). Continue it with --resume, start over with --fresh "
+                         "(deletes that directory), or pick another --tag")
+    if a.resume and not old and not a.dry_run: raise SystemExit(f"--resume: {run} holds no run to continue")
+    if a.dry_run:                                                            # nothing is written or deleted in a dry run
+        meta = json.loads((init / "init_meta.json").read_text()) if (init / "init_meta.json").exists() and not a.fresh else None
+        if meta: backbone = ["--backbone", meta["backbone"]] if meta.get("backbone") else []
+        else: backbone = ["--backbone", a.src] if a.mode == "merged" else []
     else:
+        if a.fresh and run.exists(): shutil.rmtree(run); print(f"--fresh: removed {run}", flush=True)
+        if a.resume:
+            for f in ("STOP", "STOPPED.json"):
+                if (run / f).exists(): (run / f).unlink(); print(f"removed {run / f} so the run can continue", flush=True)
         run.mkdir(parents=True, exist_ok=True)
         try: C.disk_guard(run, need_gb=2.0)
         except RuntimeError as e: raise SystemExit(f"{e}\nFree space, point VOTUM_RUNS elsewhere, or lower VOTUM_DISK_FLOOR_GB (default 10)")
         if not (init / "span_head.pt").exists():
             print(f"preparing the start checkpoint from {a.src} ({a.mode})", flush=True); init_checkpoint(a.src, init, a.mode, token=a.token)
         meta = json.loads((init / "init_meta.json").read_text())
+        if not same_src(meta.get("source"), a.src) or meta.get("mode") != a.mode:   # a start checkpoint left by an earlier, different launch
+            raise SystemExit(f"{init} was prepared from --from {meta.get('source')} --mode {meta.get('mode')}, not from {a.src} ({a.mode}). Use --fresh or another --tag")
         backbone = ["--backbone", meta["backbone"]] if meta.get("backbone") else []
+        if not a.probe and not a.resume: C.jdump(dict(src=str(a.src), mode=a.mode, micro_tokens=mt, tokens_per_step=a.tokens_per_step, steps=steps), launch)
     argv_t = [*backbone, "--lr", str(a.lr), "--lr-span", str(a.lr_head), "--seed", str(a.seed), "--tag", a.tag, "--train", str(data / "train.jsonl.gz"),
               "--steps", str(steps), "--warmup", str(warm), "--final-decay", str(decay), "--tokens-per-step", str(a.tokens_per_step),
               "--micro-tokens", str(mt), "--save-every", str(a.save_every), "--init-weights", str(init), *LAYOUT, *a.train_arg]
@@ -168,8 +191,8 @@ def main(argv=None):
     ck = sorted(run.glob("ckpt_*"), key=lambda p: int(p.name.split("_")[1]))[-1]
     if (run / "STOPPED.json").exists():
         st_ = json.loads((run / "STOPPED.json").read_text()); print(f"\nstopped at step {st_['stopped_at']} of {st_['planned']} (STOP file). Continue with the same command plus --resume; {ck} holds the adapter so far."); return
-    print(f"\ndone. Next:\n  python ../scripts/export_hf.py --ckpt {ck} --out <out dir>           # merged checkpoint + adapter/ form"
-          f"\n  python calibrate.py --model <out dir> --val {data / 'val.jsonl.gz'}      # refit the temperatures on your validation rows")
+    print(f"\ndone. Next:\n  python ../scripts/export_hf.py --ckpt {ck} --out <out dir>           # merged checkpoint + adapter/ form (16 GB; --adapter-only for 160 MB)"
+          f"\n  python calibrate.py --model <out dir> --val {data / 'val.jsonl.gz'}      # refit the temperatures (add --exact for an --adapter-only export)")
 
 
 if __name__ == "__main__":

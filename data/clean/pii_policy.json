@@ -90,15 +90,21 @@
   "reason": "reformatted copy of a published release (https://archive.ics.uci.edu/dataset/17); builder regex masking only, no NER"
  },
  "Bundestag DIP (Vorgaenge, petitions and bills)": {
-  "license": "MIT [commercial]",
+  "license": "DIP-terms [commercial] | attribution required (Deutscher Bundestag/DIP)",
   "train_rows": 594,
   "val_rows": 6,
   "excluded": false,
   "config": "default",
-  "upstream": "https://dip.bundestag.de/",
+  "upstream": "https://dip.bundestag.de/documents/nutzungsbedingungen_dip.pdf",
   "origin": "self-collected",
   "names": false,
-  "reason": "legislative records (bills, petitions): public officials and institutions; fetched from the DIP API"
+  "reason": "legislative records (bills, petitions): public officials and institutions; fetched from the DIP API",
+  "license_fix": [
+   [
+    "",
+    "DIP-terms [commercial] | attribution required (Deutscher Bundestag/DIP)"
+   ]
+  ]
  },
  "CADA avis et conseils (FR)": {
   "license": "Etalab-2.0 [commercial]",
@@ -333,7 +339,7 @@
   "reason": "reformatted copy of a published release (https://parlzhcdws.cmicloud.ch/); builder regex masking only, no NER"
  },
  "ch_cantonal_parl": {
-  "license": "MIT [commercial]",
+  "license": "per row: CC-BY-4.0 (Basel-Stadt), CC0-1.0 (Thurgau), cantonal open-data terms with attribution (Bern, Basel-Landschaft) [commercial]",
   "train_rows": 2146,
   "val_rows": 14,
   "excluded": false,
@@ -341,7 +347,25 @@
   "upstream": "https://www.gr.be.ch/de/start/grosser-rat/open-data-angebot-gr/nutzungsbedingungen-ogd-gr.html",
   "origin": "self-collected",
   "names": false,
-  "reason": "cantonal parliament business records: officials and institutions; pulled from the data.bs.ch portal"
+  "reason": "cantonal parliament business records: officials and institutions; from the open-data portals of Basel-Stadt, Basel-Landschaft, Bern and Thurgau",
+  "license_fix": [
+   [
+    "Basel-Stadt",
+    "CC-BY-4.0 [commercial]"
+   ],
+   [
+    "Thurgau",
+    "CC0-1.0 [commercial]"
+   ],
+   [
+    "Kanton Bern",
+    "OGD-terms [commercial] | attribution required (Parlamentsdienste des Grossen Rates des Kantons Bern)"
+   ],
+   [
+    "Basel-Landschaft",
+    "opendata.swiss-BY [commercial] | attribution required (Kanton Basel-Landschaft)"
+   ]
+  ]
  },
  "de_fr_it/fineweb_c": {
   "license": "ODC-By [commercial]",
@@ -1312,7 +1336,8 @@
   "upstream": "https://github.com/bvidgen/Dynamically-Generated-Hate-Speech-Dataset",
   "origin": "redistributed",
   "names": false,
-  "reason": "excluded: licence tags conflict (canonical CC-BY-4.0, upstream metadata GPL)"
+  "reason": "excluded: licence tags conflict (canonical CC-BY-4.0, upstream metadata GPL)",
+  "exclude_reason": "licence tags conflict (canonical CC-BY-4.0, upstream metadata GPL)"
  },
  "tasksource/dynasent/r2_votes": {
   "license": "CC-BY-4.0 [commercial]",

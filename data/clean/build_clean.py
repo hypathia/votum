@@ -15,8 +15,16 @@ copied byte for byte so the trainer reads them exactly as before):
                        The pool carries the upstream split on every ContractNLI row.
   R3  document-level   a row is dropped if its STATE shares at least one normalised word
       decontamination  8-gram with the state/context/passage text of any benchmark item
-                       (questions are never used).  Normalisation: lowercase, split on
+                       (for benchmark items without state text, with their question
+                       instructions instead).  Normalisation: lowercase, split on
                        runs of word characters (so punctuation and whitespace vanish).
+                       Scripts written without spaces (Chinese, Japanese, Thai, Lao,
+                       Khmer, Burmese) have no words to split on, so their characters
+                       are also matched as 16-character grams.
+                       The row's QUESTION is checked the same way, but a matching gram
+                       counts only if it occurs in the questions of at most
+                       ``--question-max-rows`` pool rows: a question template shared by
+                       many rows is not an item quoted from a benchmark.
                        Boilerplate 8-grams (occurring in more than ``--stop-min-rows``
                        pool rows from at least ``--stop-min-sources`` sources) are put on
                        an automatic stop-list and ignored; the stop-list is written to
@@ -51,8 +59,11 @@ import time
 import numpy as np
 
 N = 8
+NC = 16                                            # gram length, in characters, for scripts written without spaces
 MULT = np.uint64(0x9E3779B97F4A7C15)
 WRE = re.compile(r"\w+", re.U)
+# Thai, Lao, Burmese, Khmer, kana, CJK ideographs (Hangul is written with spaces and stays with the word rule)
+CRE = re.compile("[\u0e00-\u0eff\u1000-\u109f\u1780-\u17ff\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\U00020000-\U0002ebef]")
 
 # ---- Rule 1: exact source names, taken from the actual `source` values of pool v7 ----
 # The 13 sources removed by the second licence review (19,950 training rows in total); they are present in the
@@ -114,18 +125,36 @@ def leaves(x, out):
     return out
 
 
-def gram_hashes(text):
-    """uint64 hashes of every normalised word 8-gram of ``text`` (may contain repeats)."""
-    ws = WRE.findall(text.lower())
-    n = len(ws)
-    if n < N:
-        return np.empty(0, np.uint64)
-    h = np.fromiter((_wh(w) for w in ws), dtype=np.uint64, count=n)
-    acc = np.zeros(n - N + 1, np.uint64)
+def _poly(h, k):
+    n = len(h)
+    acc = np.zeros(n - k + 1, np.uint64)
     with np.errstate(over="ignore"):
-        for k in range(N):
-            acc = acc * MULT + h[k:n - N + 1 + k]
+        for j in range(k):
+            acc = acc * MULT + h[j:n - k + 1 + j]
     return acc
+
+
+def word_grams(text):
+    """(words, uint64 hash of every normalised word 8-gram), in text order."""
+    ws = WRE.findall(text.lower())
+    if len(ws) < N:
+        return ws, np.empty(0, np.uint64)
+    return ws, _poly(np.fromiter((_wh(w) for w in ws), dtype=np.uint64, count=len(ws)), N)
+
+
+def char_grams(text):
+    """(characters, uint64 hash of every 16-character gram) over the characters of scripts written without spaces,
+    taken in order with everything else removed. The "\\x00" prefix keeps these hashes apart from the word hashes."""
+    cs = CRE.findall(text)
+    if len(cs) < NC:
+        return cs, np.empty(0, np.uint64)
+    return cs, _poly(np.fromiter((_wh("\x00" + c) for c in cs), dtype=np.uint64, count=len(cs)), NC)
+
+
+def gram_hashes(text):
+    """uint64 hashes of every normalised word 8-gram of ``text``, then of its 16-character grams (may contain repeats)."""
+    w, c = word_grams(text)[1], char_grams(text)[1]
+    return np.concatenate([w, c]) if len(c) else w
 
 
 def state_grams(state):
@@ -138,12 +167,12 @@ def gram_texts(state, want):
     """{hash: 'w1 .. w8'} for the hashes in ``want`` found in ``state``."""
     out = {}
     for t in leaves(state, []):
-        ws = WRE.findall(t.lower())
-        if len(ws) < N:
-            continue
-        g = gram_hashes(t)
+        ws, g = word_grams(t)
         for i in np.nonzero(np.isin(g, want))[0]:
             out[int(g[i])] = " ".join(ws[i:i + N])
+        cs, g = char_grams(t)
+        for i in np.nonzero(np.isin(g, want))[0]:
+            out[int(g[i])] = "".join(cs[i:i + NC])
     return out
 
 
@@ -284,12 +313,16 @@ def _pool_worker(args):
     for k, line in enumerate(lines):
         r = json.loads(line)
         src = r.get("source")
-        reason, hit, info = None, None, ()
+        reason, hit, info, qhit = None, None, (), None
         if src in drop:
             reason = "R1:" + drop[src]
         elif src == "ContractNLI" and r.get("upstream_split") == "test":
             reason = "R2:ContractNLI test split"
         else:
+            gq = state_grams(r.get("question"))
+            if len(gq):
+                mq = gq[_isin_sorted(G["uh"], gq)]
+                qhit = mq if len(mq) else None
             g = state_grams(r.get("state"))
             if len(g):
                 m = g[_isin_sorted(G["uh"], g)]
@@ -300,7 +333,7 @@ def _pool_worker(args):
                         lo = np.searchsorted(G["ih"], mi, "left")
                         hi = np.searchsorted(G["ih"], mi, "right")
                         info = tuple(sorted({int(G["ib"][j]) for a, c in zip(lo, hi) for j in range(a, c)}))
-        out.append((start + k, src, r.get("license"), reason, hit, info, r.get("group")))
+        out.append((start + k, src, r.get("license"), reason, hit, info, r.get("group"), qhit))
     return out
 
 
@@ -339,7 +372,8 @@ def top_texts(path, rows_needed, want):
     with opener(path) as f:
         for i, line in enumerate(f):
             if i in need:
-                out.update(gram_texts(json.loads(line).get("state"), want))
+                r = json.loads(line)
+                out.update(gram_texts([r.get("state"), r.get("question")], want))
     return out
 
 
@@ -354,6 +388,7 @@ def main():
     ap.add_argument("--val-released", default=None, help="optional: released val split, to check the cleaned val against")
     ap.add_argument("--stop-min-rows", type=int, default=50)
     ap.add_argument("--stop-min-sources", type=int, default=5)
+    ap.add_argument("--question-max-rows", type=int, default=5, help="a benchmark 8-gram found in a row's question drops the row only if it occurs in the questions of at most this many pool rows (templates are shared by many)")
     ap.add_argument("--warn-frac", type=float, default=0.10)
     ap.add_argument("--workers", type=int, default=max(1, (os.cpu_count() or 4) - 2))
     ap.add_argument("--no-instruction-fallback", action="store_true", help="do not use question.instructions of benchmark items that have no state text")
@@ -437,22 +472,39 @@ def main():
     stop = uhs[is_stop]
     print(f"stop-list: {len(stop)} grams of {len(uhs)} matched distinct grams", flush=True)
 
-    def decide(rows, stopset):
-        """-> (plain, final): plain = set of row indices with a benchmark 8-gram match (no stop-list); final = {row index: matching
-        8-gram hashes that are not on the stop-list}, the rows that R3 drops."""
+    # --- question matches: a gram counts only if few rows carry it in their question (train and val together)
+    qall = [r[7] for name in ("train", "val") for r in res[name] if r[3] is None and r[7] is not None]
+    qu, qdf = np.unique(np.concatenate(qall), return_counts=True) if qall else (np.empty(0, np.uint64), np.empty(0, np.int64))
+    qrare = qu[qdf <= a.question_max_rows]
+    print(f"question matches: {len(qu)} distinct grams in {len(qall)} rows; {len(qrare)} occur in at most {a.question_max_rows} rows", flush=True)
+    q_only = {}
+
+    def decide(rows, stopset, name):
+        """-> (plain, final): plain = set of row indices with a benchmark 8-gram match in the state (no stop-list); final = {row
+        index: matching 8-gram hashes that R3 drops the row for}: state grams off the stop-list, and question grams that are
+        off the stop-list and rare among the pool's questions."""
         plain, final = set(), {}
         for r in rows:
-            if r[3] is None and r[4] is not None:
+            if r[3] is not None:
+                continue
+            if r[4] is not None:
                 plain.add(r[0])
                 keep = r[4][~np.isin(r[4], stopset)] if len(stopset) else r[4]
                 if len(keep):
                     final[r[0]] = keep
+            if r[7] is not None:
+                kq = r[7][np.isin(r[7], qrare)]
+                kq = kq[~np.isin(kq, stopset)] if len(stopset) else kq
+                if len(kq):
+                    if r[0] not in final:
+                        q_only[name] = q_only.get(name, 0) + 1
+                    final[r[0]] = np.unique(np.concatenate([final[r[0]], kq])) if r[0] in final else kq
         return plain, final
 
     out_info = {}
     for name in ("train", "val"):
         rows = res[name]
-        plain, final = decide(rows, stop)
+        plain, final = decide(rows, stop, name)
         out_info[name] = (plain, final)
 
     # --- per-source plain rate, top offenders for sources over warn_frac
@@ -562,7 +614,8 @@ def main():
             "rows_removed_by_rule": {"R1_source_drop": rule_cnt["R1"], "R2_contractnli_test": rule_cnt["R2"], "R3_benchmark_8gram": rule_cnt["R3"]},
             "rows_after_R1": n_in - rule_cnt["R1"], "rows_after_R2": n_in - rule_cnt["R1"] - rule_cnt["R2"],
             "R3_plain_rule_would_remove (no stop-list)": len(plain),
-            "R3_stoplist_saved_rows": len(plain) - len(final),
+            "R3_stoplist_saved_rows": len(plain) - (len(final) - q_only.get(name, 0)),
+            "R3_rows_dropped_for_the_question_only": q_only.get(name, 0),
             "sources_in": len(in_src), "sources_out": len(keep_src),
             "license_counts_out": dict(keep_lic.most_common()),
             "per_source": {s: {"before": in_src[s], "after": keep_src.get(s, 0), "removed": in_src[s] - keep_src.get(s, 0),
@@ -605,7 +658,7 @@ def write_md(rep, path):
         x = s[nm]
         L += [f"## {nm}", f"- rows in {x['rows_in']:,}, out {x['rows_out']:,}; sources {x['sources_in']} -> {x['sources_out']}",
               f"- removed by rule: {x['rows_removed_by_rule']}",
-              f"- R3 plain rule (no stop-list) would remove {x['R3_plain_rule_would_remove (no stop-list)']:,}; stop-list saved {x['R3_stoplist_saved_rows']:,}",
+              f"- R3 plain rule (no stop-list) would remove {x['R3_plain_rule_would_remove (no stop-list)']:,}; stop-list saved {x['R3_stoplist_saved_rows']:,}; dropped for a question match alone {x.get('R3_rows_dropped_for_the_question_only', 0):,}",
               f"- licences out: {x['license_counts_out']}", ""]
     L += ["## R1 sources dropped", ""] + [f"- `{k}`: {v}" for k, v in rep["rule_names"]["R1_matched"].items()]
     L += ["", f"Listed but absent from the data: {rep['rule_names']['R1_listed_but_absent']}", ""]

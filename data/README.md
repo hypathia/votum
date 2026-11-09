@@ -46,7 +46,8 @@ Notes:
   - HelpSteer2/3 (about 9k);
   - hh-rlhf red-team (3.6k; its card advises against fine-tuning on it);
   - Aegis 2.0.
-- **Benchmark overlap** with the Jev Decision Index suite: SATA-Bench 300, HoVer 195, BRIGHT 83, ANLI 38.
+- **Benchmark overlap** with the Jev Decision Index suite, as items with a row in the pool (of them, seen in training):
+  SATA-Bench 314 (300), HoVer 195 (17), BRIGHT 83 (33), ANLI 38 (2).
 - **Personal data:** PII masking was regex-only, so names remain. A pilot found 82 missed identifiers per 500 rows.
 - **Decontamination** was 13-gram on state + question, so it misses benchmarks that share documents with training
   sources.

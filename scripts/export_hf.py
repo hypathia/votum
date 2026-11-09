@@ -32,8 +32,9 @@ def sha256(p: Path) -> str:
 
 
 def main() -> None:
-    ap = argparse.ArgumentParser(); ap.add_argument("--ckpt", required=True); ap.add_argument("--out", required=True)
-    ap.add_argument("--base", default=None, help="Apertus-1.5-8B snapshot (default: the pinned Hub revision)")
+    ap = argparse.ArgumentParser(description="Turn a training checkpoint (runs/<tag>/ckpt_<step>) into a Votum checkpoint directory: adapter/ (exact form) and, unless --adapter-only, the merged bf16 weights, tokenizer and configs that votum serve and Votum.from_pretrained load.")
+    ap.add_argument("--ckpt", required=True, help="training checkpoint directory, e.g. runs/mine/ckpt_40"); ap.add_argument("--out", required=True, help="output directory")
+    ap.add_argument("--base", default=None, help="the weights the adapter applies to (default: the Votum checkpoint recorded by finetune.py --mode merged, else the pinned Apertus-1.5-8B revision)")
     ap.add_argument("--temperatures", default=None, help="JSON per question type (default: the released ones in VotumConfig)")
     ap.add_argument("--adapter-only", action="store_true", help="write only <out>/adapter/ (the exact form, ~160 MB); skip the merged 16 GB checkpoint")
     a = ap.parse_args(); ck, root = Path(a.ckpt), Path(a.out); out = root / "adapter"; out.mkdir(parents=True, exist_ok=True)
