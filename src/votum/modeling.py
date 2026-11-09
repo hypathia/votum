@@ -17,7 +17,7 @@ Option blocks share position ids (prompt.shared_positions). This is the training
 """
 from __future__ import annotations
 
-import inspect, json, math
+import inspect, json, math, sys
 from pathlib import Path
 
 import torch
@@ -147,12 +147,23 @@ class Votum(nn.Module):
     @classmethod
     def from_pretrained(cls, repo: str, *, exact: bool = False, base: str | None = None, revision: str | None = None,
                         device: str | None = None, dtype=torch.bfloat16, token=None) -> "Votum":
+        import logging
+        from transformers.utils import logging as hf_logging
+        lvl = hf_logging.get_verbosity(); hf_logging.set_verbosity_error()     # the tokenizer's "incorrect regex" note and the pointer.* "unexpected keys" report are expected
+        logging.getLogger("transformers").setLevel(logging.ERROR)
+        try: return cls._from_pretrained(repo, exact=exact, base=base, revision=revision, device=device, dtype=dtype, token=token)
+        finally: hf_logging.set_verbosity(lvl)
+
+    @classmethod
+    def _from_pretrained(cls, repo: str, *, exact: bool = False, base: str | None = None, revision: str | None = None,
+                         device: str | None = None, dtype=torch.bfloat16, token=None) -> "Votum":
         """repo: the Votum repo id or a local checkpoint directory (votum build). Default: the merged weights in the repo
         (one download, no PEFT). exact=True: the unmerged form, the Apertus base (base: repo id or local snapshot; default
         the revision pinned in votum_config.json) plus the LoRA adapter in the repo's adapter/ folder, as in training."""
         from safetensors import safe_open
         from transformers import ApertusModel, AutoTokenizer
         device = device or ("cuda" if torch.cuda.is_available() else "cpu")
+        if str(device).startswith("cpu"): print("votum: no CUDA device, running the 8B model on the CPU (slow: minutes per request); install a GPU build of torch for normal speed", file=sys.stderr)
         if exact:
             ad = adapter_dir(repo, token); cfg = VotumConfig.load(ad)
             bb, bd = load_backbone(base or cfg.base_model, None if base else cfg.base_revision, device, dtype, token)
@@ -162,6 +173,9 @@ class Votum(nn.Module):
         else:
             rd = resolve(repo, revision, token, ["config.json", CONFIG_NAME, "model*.safetensors", "model.safetensors.index.json", *TOKENIZER_FILES])
             cfg = VotumConfig.load(rd); tcfg = _text_config(rd)
+            if json.loads((rd / "config.json").read_text()).get("quantization_config"):
+                raise ValueError(f"{rd} is a quantized (compressed-tensors) Votum checkpoint; the PyTorch reference path loads bf16 weights only. "
+                                 "Serve it with `votum serve --model ...` or votum.vllm.client.VotumVLLM, or use the bf16 repository here.")
             kw = dict(config=tcfg, device_map={"": str(device)}); kw["dtype" if _tf_major() >= 5 else "torch_dtype"] = dtype
             bb = ApertusModel.from_pretrained(str(rd), **kw); bb.eval(); bb.requires_grad_(False)
             net = _with_adapter(bb, rd / "lora") if (rd / "lora" / "adapter_config.json").exists() else _Wrap(bb)   # votum build --exact

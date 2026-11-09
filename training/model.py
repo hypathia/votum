@@ -27,10 +27,20 @@ def load_backbone(path=None, quant="bf16", device="cuda:0"):
     """Text-only causal LM from the checkpoint at `path` (Apertus 1.5 multimodal or text-only, or Apertus 1.x text)."""
     from transformers import AutoConfig, BitsAndBytesConfig
     path = path or C.backbone_path()[1]
-    cfg = AutoConfig.from_pretrained(path); mt = cfg.model_type
+    try: cfg = AutoConfig.from_pretrained(path)
+    except ValueError as e:
+        if "apertus1p5" in str(e): raise SystemExit("this checkpoint is the Apertus 1.5 multimodal release, which needs the swiss-ai transformers fork (training/README.md, Environment); or fine-tune from the Votum checkpoint instead (finetune.py --mode merged)")
+        raise
+    mt = cfg.model_type
     kw = dict(dtype=torch.bfloat16, device_map={"": device})
-    if mt == "apertus1p5":
-        from transformers.models.apertus1p5.modeling_apertus1p5 import Apertus1p5TextForCausalLM as Cls
+    if mt == "apertus" and getattr(cfg, "decision_pointer_rank", None) is not None:
+        # a merged Votum checkpoint (the released adapter already folded in, no lm_head, pointer.* tensors): the text
+        # stack alone, through the mainline ApertusModel; a fresh LoRA goes on top (finetune.py --from <Votum repo>)
+        from transformers import ApertusModel as Cls; tcfg = cfg
+    elif mt == "apertus1p5":
+        try: from transformers.models.apertus1p5.modeling_apertus1p5 import Apertus1p5TextForCausalLM as Cls
+        except ImportError: raise SystemExit("this checkpoint is the Apertus 1.5 multimodal release, which needs the swiss-ai transformers fork (training/README.md, Environment); "
+                                             "or fine-tune from the Votum checkpoint instead (finetune.py --mode merged), which runs on mainline transformers")
         tcfg = cfg.text_config; kw["key_mapping"] = {r"^model\.language_model\.": "model."}
     elif mt == "apertus1p5_text":
         from transformers.models.apertus1p5.modeling_apertus1p5 import Apertus1p5TextForCausalLM as Cls; tcfg = cfg
@@ -42,6 +52,7 @@ def load_backbone(path=None, quant="bf16", device="cuda:0"):
     if quant == "nf4":
         kw["quantization_config"] = BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_quant_type="nf4", bnb_4bit_compute_dtype=torch.bfloat16)
     t0 = time.time(); m = Cls.from_pretrained(str(path), **kw); m.config.use_cache = False
+    if not hasattr(m, "layers") and hasattr(m, "model") and not hasattr(m.model, "layers"): raise ValueError(f"unexpected model structure for {path}")
     for p in m.parameters(): p.requires_grad_(False)
     print(f"loaded {path} ({mt}, {quant}) in {time.time()-t0:.0f}s; GPU {torch.cuda.memory_allocated()/2**30:.1f} GiB", flush=True)
     return m
@@ -50,8 +61,10 @@ def load_backbone(path=None, quant="bf16", device="cuda:0"):
 def add_lora(model, seed, r=None, alpha=None, dropout=None, targets=None):
     from peft import LoraConfig, get_peft_model
     R = C.RECIPE; torch.manual_seed(seed)
+    # a bare text stack (ApertusModel, the merged Votum checkpoint) has no generation hooks: plain PEFT wrapper, as votum.modeling does
+    task = "CAUSAL_LM" if hasattr(model, "prepare_inputs_for_generation") else None
     cfg = LoraConfig(r=r or R["lora_r"], lora_alpha=alpha or R["lora_alpha"], lora_dropout=R["lora_dropout"] if dropout is None else dropout,
-                     target_modules=targets or R["lora_targets"], bias="none", task_type="CAUSAL_LM")
+                     target_modules=targets or R["lora_targets"], bias="none", task_type=task)
     return get_peft_model(model, cfg)
 
 

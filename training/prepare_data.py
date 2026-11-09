@@ -2,6 +2,7 @@
 
     python prepare_data.py --pool <Votum-Pool dir or Hub id> [--config default|share_alike] --out data/pool
     python prepare_data.py --rows my_rows.jsonl[.gz] [--val my_val.jsonl] [--val-frac 0.05] --out data/mine
+    python prepare_data.py --csv tickets.csv --text-col text --label-col team --question "Which team should handle this ticket?" --out data/tickets
 
 Rows use the Votum Pool schema (hf.co/datasets/{{ORG}}/Votum-Pool): id, type (choice | noul | score), state (text or JSON
 object), question, options [{id, text}], target (one probability per option, in option order), and optionally group
@@ -51,6 +52,28 @@ def pool_files(pool: str, config: str, split: str) -> list[Path]:
     files = sorted((d / "data" / config).glob(f"{split}-*.parquet"))
     if not files: raise SystemExit(f"no {split} parquet files for config {config!r} under {d / 'data' / config}")
     return files
+
+
+def csv_rows(path: Path, text_col: str, label_col: str, question: str, labels: str | None, group_col: str | None):
+    """a classification table -> choice rows: every text gets the same question and the same option list (all labels seen
+    in the file, or the --labels mapping), with a one-hot target on the row's label."""
+    import csv
+    with open(path, newline="", encoding="utf-8") as f: recs = list(csv.DictReader(f))
+    if not recs: raise SystemExit(f"{path}: empty")
+    for c in (text_col, label_col):
+        if c not in recs[0]: raise SystemExit(f"{path}: no column {c!r}; columns are {list(recs[0])}")
+    if labels:
+        opts = [{"id": kv.split("=", 1)[0].strip(), "text": kv.split("=", 1)[1].strip()} for kv in labels.split(";") if kv.strip()]
+    else:
+        opts = [{"id": v, "text": v} for v in sorted({r[label_col].strip() for r in recs})]
+    ids = [o["id"] for o in opts]
+    unknown = sorted({r[label_col].strip() for r in recs} - set(ids))
+    if unknown: raise SystemExit(f"{path}: labels not in --labels: {unknown[:8]}")
+    stem = path.stem
+    for i, r in enumerate(recs):
+        y = r[label_col].strip(); grp = r[group_col].strip() if group_col else f"{stem}/{i}"
+        yield dict(id=f"{stem}/{i}", group=grp, type="choice", state=r[text_col], question=question, options=[dict(o) for o in opts],
+                   target=[1.0 if k == y else 0.0 for k in ids])
 
 
 def check(r: dict, where: str) -> dict:
@@ -122,6 +145,11 @@ def main(argv=None):
     src = ap.add_mutually_exclusive_group(required=True)
     src.add_argument("--pool", help="Votum-Pool dataset: local directory or Hub id")
     src.add_argument("--rows", help="your rows, JSONL (optionally gzipped), Pool schema")
+    src.add_argument("--csv", help="a classification CSV: one text column and one label column (see --text-col, --label-col, --question, --labels)")
+    ap.add_argument("--text-col", default="text"); ap.add_argument("--label-col", default="label")
+    ap.add_argument("--question", default=None, help="with --csv: the question asked about every text, e.g. 'Which team should handle this ticket?'")
+    ap.add_argument("--labels", default=None, help="with --csv: option texts per label, 'id=text;id=text' (default: the label values themselves)")
+    ap.add_argument("--group-col", default=None, help="with --csv: column whose value groups rows about the same text (default: each row its own group)")
     ap.add_argument("--config", default="default", choices=["default", "share_alike"], help="Pool config (with --pool)")
     ap.add_argument("--val", help="validation rows, JSONL (with --rows); default: a --val-frac split by group")
     ap.add_argument("--val-frac", type=float, default=0.05, help="validation share when --val is not given (default 0.05)")
@@ -132,7 +160,12 @@ def main(argv=None):
     ap.add_argument("--seed", type=int, default=0)
     a = ap.parse_args(argv); out = Path(a.out)
 
-    if a.pool:
+    if a.csv:
+        if not a.question: raise SystemExit("--csv needs --question (the question asked about every text)")
+        train = [check(r, f"{a.csv}:{i}") for i, r in enumerate(csv_rows(Path(a.csv), a.text_col, a.label_col, a.question, a.labels, a.group_col), 1)]
+        if a.val: val = [check(r, f"{a.val}:{i}") for i, r in enumerate(read_rows(Path(a.val)), 1)]
+        else: train, val = split_rows(train, a.val_frac, a.seed)
+    elif a.pool:
         train = [check(r, f"{a.pool}:train") for r in read_parquet(pool_files(a.pool, a.config, "train"))]
         val = [check(r, f"{a.pool}:validation") for r in read_parquet(pool_files(a.pool, a.config, "validation"))]
     else:

@@ -55,6 +55,7 @@ def main(argv=None):
     ap.add_argument("--val", required=True, help="validation rows with targets (prepare_data.py's val.jsonl.gz)")
     ap.add_argument("--limit", type=int, default=None, help="use at most this many rows per type (default: all)")
     ap.add_argument("--batch", type=int, default=8); ap.add_argument("--device", default=None)
+    ap.add_argument("--exact", action="store_true", help="load the adapter/ form (export_hf.py --adapter-only) on the checkpoint it was trained on")
     ap.add_argument("--dry-run", action="store_true", help="fit and report, but do not write")
     ap.add_argument("--min-rows", type=int, default=50, help="a type with fewer scored rows keeps its released temperature (default 50)")
     a = ap.parse_args(argv); root = Path(a.model)
@@ -63,7 +64,7 @@ def main(argv=None):
         if a.limit is None or len(by_type[r["type"]]) < a.limit: by_type[r["type"]].append(r)
     rows = [r for t in ("choice", "noul", "score") for r in by_type[t]]
     print(f"{len(rows)} rows: " + ", ".join(f"{t} {len(by_type[t])}" for t in by_type), flush=True)
-    vm = Votum.from_pretrained(str(root), device=a.device); cfg = VotumConfig.load(root)
+    vm = Votum.from_pretrained(str(root), exact=a.exact, device=a.device); cfg = VotumConfig.load(root / 'adapter' if a.exact and not (root / CONFIG_NAME).exists() else root)
     zs, ts, skipped, t0 = defaultdict(list), defaultdict(list), 0, time.time()
     for i in range(0, len(rows), a.batch):
         chunk = rows[i:i + a.batch]
@@ -74,12 +75,13 @@ def main(argv=None):
             zs[r["type"]].append(np.array(o["scores"], dtype=np.float64)); ts[r["type"]].append(tgt)
         if (i // a.batch) % 25 == 0: print(f"  {min(i + a.batch, len(rows))}/{len(rows)} scored ({time.time() - t0:.0f} s)", flush=True)
     new = dict(cfg.temperatures)
-    print(f"\n{'type':7s} {'rows':>5s} {'T before':>9s} {'T after':>8s} {'NLL before':>10s} {'NLL after':>9s} {'ECE before':>10s} {'ECE after':>9s}")
+    print(f"\n{'type':7s} {'rows':>5s} {'acc':>6s} {'T before':>9s} {'T after':>8s} {'NLL before':>10s} {'NLL after':>9s} {'ECE before':>10s} {'ECE after':>9s}")
     for t in ("choice", "noul", "score"):
         if len(zs[t]) < a.min_rows: print(f"{t:7s} {len(zs[t]):5d}  only {len(zs[t])} rows (< --min-rows {a.min_rows}): temperature kept at {cfg.temperatures[t]:.3f}"); continue
         T0 = cfg.temperatures[t]; T1 = float(min(GRID, key=lambda T: nll(zs[t], ts[t], T))); new[t] = T1
         if T1 <= GRID[0] * 1.001 or T1 >= GRID[-1] * 0.999: print(f"  warning: {t} temperature hit the grid edge ({T1:.3f}); the validation rows are probably too few or too easy")
-        print(f"{t:7s} {len(zs[t]):5d} {T0:9.3f} {T1:8.3f} {nll(zs[t], ts[t], T0):10.4f} {nll(zs[t], ts[t], T1):9.4f} {ece(zs[t], ts[t], T0):10.4f} {ece(zs[t], ts[t], T1):9.4f}")
+        acc = 100 * float(np.mean([z.argmax() == y.argmax() for z, y in zip(zs[t], ts[t])]))
+        print(f"{t:7s} {len(zs[t]):5d} {acc:5.1f}% {T0:9.3f} {T1:8.3f} {nll(zs[t], ts[t], T0):10.4f} {nll(zs[t], ts[t], T1):9.4f} {ece(zs[t], ts[t], T0):10.4f} {ece(zs[t], ts[t], T1):9.4f}")
     if skipped: print(f"{skipped} rows did not fit the context and were skipped")
     if a.dry_run: print("dry run: nothing written"); return
     cfg.temperatures = new; cfg.save(root)

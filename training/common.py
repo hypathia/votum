@@ -4,7 +4,7 @@ Paths come from environment variables with local defaults:
   VOTUM_DATA      training data                 (default: data/ next to this file)
   VOTUM_RUNS      checkpoints, logs, caches     (default: runs/ next to this file)
   VOTUM_BACKBONE  backbone repo id              (default: swiss-ai/Apertus-v1.5-8B, from the Hugging Face cache in HF_HOME)
-disk_guard() refuses a large write that would leave less than VOTUM_DISK_FLOOR_GB (default 30) free."""
+disk_guard() refuses a large write that would leave less than VOTUM_DISK_FLOOR_GB (default 10) free."""
 import json, os, shutil, sys
 from pathlib import Path
 
@@ -34,8 +34,15 @@ RECIPE = dict(
 )
 
 
-def snapshot(repo, kind="models"):
-    hits = sorted((HF_HOME / "hub" / f"{kind}--{repo.replace('/', '--')}" / "snapshots").glob("*"))
+PINNED = {"swiss-ai/Apertus-v1.5-8B": "ef4bbc54d6fe658bc782280ff9f3b53a10a9758f"}   # the revision Votum-8B was trained on (votum_config.json)
+
+
+def snapshot(repo, kind="models", revision=None):
+    """the local snapshot of a Hub repo: the pinned revision when present, else the newest snapshot directory"""
+    d = HF_HOME / "hub" / f"{kind}--{repo.replace('/', '--')}" / "snapshots"
+    rev = revision or PINNED.get(repo)
+    if rev and (d / rev).exists() and ((d / rev / "config.json").exists() or kind == "datasets"): return d / rev
+    hits = sorted(d.glob("*"))
     for h in reversed(hits):
         if kind == "datasets" or (h / "config.json").exists():
             return h
@@ -45,6 +52,8 @@ def snapshot(repo, kind="models"):
 def backbone_path(repo=None, weights=True):
     """-> (repo, local snapshot path); raises if absent (no implicit download). weights=False accepts a tokenizer-only snapshot."""
     repo = repo or os.environ.get("VOTUM_BACKBONE", BACKBONE)
+    if Path(repo).is_dir() and (Path(repo) / "config.json").exists():      # a local checkpoint directory (e.g. a Votum repo)
+        return repo, Path(repo)
     p = snapshot(repo)
     if p is not None and (not weights or any(p.glob("*.safetensors"))):
         return repo, p
@@ -56,8 +65,8 @@ def free_gb(path):
 
 
 def disk_guard(path, need_gb=0.0, floor_gb=None):
-    """Raise before a write that would take the filesystem holding `path` below the floor (default 30 GB)."""
-    floor = float(os.environ.get("VOTUM_DISK_FLOOR_GB", 30)) if floor_gb is None else floor_gb
+    """Raise before a write that would take the filesystem holding `path` below the floor (default 10 GB)."""
+    floor = float(os.environ.get("VOTUM_DISK_FLOOR_GB", 10)) if floor_gb is None else floor_gb
     p = Path(path)
     while not p.exists(): p = p.parent
     f = free_gb(p)

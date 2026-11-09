@@ -9,7 +9,7 @@ description = "Votum: a single-pass decision model on Apertus-1.5-8B (probabilit
 readme = "README.md"
 license = "Apache-2.0"
 license-files = ["LICENSE", "NOTICE"]
-requires-python = ">=3.10"
+requires-python = ">=3.11"   # vLLM 0.33 needs 3.11+; 3.12 is what we test
 # Reference path (PyTorch): mainline transformers with the `apertus` model type (>= 4.56).
 dependencies = [
   "torch>=2.5",

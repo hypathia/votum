@@ -103,6 +103,7 @@ class Trainer:
         self.opt = torch.optim.AdamW(groups, betas=R_["betas"], weight_decay=R_["weight_decay"])
         self.plan = Plan([r["n_tok"] for r in self.rows], a.seed, a.tokens_per_step, a.plan_micro_tokens or a.micro_tokens)
         self.step = 0; self.out = C.RUNS / a.tag; self.out.mkdir(parents=True, exist_ok=True)
+        if not a.no_save: C.disk_guard(self.out, need_gb=2.0)       # fail now, not after hours of training (states ~0.6 GB, checkpoints ~0.2 GB)
 
     # ------------------------------------------------------------------ helpers
     def encode(self, row, step):
@@ -192,8 +193,11 @@ class Trainer:
         if a.resume and states: self.load_state(states[-1])
         elif a.init_weights:   # continue from a light checkpoint (adapter / span head / gate only): fresh optimizer, plan resumed at --init-step
             from peft import set_peft_model_state_dict; from safetensors.torch import load_file
-            ck = Path(a.init_weights); res = set_peft_model_state_dict(self.model, {k: v.to(self.dev) for k, v in load_file(str(ck / "adapter" / "adapter_model.safetensors")).items()})
-            assert not getattr(res, "unexpected_keys", None), res.unexpected_keys
+            ck = Path(a.init_weights)
+            if (ck / "adapter" / "adapter_model.safetensors").exists():
+                res = set_peft_model_state_dict(self.model, {k: v.to(self.dev) for k, v in load_file(str(ck / "adapter" / "adapter_model.safetensors")).items()})
+                assert not getattr(res, "unexpected_keys", None), res.unexpected_keys
+            else: print(f"[{a.tag}] no adapter in {ck}: the LoRA starts from zero on the given backbone", flush=True)
             self.span.load_state_dict(torch.load(ck / "span_head.pt", map_location=self.dev))
             if self.gate is not None and (ck / "gate.pt").exists():
                 miss, unexp = self.gate.load_state_dict(torch.load(ck / "gate.pt", map_location=self.dev), strict=False); assert not unexp, unexp

@@ -8,7 +8,7 @@
   <a href="https://huggingface.co/{{ORG}}/Votum-8B"><img alt="model" src="https://img.shields.io/badge/model-Votum--8B-DA291C?logo=huggingface&logoColor=white"></a>
   <a href="https://huggingface.co/datasets/{{ORG}}/Votum-Pool"><img alt="dataset" src="https://img.shields.io/badge/data-Votum--Pool-DA291C?logo=huggingface&logoColor=white"></a>
   <a href="https://huggingface.co/swiss-ai/Apertus-v1.5-8B"><img alt="base" src="https://img.shields.io/badge/base-Apertus--1.5--8B-1D1D1F"></a>
-  <img alt="python" src="https://img.shields.io/badge/python-3.10%2B-1D1D1F">
+  <img alt="python" src="https://img.shields.io/badge/python-3.11%2B-1D1D1F">
   <img alt="license" src="https://img.shields.io/badge/license-Apache--2.0-1D1D1F">
 </p>
 
@@ -32,11 +32,15 @@ probabilities always sum to one.
 ## Quickstart
 
 ```bash
-pip install "votum @ git+https://github.com/{{ORG}}/votum"
+pip install "votum @ git+https://github.com/{{ORG}}/votum"            # PyTorch reference path
+pip install "votum[vllm] @ git+https://github.com/{{ORG}}/votum"      # + the vLLM server (install this one directly if you will serve)
 ```
 
-Accept the Apertus Acceptable Use Policy on [{{ORG}}/Votum-8B](https://huggingface.co/{{ORG}}/Votum-8B) and run
-`huggingface-cli login`. The repository holds everything the model needs.
+Requirements: Python 3.11 or newer (3.12 tested), a CUDA GPU with 24 GB for the bf16 weights (16 GB for the
+[FP8 variant](#serve)); tested with torch 2.14, transformers 5.20 and vLLM 0.33.0, the versions `votum[vllm]` pins. The
+reference path also runs on the CPU, slowly. Accept the Apertus Acceptable Use Policy on
+[{{ORG}}/Votum-8B](https://huggingface.co/{{ORG}}/Votum-8B) and run `hf auth login`. The repository holds everything the
+model needs.
 
 ```python
 from votum import Votum
@@ -56,9 +60,17 @@ out = vm.decide({
 out["answers"]["team"]     # {"type": "choice", "choice": "billing", "confidence": ..., "probabilities": {...}}
 ```
 
-Three question types: **`choice`** (the choice, its confidence and every option's probability), **`noul`** (the
-probability of yes) and **`score`** (the expected level and each level's probability). A request takes up to 8
-questions about one state; they are answered together, in one pass over the state.
+A request takes up to 8 questions about one state; they are answered together, in one pass over the state. The
+request and the answers, field by field:
+
+| Question (`questions.<id>`) | Answer (`answers.<id>`) |
+|---|---|
+| `{"type": "choice", "instructions": str, "criteria": {option_id: text} or [option_id, ...]}` (2 or more options) | `{"type": "choice", "choice": option_id, "confidence": p of the choice, "probabilities": {option_id: p}}` |
+| `{"type": "noul", "instructions": str, "criteria": {"true": text, "false": text}}` (criteria optional) | `{"type": "noul", "noul": p(yes)}` |
+| `{"type": "score", "instructions": str, "criteria": [level texts, low to high]}` | `{"type": "score", "score": expected level index (float), "confidence": p of the most likely level, "legend": {"0": text, ...}, "probabilities": {"0": p, ...}}` |
+
+`state` is a string or any JSON object (serialised with sorted keys). The response also carries `usage.output_tokens: 0`
+(nothing is generated); a question whose prompt exceeds 8,192 tokens is an error (HTTP 400 on the server).
 
 ## Serve
 

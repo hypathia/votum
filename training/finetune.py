@@ -10,9 +10,15 @@ $VOTUM_RUNS/<tag>/ (default training/runs/<tag>/): log.jsonl, state_<step>.pt an
 layout flags are fixed to the released layout (option isolation, shared positions, bidirectional layers 3, 7, ..., 31,
 request headers, FlexAttention); everything the trainer accepts can still be overridden through --train-arg.
 
-Hardware. The backbone is loaded in bf16 (about 18 GB) with gradient checkpointing; the LoRA and head add under 1 GB.
+Two modes. "merged" (default): the backbone is the Votum checkpoint itself (the released adapter is already folded into its
+weights) and a new LoRA is trained on top, starting from zero, with the released pointer head; this runs in the same
+environment as serving (mainline transformers, no Apertus download). "adapter": the released adapter is continued on the
+Apertus base, as the released run was trained; it needs the base in HF_HOME and the training fork (see Environment).
+
+Hardware. The backbone is loaded in bf16 (about 16 GB) with gradient checkpointing; the LoRA and head add under 1 GB.
 What remains is activation memory, which grows with --micro-tokens, the padded size of one micro-batch. The released run
-used 16,384 on a 96 GB card and peaked at 46.9 GiB. Rows longer than --micro-tokens are never trained (the data plan
+used 16,384 on a 96 GB card and peaked at 46.9 GiB. The automatic choice looks at the FREE memory of the card (a display or
+another process counts). Rows longer than --micro-tokens are never trained (the data plan
 skips them), so a small micro-batch also caps the prompt length you can learn from. --micro-tokens auto picks a value
 from the GPU's memory (see MICRO_BY_GB); use --probe to measure the peak on your card before a long run."""
 from __future__ import annotations
@@ -27,44 +33,63 @@ import common as C                                          # noqa: E402
 # GPU memory (GiB, total) -> micro-batch tokens. Measured: 16,384 peaks at 46.9 GiB (released run, 96 GB card); on an
 # RTX 4090 (24 GB) 2,048 peaks at 17.6 GiB and 3,072 at 18.5 GiB, while 4,096 runs out of memory. The 32 GB and 48 GB
 # entries are interpolated from those points, not measured; check them with --probe.
-MICRO_BY_GB = [(70, 16384), (44, 8192), (30, 4096), (22, 3072)]
+MICRO_BY_GB = [(70, 16384), (44, 8192), (30, 4096), (21, 3072)]
 LAYOUT = ["--opt-block", "--opt-isolate", "--shared-positions", "--bidir-layers", "--attn", "flex",
           "--header", "group", "--header-blind", "--header-max-opts", "999", "--loss-norm", "constant", "--tok-field", "n_tok_span", "--repack"]
 
 
-def gpu_gib() -> float | None:
+def gpu_gib() -> tuple[float, float] | None:
+    """(free, total) GiB of GPU 0, or None without CUDA"""
     try:
         import torch
-        return torch.cuda.get_device_properties(0).total_memory / 2**30 if torch.cuda.is_available() else None
+        if not torch.cuda.is_available(): return None
+        free, total = torch.cuda.mem_get_info(0); return free / 2**30, total / 2**30
     except Exception: return None
 
 
-def pick_micro(gib: float | None) -> int:
-    if gib is None: raise SystemExit("no CUDA device found; pass --micro-tokens explicitly to build a command for another machine")
+def pick_micro(mem: tuple[float, float] | None) -> int:
+    """from the FREE memory (a display or another process on the card counts), not the card's size"""
+    if mem is None: raise SystemExit("no CUDA device found; pass --micro-tokens explicitly to build a command for another machine")
+    free, total = mem
     for floor, mt in MICRO_BY_GB:
-        if gib >= floor: return mt
-    raise SystemExit(f"{gib:.0f} GiB of GPU memory is below the smallest measured configuration (a 24 GB card with 3,072-token micro-batches)")
+        if free >= floor: return mt
+    if free >= 19.5: return 2048                                 # a 24 GB card that also drives a display: measured 18.5 GiB peak
+    raise SystemExit(f"{free:.1f} GiB of GPU memory free ({total:.0f} GiB card): below the smallest measured configuration (19.5 GiB free, 2,048-token micro-batches). Free the card or pass --micro-tokens")
 
 
-def init_checkpoint(src: str, out: Path, token=None) -> Path:
-    """the released adapter + pointer head as a light checkpoint train.py can start from (--init-weights): adapter/ and
-    span_head.pt (the head's unused query projection is zero; the trainer never reads it)."""
+def init_checkpoint(src: str, out: Path, mode: str, token=None) -> Path:
+    """a light checkpoint train.py starts from (--init-weights). mode "merged": only the released pointer head, read from
+    the Votum checkpoint's shards; the LoRA starts from zero on the merged weights. mode "adapter": the released adapter
+    and head, to be applied to the Apertus base. (The head's unused query projection is zero; the trainer never reads it.)"""
+    import json as J
     import torch
+    from safetensors import safe_open
     from safetensors.torch import load_file
-    from votum.build import adapter_dir
+    from votum.build import TOKENIZER_FILES, adapter_dir, resolve
     from votum.config import VotumConfig
-    ad = adapter_dir(src, token=token); cfg = VotumConfig.load(ad)
-    (out / "adapter").mkdir(parents=True, exist_ok=True)
-    for f in ("adapter_config.json", "adapter_model.safetensors"): shutil.copy(ad / f, out / "adapter" / f)
-    head = load_file(str(ad / "pointer_head.safetensors")); d = head["o.weight"].shape[1]
-    torch.save({"q.weight": torch.zeros(cfg.pointer_rank, d), "o.weight": head["o.weight"].float(), "q0": head["q0"].float()}, out / "span_head.pt")
-    C.jdump(dict(source=str(src), adapter=str(ad), base_model=cfg.base_model, base_revision=cfg.base_revision, temperatures=cfg.temperatures), out / "init_meta.json")
+    out.mkdir(parents=True, exist_ok=True)
+    if mode == "adapter":
+        ad = adapter_dir(src, token=token); cfg = VotumConfig.load(ad)
+        (out / "adapter").mkdir(exist_ok=True)
+        for f in ("adapter_config.json", "adapter_model.safetensors"): shutil.copy(ad / f, out / "adapter" / f)
+        head = load_file(str(ad / "pointer_head.safetensors")); o, q0 = head["o.weight"], head["q0"]; backbone = None
+    else:
+        rd = resolve(src, None, token, ["config.json", "votum_config.json", "model*.safetensors", "model.safetensors.index.json", *TOKENIZER_FILES])
+        cfg = VotumConfig.load(rd); wm = J.loads((rd / "model.safetensors.index.json").read_text())["weight_map"]
+        with safe_open(str(rd / wm["pointer.o.weight"]), "pt") as f: o = f.get_tensor("pointer.o.weight")
+        with safe_open(str(rd / wm["pointer.q0"]), "pt") as f: q0 = f.get_tensor("pointer.q0")
+        backbone = str(rd)
+    torch.save({"q.weight": torch.zeros(cfg.pointer_rank, o.shape[1]), "o.weight": o.float(), "q0": q0.float()}, out / "span_head.pt")
+    C.jdump(dict(source=str(src), mode=mode, backbone=backbone, base_model=cfg.base_model, base_revision=cfg.base_revision, temperatures=cfg.temperatures), out / "init_meta.json")
     return out
 
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--from", dest="src", default=os.environ.get("VOTUM_REPO"), help="Votum-8B: Hub repo id or a local checkpoint directory with adapter/ (default $VOTUM_REPO)")
+    ap.add_argument("--mode", choices=["merged", "adapter"], default="merged",
+                    help="merged (default): train a new LoRA on the Votum checkpoint itself, one environment, no Apertus download; "
+                         "adapter: continue the released adapter on the Apertus base (needs the base in HF_HOME and the training fork)")
     ap.add_argument("--data", required=True, help="directory from prepare_data.py")
     ap.add_argument("--tag", required=True, help="run name: output in $VOTUM_RUNS/<tag>/")
     ap.add_argument("--steps", type=int, default=None, help="optimizer steps (default: --epochs over the training rows)")
@@ -82,23 +107,32 @@ def main(argv=None):
     a = ap.parse_args(argv)
     if not a.src: raise SystemExit("--from is required: the Votum-8B repo id or a local checkpoint directory")
     data = Path(a.data); st = json.loads((data / "stats.json").read_text()); tr = st["train"]
-    try: C.backbone_path()
-    except FileNotFoundError as e: raise SystemExit(f"{e}\nDownload swiss-ai/Apertus-v1.5-8B into HF_HOME first (huggingface-cli download swiss-ai/Apertus-v1.5-8B); it is gated on the Apertus Acceptable Use Policy")
+    if a.mode == "adapter":
+        try: C.backbone_path()
+        except FileNotFoundError as e: raise SystemExit(f"{e}\nDownload swiss-ai/Apertus-v1.5-8B into HF_HOME first (huggingface-cli download swiss-ai/Apertus-v1.5-8B); it is gated on the Apertus Acceptable Use Policy")
 
-    gib = gpu_gib(); mt = pick_micro(gib) if a.micro_tokens == "auto" else int(a.micro_tokens)
+    mem = gpu_gib(); mt = pick_micro(mem) if a.micro_tokens == "auto" else int(a.micro_tokens)
     if mt > a.tokens_per_step: raise SystemExit("--micro-tokens cannot exceed --tokens-per-step")
-    steps = a.steps or max(10, round(a.epochs * tr["tokens_total"] / (a.tokens_per_step * 0.85)))
+    want = a.epochs * tr["tokens_total"] / (a.tokens_per_step * 0.85)
+    steps = a.steps or max(10, round(want)); passes = steps * a.tokens_per_step * 0.85 / max(1, tr["tokens_total"])
     warm = min(25, max(2, steps // 10)); decay = min(100, max(1, steps // 4))
     too_long = tr["tokens_p90"] > mt
-    print(f"GPU: {gib:.0f} GiB" if gib else "GPU: none detected", f"| micro-batch {mt:,} tokens | {steps} steps x {a.tokens_per_step:,} tokens "
-          f"(~{a.epochs:g} epoch over {tr['rows']:,} rows, {tr['tokens_total']:,} tokens) | warm-up {warm}, cosine decay over the last {decay}", flush=True)
+    print((f"GPU: {mem[0]:.1f} of {mem[1]:.0f} GiB free" if mem else "GPU: none detected") + f" | micro-batch {mt:,} tokens | {steps} steps x {a.tokens_per_step:,} tokens "
+          f"= about {passes:.1f} passes over {tr['rows']:,} rows ({tr['tokens_total']:,} tokens) | warm-up {warm}, cosine decay over the last {decay}", flush=True)
+    if not a.steps and want < 10: print(f"NOTE: {a.epochs:g} epoch would be {want:.1f} steps; the minimum is 10, so this is {passes:.0f} passes over your rows. Small sets overfit quickly: check the validation accuracy from calibrate.py, or pass --steps", flush=True)
+    if a.tokens_per_step > 4 * max(1, tr["tokens_total"]): print("NOTE: one step is larger than your whole dataset; consider --tokens-per-step 16384 for a small set", flush=True)
     if too_long: print(f"WARNING: at least 10 % of the rows are longer than {mt:,} tokens (p90 = {tr['tokens_p90']}); the data plan skips rows longer than one micro-batch, so they will not be trained on", flush=True)
 
-    run = C.RUNS / a.tag; run.mkdir(parents=True, exist_ok=True)
-    init = run / "init"
-    if not (init / "span_head.pt").exists():
-        print(f"fetching the released adapter from {a.src}", flush=True); init_checkpoint(a.src, init, token=a.token)
-    argv_t = ["--lr", str(a.lr), "--lr-span", str(a.lr_head), "--seed", str(a.seed), "--tag", a.tag, "--train", str(data / "train.jsonl.gz"),
+    run = C.RUNS / a.tag; init = run / "init"
+    if a.dry_run and not (init / "span_head.pt").exists():
+        backbone = ["--backbone", a.src] if a.mode == "merged" else []       # nothing is written in a dry run
+    else:
+        run.mkdir(parents=True, exist_ok=True); C.disk_guard(run, need_gb=2.0)
+        if not (init / "span_head.pt").exists():
+            print(f"preparing the start checkpoint from {a.src} ({a.mode})", flush=True); init_checkpoint(a.src, init, a.mode, token=a.token)
+        meta = json.loads((init / "init_meta.json").read_text())
+        backbone = ["--backbone", meta["backbone"]] if meta.get("backbone") else []
+    argv_t = [*backbone, "--lr", str(a.lr), "--lr-span", str(a.lr_head), "--seed", str(a.seed), "--tag", a.tag, "--train", str(data / "train.jsonl.gz"),
               "--steps", str(steps), "--warmup", str(warm), "--final-decay", str(decay), "--tokens-per-step", str(a.tokens_per_step),
               "--micro-tokens", str(mt), "--save-every", str(a.save_every), "--init-weights", str(init), *LAYOUT, *a.train_arg]
     if a.probe: argv_t += ["--steps", "2", "--until", "2", "--no-save", "--print-every", "1", "--final-decay", "1", "--warmup", "1"]
@@ -113,7 +147,7 @@ def main(argv=None):
         pk = max(r["peak_gib"] for r in recs); sec = recs[-1]["sec"]
         print(f"\nprobe: peak {pk:.1f} GiB with {mt:,}-token micro-batches; last step {sec:.0f} s for {recs[-1]['n_q']} questions "
               f"({recs[-1]['padded_tok_s']:,} padded tokens/s); {steps} steps would take about {steps * sec / 3600:.1f} h")
-        if gib and pk > 0.92 * gib: print("the peak is within 8 % of the card's memory: use a smaller --micro-tokens")
+        if mem and pk > 0.92 * mem[0]: print("the peak is within 8 % of the free memory: use a smaller --micro-tokens")
         return
     ck = sorted(run.glob("ckpt_*"), key=lambda p: int(p.name.split("_")[1]))[-1]
     print(f"\ndone. Next:\n  python ../scripts/export_hf.py --ckpt {ck} --out <out dir>           # merged checkpoint + adapter/ form"

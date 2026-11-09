@@ -11,7 +11,7 @@ a collector gathers whatever arrives within --batch-window-ms (or up to --max-ba
 An API key is required only if the named environment variable is set (Authorization: Bearer <key>).
 """
 
-import argparse, asyncio, os, threading, time, uuid
+import argparse, sys, asyncio, os, threading, time, uuid
 
 from .. import request as R
 
@@ -93,10 +93,15 @@ def main(argv=None) -> None:
     ap.add_argument("--max-model-len", type=int, default=8192); ap.add_argument("--gpu-memory-utilization", type=float, default=0.75)
     ap.add_argument("--max-num-seqs", type=int, default=256, help="sequences per engine step (exact/LoRA checkpoints use at most 32)")
     a = ap.parse_args(argv)
+    import torch
+    if not torch.cuda.is_available(): sys.exit("votum serve needs a CUDA GPU (vLLM); none is visible to torch")
     import uvicorn
     from .client import VotumVLLM
     vm = VotumVLLM(a.model, max_model_len=a.max_model_len, gpu_memory_utilization=a.gpu_memory_utilization, max_num_seqs=a.max_num_seqs)
-    uvicorn.run(build_app(vm, a.name, os.environ.get(a.api_key_env), a.batch_window_ms, a.max_batch), host=a.host, port=a.port, log_level="warning")
+    key = os.environ.get(a.api_key_env)
+    if not key and a.host not in ("127.0.0.1", "localhost", "::1"): print(f"votum serve: no API key ({a.api_key_env} unset) on a non-local host {a.host}: anyone who can reach the port can use the model", file=sys.stderr, flush=True)
+    print(f"votum serve: ready at http://{a.host}:{a.port}/v1/systemone (model {a.name!r}, auth {'Bearer key from $' + a.api_key_env if key else 'off'})", flush=True)
+    uvicorn.run(build_app(vm, a.name, key, a.batch_window_ms, a.max_batch), host=a.host, port=a.port, log_level="warning")
 
 
 if __name__ == "__main__":
