@@ -9,16 +9,16 @@ with `votum serve`.
 ## A short prompt, one question
 
 The requests are items of the OpenDecisions benchmark: one question per request, about 445 prompt tokens each. Votum
-is compared with the same Apertus model writing its answer as text.
+is compared with Apertus-1.5-8B generating its answer.
 
-| How the answer is produced | Prompt | Tokens written | Latency, one request at a time (median) | Requests per second, 256 sent at once |
+| Model and output | Prompt | Tokens written | Latency, one request at a time (median) | Requests per second, 256 sent at once |
 |---|---|---:|---:|---:|
-| **Votum: a decision** | 1 question, ~445 tokens | **0** | **39 ms** | **23.5** |
-| Text: the choice as JSON (structured output) | 1 question, ~445 tokens | 8 | 206 ms | 21.0 |
-| Text: the choice and its probabilities as JSON (structured output) | 1 question, ~445 tokens | 54 | 1.1 s | 10.9 |
-| Text: reasoning first, then the JSON | 1 question, ~445 tokens | 370 | 10.5 s | 1.9 (64 sent at once) |
+| **Votum-8B: single-pass decision** | 1 question, ~445 tokens | **0** | **39 ms** | **23.5** |
+| Apertus-1.5-8B: structured output with just the choice | 1 question, ~445 tokens | 8 | 206 ms | 21.0 |
+| Apertus-1.5-8B: structured output with the choice and its probabilities | 1 question, ~445 tokens | 54 | 1.1 s | 10.9 |
+| Apertus-1.5-8B: reasoning, then the answer (up to 512 tokens) | 1 question, ~445 tokens | 370 | 10.5 s | 1.9 (64 sent at once) |
 
-The Votum row is the released model on vLLM 0.33, with latency taken over 50 requests. The three text rows were
+The Votum row is the released model on vLLM 0.33, with latency taken over 50 requests. The three Apertus rows were
 measured earlier on the same card, with vLLM 0.12 and a different sample of 256 OpenDecisions items, so the comparison
 is close but not exactly like for like. The reasoning row is free text capped at 512 new tokens.
 

@@ -248,8 +248,8 @@ Asking several questions about the same state at once is cheaper than asking the
 read only once. With eight questions per request, the long document gives 5 times as many decisions per second as
 with one.
 
-For comparison, the same Apertus model *writing* the answer and its probabilities as JSON takes 1.1 s for the short
-text, against 39 ms. [docs/benchmarks.md](docs/benchmarks.md) says exactly how each number was measured.
+For comparison, Apertus-1.5-8B generating the choice and its probabilities as structured output takes 1.1 s for the
+short text, against 39 ms. [docs/benchmarks.md](docs/benchmarks.md) says exactly how each number was measured.
 
 ## How good are the answers?
 
