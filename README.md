@@ -85,7 +85,7 @@ VOTUM_API_KEY=... votum serve --model {{ORG}}/Votum-8B --host 0.0.0.0 --port 801
 batched. Start-up takes about a minute.
 
 **On a 16 GB card**, serve [{{ORG}}/Votum-8B-FP8](https://huggingface.co/{{ORG}}/Votum-8B-FP8) instead: the same model
-in a little over half the memory (9.2 GB), which gives the same answer 96–98 % of the time. It runs on the server only, not in the Python
+in a little over half the memory (9.2 GB), which gives the same answer 96–99 % of the time. It runs on the server only, not in the Python
 quickstart above.
 
 **How fast is it?** A decision costs one read of the prompt. Here it is next to asking the same backbone to write its
