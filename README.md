@@ -17,7 +17,7 @@
   <a href="#images">Images</a> ·
   <a href="#run-it-as-a-server">Server</a> ·
   <a href="#speed">Speed</a> ·
-  <a href="#fine-tune-it">Fine-tune</a> ·
+  <a href="#fine-tuning">Fine-tuning</a> ·
   <a href="#documentation">Documentation</a>
 </p>
 
@@ -262,9 +262,9 @@ that scores answers.
 Nothing is generated at any point, which is where the speed comes from.
 [docs/internals.md](docs/internals.md) has the diagram and the details.
 
-## Fine-tune it
+## Fine-tuning
 
-To teach Votum your own task, follow [training/README.md](training/README.md). It is a step-by-step guide: prepare
+To fine-tune Votum on your own task, follow [training/README.md](training/README.md). It is a step-by-step guide: prepare
 your examples, train from the released model, export the result and calibrate its probabilities. One 24 GB GPU is
 enough.
 
