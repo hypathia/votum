@@ -138,13 +138,24 @@ A request has two parts:
 - **`state`**: the context to decide on. A string, or any JSON object.
 - **`questions`**: up to 8 questions about that state, keyed by an id. They are answered together.
 
-Every question has `instructions` (the question text) and a `type`:
+Every question has `instructions` (the question text), a `type` and, depending on the type, `criteria`:
 
-| `type` | Use | Request fields | Response fields |
-|---|---|---|---|
-| `choice` | picking one of several options | `criteria`: the options, as `{name: description}` or a list of names | `choice`: the most likely option. `confidence`: its probability. `probabilities`: one per option |
-| `noul` | a yes/no question | nothing | `noul`: the probability that the answer is yes |
-| `score` | a rating on a scale | `criteria`: the levels, lowest first | `score`: the expected level, counting from 0 (0.96 is close to level 1, the second one). `confidence` and `probabilities` per level, and `legend`: which number is which level |
+| `type` | Use | `criteria` |
+|---|---|---|
+| `choice` | one of several options | the options: `{id: description}`, or a list of ids |
+| `noul` | a yes/no question | optional: `{"true": description, "false": description}` |
+| `score` | a rating on a scale | the levels, lowest first |
+
+The answer to a question holds its `type` and these fields:
+
+| Field | Returned for | Value |
+|---|---|---|
+| `choice` | `choice` | id of the most likely option |
+| `noul` | `noul` | probability that the answer is yes |
+| `score` | `score` | expected level, counting from 0 (0.96 is close to level 1, the second one) |
+| `confidence` | `choice`, `score` | probability of the most likely option or level |
+| `probabilities` | `choice`, `score` | probability of every option or level |
+| `legend` | `score` | level index to level text |
 
 Notes:
 
