@@ -181,7 +181,8 @@ Measured on one NVIDIA RTX 4090 (24 GB) with the full Votum-8B, running as a ser
 | 8 questions about a long document | about 3,300 tokens | 465 ms | 15.8 |
 
 Asking several questions about the same state at once is cheaper than asking them one by one, because the state is
-read only once.
+read only once. With eight questions per request, the long document gives 5 times as many decisions per second as
+with one.
 
 For comparison, the same Apertus model *writing* the answer and its probabilities as JSON takes 1.1 s for the short
 text, about 27 times longer. [docs/benchmarks.md](docs/benchmarks.md) says exactly how each number was measured.
