@@ -4,7 +4,12 @@ The state of a request can hold images. Put one anywhere in it as `{"image": ...
 
 ```python
 request = {
-    "state": {"photo": {"image": "wreck.jpg"}, "line": "mountain branch, km 41"},
+    "state": {
+        "photo": {
+            "image": "wreck.jpg",
+        },
+        "line": "mountain branch, km 41",
+    },
     "questions": {
         "incident": {
             "type": "choice",
@@ -16,7 +21,10 @@ request = {
                 "none": "Nothing, normal operation",
             },
         },
-        "people": {"type": "noul", "instructions": "Are people at the scene?"},
+        "people": {
+            "type": "noul",
+            "instructions": "Are people at the scene?",
+        },
         "severity": {
             "type": "score",
             "instructions": "How severe is the damage?",

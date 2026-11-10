@@ -75,7 +75,10 @@ request = {
                 "hr": "Human resources",
             },
         },
-        "refund": {"type": "noul", "instructions": "Does the customer ask for money back?"},
+        "refund": {
+            "type": "noul",
+            "instructions": "Does the customer ask for money back?",
+        },
         "urgency": {
             "type": "score",
             "instructions": "How urgent is this ticket?",
@@ -95,15 +98,31 @@ print(out["answers"])
         "type": "choice",
         "choice": "billing",
         "confidence": 0.9619,
-        "probabilities": {"billing": 0.9619, "tech": 0.0079, "sales": 0.0243, "hr": 0.0059},
+        "probabilities": {
+            "billing": 0.9619,
+            "tech": 0.0079,
+            "sales": 0.0243,
+            "hr": 0.0059,
+        },
     },
-    "refund": {"type": "noul", "noul": 0.8994},
+    "refund": {
+        "type": "noul",
+        "noul": 0.8994,
+    },
     "urgency": {
         "type": "score",
         "score": 0.9621,
         "confidence": 0.4133,
-        "legend": {"0": "low", "1": "medium", "2": "high"},
-        "probabilities": {"0": 0.3123, "1": 0.4133, "2": 0.2744},
+        "legend": {
+            "0": "low",
+            "1": "medium",
+            "2": "high",
+        },
+        "probabilities": {
+            "0": 0.3123,
+            "1": 0.4133,
+            "2": 0.2744,
+        },
     },
 }
 ```
@@ -145,7 +164,12 @@ A state can hold images. Put one anywhere in it as `{"image": ...}`:
 
 ```python
 request = {
-    "state": {"photo": {"image": "wreck.jpg"}, "line": "mountain branch, km 41"},
+    "state": {
+        "photo": {
+            "image": "wreck.jpg",
+        },
+        "line": "mountain branch, km 41",
+    },
     "questions": {
         "incident": {
             "type": "choice",
@@ -156,7 +180,7 @@ request = {
                 "fire": "A fire",
                 "none": "Nothing, normal operation",
             },
-        }
+        },
     },
 }
 
