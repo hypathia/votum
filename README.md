@@ -41,7 +41,7 @@ You need Python 3.11 or newer and an NVIDIA graphics card (GPU). Pick the model 
 | Your GPU has | Use | Good to know |
 |---|---|---|
 | 24 GB or more | [votum-ai/Votum-8B](https://huggingface.co/votum-ai/Votum-8B) | the full model, a 16 GB download |
-| 16 GB | [votum-ai/Votum-8B-FP8](https://huggingface.co/votum-ai/Votum-8B-FP8) | a compressed copy, a 9 GB download; it gives the same answer as the full model 96 to 99 % of the time |
+| 16 GB | [votum-ai/Votum-8B-FP8](https://huggingface.co/votum-ai/Votum-8B-FP8) | FP8-quantized weights, a 9 GB download; it gives the same answer as the full model 96 to 99 % of the time |
 
 **1. Install the package.**
 
