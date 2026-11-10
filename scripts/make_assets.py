@@ -1,4 +1,4 @@
-"""Architecture and result graphics for the Votum repos (SVG source + 2x PNG), in a product / landing-page style:
+"""Architecture, example and data graphics for the Votum repos (SVG source + 2x PNG), in a product / landing-page style:
 cards with depth, hero numbers, one strong red accent, Inter Display headings, JetBrains Mono for prompts.
 Every figure is drawn twice: <name>.png on a light grey backdrop with white elevated cards (light pages, and still legible
 where a viewer falls back to it on a dark background), and <name>_dark.png on a transparent canvas with translucent cards.
@@ -146,39 +146,6 @@ def option_rows(x, y, w, opts, row=19, lab_w=0.36, size=12, bh=8):
         if win: b.append(pill(x + w, yy, f"{p:.2f}", 11))
         else: b.append(T(x + w - 2, yy + 4, f"{p:.2f}", size, MUTED, 400, "end"))
     return "".join(b)
-
-
-# ---------------------------------------------------------------------------------------------------------- results (tiles + routing)
-def results():
-    tiles = [("Jev Decision Index 0.3", "36.9", "public suite, 140,620 requests"), ("OpenDecisions", "59.4", "Capability"),
-             ("JevBench-Open", "55.1", "Capability"), ("Held-out de · fr · it", "+4.4", "points over frozen Apertus")]
-    b = [head("Results", "Decision benchmarks, and confidence you can route on", "Accuracy on public sets outside the training pool: all items, and the most confident half of the answers")]
-    tw = (W - 2 * PAD - 3 * GAP) / 4; th = 108
-    for i, (k, v, lab) in enumerate(tiles):
-        b.append(tile(PAD + i * (tw + GAP), TOP, tw, th, k, v, lab, hero=i == 0))
-    sets = [("BoolQ", 88.9, 98.2), ("SIB-200 · 12 languages", 82.4, 97.4), ("PubMedQA", 76.1, 89.4), ("Belebele", 61.4, 87.3),
-            ("HellaSwag", 71.5, 87.0), ("CLINC-150", 76.4, 86.7), ("BANKING77 · 77-way", 70.4, 85.3), ("TruthfulQA", 64.7, 85.0),
-            ("MMLU", 60.4, 82.1), ("Climate-FEVER", 52.6, 71.7), ("WinoGrande", 62.9, 70.5)]
-    cy = TOP + th + GAP; rh = 24; ch = 58 + rh * len(sets) + 30
-    b.append(card(PAD, cy, W - 2 * PAD, ch))
-    ly = cy + 30
-    b.append(f'<circle cx="{PAD + 26}" cy="{ly - 4}" r="5" fill="{NEUTRAL}"/>' + T(PAD + 36, ly, "all items", 12, MUTED, 500))
-    b.append(f'<circle cx="{PAD + 118}" cy="{ly - 4}" r="5" fill="{RED}"/>' + T(PAD + 128, ly, "most confident half: route these automatically, send the rest to a person", 12, MUTED, 500))
-    top = cy + 66; x0, x1 = PAD + 250, W - PAD - 70; X = lambda v: x0 + (v - 50) / 50 * (x1 - x0)
-    def spans(a, c):                                   # x ranges of the two value labels of a row
-        return [(X(a) - 10 - textw(f"{a:.1f}", 11), X(a) - 8), (X(c) + 8, X(c) + 10 + textw(f"{c:.1f}", 12))]
-    for v in (50, 60, 70, 80, 90, 100):
-        for i, (lab, a, c) in enumerate(sets):            # the gridline pauses where a label sits on it
-            if not any(x0 - 3 <= X(v) <= x1 + 3 for x0, x1 in spans(a, c)):
-                b.append(f'<line x1="{X(v):.1f}" y1="{top + i * rh - rh / 2}" x2="{X(v):.1f}" y2="{top + i * rh + rh / 2}" stroke="{GRID}"/>')
-        b.append(T(X(v), top + rh * len(sets) + 8, f"{v} %", 10.5, MUTED, 400, "middle"))
-    for i, (lab, a, c) in enumerate(sets):
-        y = top + i * rh
-        b.append(T(PAD + 22, y + 4, lab, 12.5, INK, 500))
-        b.append(f'<line x1="{X(a):.1f}" y1="{y}" x2="{X(c):.1f}" y2="{y}" stroke="{RED}" stroke-opacity=".28" stroke-width="4" stroke-linecap="round"/>')
-        b.append(f'<circle cx="{X(a):.1f}" cy="{y}" r="5" fill="{NEUTRAL}"/><circle cx="{X(c):.1f}" cy="{y}" r="5.5" fill="{RED}"/>')
-        b.append(T(X(c) + 10, y + 4, f"{c:.1f}", 12, INK, 700)); b.append(T(X(a) - 10, y + 4, f"{a:.1f}", 11, MUTED, 400, "end"))
-    save("results", cy + ch + PAD, "".join(b))
 
 
 # ---------------------------------------------------------------------------------------------------------- shared
@@ -421,5 +388,5 @@ def flag():
 
 flag()
 for name in THEMES:
-    theme(name); results(); architecture(); examples(); pool()
+    theme(name); architecture(); examples(); pool()
 print("written to", OUT)

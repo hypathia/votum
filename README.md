@@ -1,6 +1,6 @@
-<h1 align="center"><img src="assets/flag.svg" height="30" alt="Swiss flag"> votum</h1>
+<h1 align="center"><img src="assets/flag.svg" width="28" height="28" alt="Swiss flag"> votum</h1>
 
-<p align="center"><b>The Votum decision models: PyTorch reference, vLLM server, training and data recipe.</b></p>
+<p align="center"><b>Code for the Votum decision models: run them, serve them, fine-tune them.</b></p>
 
 <p align="center"><sub>Independent project, built on Apertus-1.5-8B (Swiss AI Initiative) · not affiliated</sub></p>
 
@@ -17,13 +17,16 @@
   <a href="#serve">Serve</a> ·
   <a href="#how-it-works">How it works</a> ·
   <a href="#reproduce">Reproduce and fine-tune</a> ·
+  <a href="#acknowledgements">Acknowledgements</a> ·
   <a href="https://huggingface.co/votum-ai/Votum-8B">Model card</a>
 </p>
 
-**Votum** turns <img src="assets/flag.svg" height="14" alt="Swiss flag"> [Apertus-1.5-8B](https://huggingface.co/swiss-ai/Apertus-v1.5-8B)
-into a decision model. Give it a state, a question and the options; it returns a probability for every option in one
-forward pass. Nothing is generated, so a decision costs one prompt read (about 40 ms on an RTX 4090) and the
-probabilities always sum to one.
+**Votum** turns <img src="assets/flag.svg" width="14" height="14" alt="Swiss flag"> [Apertus-1.5-8B](https://huggingface.co/swiss-ai/Apertus-v1.5-8B)
+into a decision model. You give it some context (an email, a document, a JSON record), a question about it and the
+possible answers. It gives back a probability for each answer.
+
+It does not write text. It reads the prompt once and scores the answers, so a decision takes about 40 ms on an
+RTX 4090, the result is always one of your options, and the probabilities always sum to one.
 
 <picture><source media="(prefers-color-scheme: dark)" srcset="assets/architecture_dark.png"><img src="assets/architecture.png" alt="The request as one prompt, the attention mask, the backbone and the pointer head"></picture>
 
@@ -32,8 +35,8 @@ probabilities always sum to one.
 ## Quickstart
 
 ```bash
-pip install "votum @ git+https://github.com/hypathia/votum"            # PyTorch reference path
-pip install "votum[vllm] @ git+https://github.com/hypathia/votum"      # + the vLLM server (install this one directly if you will serve)
+pip install "votum @ git+https://github.com/hypathia/votum"            # to use the model from Python
+pip install "votum[vllm] @ git+https://github.com/hypathia/votum"      # the same, plus the HTTP server
 ```
 
 You need Python 3.11 or newer and a CUDA GPU with 24 GB, or 16 GB with the [FP8 variant](#on-a-16-gb-card). It also
@@ -46,7 +49,7 @@ the model needs; there is no base model to fetch.
 ```python
 from votum import Votum
 
-vm = Votum.from_pretrained("votum-ai/Votum-8B")     # ~16 GB in bf16; a 24 GB GPU is plenty
+vm = Votum.from_pretrained("votum-ai/Votum-8B")     # 16 GB of weights; fits a 24 GB GPU
 
 out = vm.decide({
     "state": {"from": "anna@example.com", "subject": "Invoice 4411", "body": "I was charged twice in October."},
@@ -61,18 +64,21 @@ out = vm.decide({
 out["answers"]["team"]     # {"type": "choice", "choice": "billing", "confidence": ..., "probabilities": {...}}
 ```
 
-A request asks up to 8 questions about one state, and they are answered together in one pass over that state. There
-are three kinds of question, each with its own answer:
+The context is called the `state`; it can be a string or any JSON object. A request asks up to 8 questions about one
+state, and they are answered together. There are three kinds of question:
 
-| Question (`questions.<id>`) | Answer (`answers.<id>`) |
-|---|---|
-| `{"type": "choice", "instructions": str, "criteria": {option_id: text} or [option_id, ...]}` (2 or more options) | `{"type": "choice", "choice": option_id, "confidence": p of the choice, "probabilities": {option_id: p}}` |
-| `{"type": "noul", "instructions": str, "criteria": {"true": text, "false": text}}` (criteria optional) | `{"type": "noul", "noul": p(yes)}` |
-| `{"type": "score", "instructions": str, "criteria": [level texts, low to high]}` | `{"type": "score", "score": expected level index (float), "confidence": p of the most likely level, "legend": {"0": text, ...}, "probabilities": {"0": p, ...}}` |
+| `type` | Use it for | You give | You get back |
+|---|---|---|---|
+| `choice` | picking one of several options | `criteria`: the options, as `{id: description}` or a list of ids | `choice` (the most likely option), `confidence`, and `probabilities` for every option |
+| `noul` | a yes/no question | nothing more (optionally a description of what yes and no mean) | `noul`: the probability of yes |
+| `score` | a rating on a scale | `criteria`: the levels, lowest first | `score` (the expected level, e.g. 1.3), `confidence`, and `probabilities` for every level |
 
-The `state` is a string or any JSON object. A question whose prompt is longer than 8,192 tokens is refused, not
-truncated: an error in Python, HTTP 413 on the server (a malformed request is 400). The response also carries
-`usage.output_tokens: 0`, because nothing is generated.
+Every question also takes `instructions`, the question itself. The names `noul`, `instructions` and `criteria` come
+from the request format of the [Jev and Jeff](#acknowledgements) decision models, which Votum follows so that
+existing clients work unchanged.
+
+A question whose prompt is longer than 8,192 tokens is refused, not cut short: an error in Python, HTTP 413 on the
+server.
 
 ## Serve
 
@@ -81,13 +87,14 @@ pip install "votum[vllm] @ git+https://github.com/hypathia/votum"
 VOTUM_API_KEY=... votum serve --model votum-ai/Votum-8B --host 0.0.0.0 --port 8011
 ```
 
-`POST /v1/systemone` takes the same request as `vm.decide` and returns the same answers. Concurrent requests are
-batched. Start-up takes about a minute.
+`POST /v1/systemone` takes the same request as `vm.decide` and returns the same answers. Requests that arrive at the
+same time are processed together. Start-up takes about a minute.
 
 ### On a 16 GB card
 
-Use [votum-ai/Votum-8B-FP8](https://huggingface.co/votum-ai/Votum-8B-FP8): the same model in a little over half the
-memory (9.2 GB), which gives the same answer 96–99 % of the time. Everything above works unchanged with its name:
+Use [votum-ai/Votum-8B-FP8](https://huggingface.co/votum-ai/Votum-8B-FP8): the same model with its weights stored in
+8 bits instead of 16. It takes a little over half the memory (9.2 GB) and gives the same answer as the full model
+96–99 % of the time. Everything above works unchanged with its name:
 
 ```bash
 votum serve --model votum-ai/Votum-8B-FP8 --port 8011
@@ -101,15 +108,15 @@ The server reserves the weights plus 3 GB of GPU memory, so about 12 GB for this
 `--gpu-memory-gb` changes that. To make an FP8 copy of your own fine-tuned checkpoint, run
 `votum quantize --model <dir> --out <dir>` (about a minute, no GPU needed).
 
-**How fast is it?** A decision costs one read of the prompt. Here it is next to asking the same backbone to write its
-answer, on one RTX 4090:
+**How fast is it?** A decision costs one read of the prompt. Here it is next to asking the same Apertus model to write
+its answer as text, on one RTX 4090:
 
-| Mode | Median latency | Tokens written | Requests/s (batched) |
+| How the answer is produced | Typical latency | Tokens written | Requests per second under load |
 |---|---:|---:|---:|
 | **Votum: a decision** | **39 ms** | **0** | **23.5** |
-| JSON: the choice (structured output) | 206 ms | 8 | 21.0 |
-| JSON: choice and probabilities (structured output) | 1.1 s | 54 | 10.9 |
-| Reason first, then the JSON | 10.5 s | 370 | 1.9 |
+| Text: the choice as JSON (structured output) | 206 ms | 8 | 21.0 |
+| Text: the choice and its probabilities as JSON (structured output) | 1.1 s | 54 | 10.9 |
+| Text: reasoning first, then the JSON | 10.5 s | 370 | 1.9 |
 
 Questions about the same state share one pass over it, so asking several at once is cheaper than asking them one by
 one: on long documents the server makes 3.1 decisions per second with one question per request, and 15.8 with eight.
@@ -123,16 +130,17 @@ All settings are environment variables:
 | Variable | Default | Effect |
 |---|---|---|
 | `VOTUM_API_KEY` | unset | when set, requests need `Authorization: Bearer <key>` |
-| `VOTUM_PREFIX_CACHE_MB` | 512 | exact cache of header blocks across requests |
-| `VOTUM_STATE_CACHE_MB` | 0 (off) | exact cache of state blocks across requests |
+| `VOTUM_PREFIX_CACHE_MB` | 512 | memory for reusing the question list of a request seen before |
+| `VOTUM_STATE_CACHE_MB` | 0 (off) | memory for reusing a state seen before |
 | `VOTUM_MAX_BODY_MB` | 8 | largest request body; beyond it HTTP 413 |
 | `VOTUM_MAX_QUESTIONS` | 64 | questions per request; beyond it HTTP 400 |
 | `VOTUM_MAX_OPTIONS` | 2000 | options per question; beyond it HTTP 400 |
 | `VOTUM_MAX_QUEUE` | 4096 | questions waiting for the GPU; beyond it HTTP 503 |
 | `VOTUM_HEADER_CHUNK` | 0 (off) | `1` splits requests of more than 8 questions into separate headers (not measured on labelled data) |
 
-vLLM's own prefix cache and chunked prefill stay off: a bidirectional layer needs the whole prompt at once, so the
-exact block caches above take their place.
+vLLM's own prefix cache and chunked prefill stay off, because some of Votum's layers read the prompt in both
+directions and need all of it at once. The two caches above take their place, and they return exactly what a fresh
+computation would.
 
 </details>
 
@@ -141,15 +149,16 @@ exact block caches above take their place.
 The diagram at the top follows one request through the model.
 
 **One prompt.** A request becomes a single prompt: a header that lists its questions, then the state, then each
-question with its options. The model was trained on this layout.
+question with its options. The model was trained on this layout, and the package builds it for you.
 
-**Who reads whom.** An attention mask keeps the parts apart. The header never reads the state, the state never reads
-a question, and the options never see each other. Because of that, the header and the state are the same for every
-question of the request and are computed once. Every option also starts at the same position, so the order in which
-you list the options carries no signal.
+**Who reads whom.** The model is told which parts of the prompt may look at which. The header never reads the state,
+the state never reads a question, and the options never see each other. Because of that, the header and the state
+are the same for every question of the request and are computed once. Every option also starts at the same position,
+so the order in which you list the options carries no signal.
 
-**One score per option.** Each option ends with an end token. A small head reads the model's final state there and
-turns it into a score; the probabilities are a softmax over the scores of a question's options.
+**One score per option.** Each option ends with a marker token. A small extra layer (the "pointer head") reads what
+the model computed at that marker and turns it into a score. The scores of a question's options are then normalised
+into probabilities.
 
 **Limits.** A question's prompt can hold 8,192 tokens, which is how far the model was trained and tested. Any number
 of options fits within that, though accuracy falls as their number grows. A request can ask up to 8 questions. The
@@ -158,8 +167,9 @@ model card's Limitations section has the details.
 <details>
 <summary><b>Weights and implementation</b></summary>
 
-- **Merged weights.** The LoRA adapter is folded into the Apertus weights (bf16), so the checkpoint loads like any 8B
-  model. The unmerged adapter is in the model repo's `adapter/` folder; load it with
+- **Adapter and merged weights.** Votum is a LoRA adapter (a small set of weight changes) and a head on top of
+  Apertus. The published checkpoint has the adapter already folded into the Apertus weights (bf16), so it is one
+  download and loads like any 8B model. The unmerged adapter is in the model repo's `adapter/` folder; load it with
   `Votum.from_pretrained(repo, exact=True)` or build a serving checkpoint with `votum build --exact`. The two forms
   agree on about 98 % of answers. `votum build` rebuilds the shipped weights byte for byte from the official Apertus
   snapshot and the adapter.
@@ -177,12 +187,12 @@ model card's Limitations section has the details.
 ## Repository
 
 ```
-src/votum/          prompt rendering · reference model (PyTorch) · request format · checkpoint builder · FP8 · CLI
-src/votum/vllm/     vLLM 0.33 model · attention layout and cache · client · HTTP server
+src/votum/          the model in PyTorch · prompt builder · request format · checkpoint builder · FP8 · command line
+src/votum/vllm/     the vLLM 0.33 server: model, attention rules and caches, client, HTTP API
 training/           fine-tuning kit (prepare_data · finetune · calibrate) and the trainer that produced Votum-8B
-data/               source list with licences · cleaning and PII pipeline
+data/               source list with licences · cleaning and personal-data removal
 scripts/            export a checkpoint to the Hub layout · smoke fixture · README graphics
-tests/              masks, positions, renderer, request format (CPU) · end-to-end smoke test (GPU)
+tests/              attention rules, prompt builder, request format (CPU) · end-to-end test (GPU)
 ```
 
 ## Reproduce
@@ -210,6 +220,21 @@ pytest                                                     # CPU
 VOTUM_TOKENIZER=<dir with the Apertus tokenizer> pytest    # + renderer
 VOTUM_REPO=votum-ai/Votum-8B pytest -m gpu                   # + end-to-end smoke test
 ```
+
+## Acknowledgements
+
+Votum builds on other people's work:
+
+- **[Apertus](https://huggingface.co/swiss-ai/Apertus-v1.5-8B)**, by the Swiss AI Initiative (EPFL, ETH Zurich, CSCS):
+  the open model underneath Votum.
+- **Jev**: the original decision models. Votum uses their request format (`choice`, `noul`, `score`) and is measured on
+  their public benchmarks, [JevBench](https://github.com/fstandhartinger/jevbench) and the Jev Decision Index.
+- **[Jeff](https://github.com/j-geuter/Jeff)**, by Jonathan Geuter, Andrew Cheng and David Alvarez-Melis
+  ([Releasing the Inner Jev](https://arxiv.org/abs/2610.17205)): the open recipe for turning a language model into a
+  decision model. Our evaluation pipeline was checked against their published numbers, and the code that reads
+  requests is derived from theirs (see `NOTICE`).
+- **[JevPertus](https://huggingface.co/jaluus/jevpertus-v1.5-8B)** ([code](https://github.com/Jaluus/JevPertus)): an
+  earlier decision model on the same Apertus-1.5-8B backbone, also a LoRA adapter with a pointer head.
 
 ## License
 
