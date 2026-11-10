@@ -32,8 +32,8 @@ probabilities always sum to one.
 ## Quickstart
 
 ```bash
-pip install "votum @ git+https://github.com/{{ORG}}/votum"            # PyTorch reference path
-pip install "votum[vllm] @ git+https://github.com/{{ORG}}/votum"      # + the vLLM server (install this one directly if you will serve)
+pip install "votum @ git+https://github.com/hypathia/votum"            # PyTorch reference path
+pip install "votum[vllm] @ git+https://github.com/hypathia/votum"      # + the vLLM server (install this one directly if you will serve)
 ```
 
 You need Python 3.11 or newer and a CUDA GPU with 24 GB (16 GB is enough for the [FP8 variant](#serve)). It also runs
@@ -77,7 +77,7 @@ truncated: an error in Python, HTTP 413 on the server (a malformed request is 40
 ## Serve
 
 ```bash
-pip install "votum[vllm] @ git+https://github.com/{{ORG}}/votum"
+pip install "votum[vllm] @ git+https://github.com/hypathia/votum"
 VOTUM_API_KEY=... votum serve --model {{ORG}}/Votum-8B --host 0.0.0.0 --port 8011
 ```
 

@@ -21,7 +21,7 @@ Install the package, sign in to Hugging Face, and download the model once. Votum
 you first accept the Apertus usage policy on the Votum-8B model page; the download works after that.
 
 ```bash
-pip install "votum @ git+https://github.com/{{ORG}}/votum" pyarrow
+pip install "votum @ git+https://github.com/hypathia/votum" pyarrow
 hf auth login
 cd training
 hf download {{ORG}}/Votum-8B --local-dir ./Votum-8B
