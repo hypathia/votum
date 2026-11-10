@@ -293,7 +293,7 @@ with the `votum` loader, not with plain transformers or vLLM.
 **3. Pointer head.** Option *j* gets a score *z<sub>j</sub>* from the final hidden state *h<sub>j</sub>* at its end
 token, and a softmax over the options of a question gives the probabilities *p<sub>j</sub>* (formula in the figure).
 *q*<sub>0</sub> is a learned 256-dimensional query, *W<sub>o</sub>* a 256 × 4096 projection, LN a layer norm, and *T*
-a temperature per question type (1.516 for `choice`, 1.310 for `noul`, 1.182 for `score`), fitted on validation data.
+a temperature per question type, which can be [recalibrated](training/README.md) on your own data.
 
 [docs/internals.md](docs/internals.md) covers the weights, the two implementations and how to reproduce the release.
 
