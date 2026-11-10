@@ -4,25 +4,24 @@ For readers who want to change the model, check it or reproduce it. To use it, t
 
 <picture><source media="(prefers-color-scheme: dark)" srcset="../assets/architecture_dark.png"><img src="../assets/architecture.png" alt="One request through the model: the request becomes one prompt, an attention mask decides which parts read which, the Apertus backbone processes it, and a pointer head gives each option a score"></picture>
 
-## One request, step by step
+## One request
 
 **One prompt.** A request becomes a single prompt: a header that lists its questions, then the state, then each
 question with its options. The model was trained on this layout, and the package builds it for you.
 
-**Who reads whom.** The model is told which parts of the prompt may look at which. The header never reads the state,
-the state never reads a question, and the options never see each other. Because of that, the header and the state
-are the same for every question of the request and are computed once. Every option also starts at the same position,
+**Who reads whom.** An attention mask defines which blocks of the prompt attend to which. The header never reads
+the state, the state never reads a question, and the options never see each other. Because of that, the header and
+the state are the same for every question of the request and are computed once. Every option also starts at the same position,
 so the order in which you list the options carries no signal.
 
-**One score per option.** Each option ends with a marker token. A small extra layer (the "pointer head") reads what
-the model computed at that marker and turns it into a score. The scores of a question's options are then normalised
-into probabilities.
+**One score per option.** Each option ends with an end token. The pointer head turns the final hidden state at that
+token into a score, and a softmax over the scores of a question's options gives the probabilities.
 
 ## Weights
 
-Votum is a LoRA adapter (a small set of weight changes) and a head on top of Apertus-1.5-8B.
+Votum is a LoRA adapter and a pointer head on top of Apertus-1.5-8B.
 
-- **Merged weights.** The published checkpoint has the adapter already folded into the Apertus weights (bf16), so it
+- **Merged weights.** The published checkpoint has the adapter already merged into the Apertus weights (bf16), so it
   is one download and loads like any 8B model.
 - **The adapter on its own** is in the model repo's `adapter/` folder. Load it with
   `Votum.from_pretrained(repo, exact=True)`, or build a serving checkpoint with `votum build --exact`. The two forms

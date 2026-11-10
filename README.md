@@ -129,8 +129,8 @@ print(out["answers"])
 }
 ```
 
-Votum returns probabilities, not just a label, so your program can act on the confident answers and pass the others
-to a person.
+Votum returns probabilities, not just a label, so your program can act on the confident answers and escalate the
+rest.
 
 ## Ask a question
 
@@ -139,9 +139,9 @@ A request has two parts:
 - **`state`**: the context to decide on. A string, or any JSON object.
 - **`questions`**: up to 8 questions about that state, each under a name you choose. They are answered together.
 
-Every question has `instructions` (the question itself, in plain words) and a `type`:
+Every question has `instructions` (the question text) and a `type`:
 
-| `type` | Use it for | What you add | What you get back |
+| `type` | Use | Request fields | Response fields |
 |---|---|---|---|
 | `choice` | picking one of several options | `criteria`: the options, as `{name: description}` or a list of names | `choice`: the most likely option. `confidence`: its probability. `probabilities`: one per option |
 | `noul` | a yes/no question | nothing | `noul`: the probability that the answer is yes |
@@ -251,7 +251,7 @@ Accuracy on public test sets outside the training data:
 | Customer intent among 77 options (BANKING77) | 70.4 % | 85.3 % |
 | School and university exam questions (MMLU) | 60.4 % | 82.1 % |
 
-The last column is why the probabilities matter: when Votum says it is sure, it is right far more often. The
+Accuracy is much higher on high-confidence answers, so the confidence can be used to route. The
 [model card](https://huggingface.co/votum-ai/Votum-8B#evaluation) has the full evaluation and the
 [limitations](https://huggingface.co/votum-ai/Votum-8B#limitations).
 
@@ -260,8 +260,8 @@ The last column is why the probabilities matter: when Votum says it is sure, it 
 1. **Your request becomes one prompt:** the list of questions, then the state, then each question with its options.
 2. **The model reads it once.** An attention mask keeps the options from seeing each other, so the order in which
    you list them does not change the answer.
-3. **Each option gets a score,** read off the model at the end of that option. The scores of a question are turned
-   into probabilities that sum to one.
+3. **Each option gets a score,** computed from the hidden state at the option's last token. A softmax over the
+   scores of a question gives its probabilities.
 
 Nothing is generated at any point, which is where the speed comes from.
 [docs/internals.md](docs/internals.md) has the diagram and the details.

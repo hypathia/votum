@@ -24,7 +24,7 @@ curl -s localhost:8011/v1/systemone -H 'content-type: application/json' -H "Auth
 
 The body is the request described in the [README](../README.md#ask-a-question): a `state` and up to 8 `questions`.
 The response has one entry per question under `answers`, in the same form `vm.decide` returns. Its
-`usage.output_tokens` is always 0, because the model writes nothing.
+`usage.output_tokens` is always 0, because nothing is generated.
 
 | Situation | Response |
 |---|---|
