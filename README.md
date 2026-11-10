@@ -197,7 +197,7 @@ documents does not yet. [docs/images.md](docs/images.md) has more examples, the 
 
 ## Run it as a server
 
-When several programs need the model, or you have many decisions to make, run it as an HTTP server:
+`votum serve` starts an HTTP server built on vLLM, which batches concurrent requests:
 
 ```bash
 pip install "votum[vllm] @ git+https://github.com/hypathia/votum"
@@ -220,10 +220,8 @@ curl -s localhost:8011/v1/systemone -H 'content-type: application/json' -d '{
 }'
 ```
 
-The server takes the same request as `vm.decide` and returns the same answers. The address and the format are those
-of Jev's System One API, so a client written for Jev can point at it. It is also the fast way to run Votum: requests
-that arrive together are processed together. [docs/serving.md](docs/serving.md) covers the API key, memory
-and the other settings.
+The endpoint takes the same request as `vm.decide` and returns the same answers. It follows Jev's System One API, so
+Jev clients work against it. [docs/serving.md](docs/serving.md) covers the API key, memory and the other settings.
 
 ## Speed
 

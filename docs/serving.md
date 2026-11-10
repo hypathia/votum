@@ -1,8 +1,7 @@
 # Serving Votum over HTTP
 
-`votum serve` starts an HTTP server (built on [vLLM](https://github.com/vllm-project/vllm)) that answers the same
-requests as `vm.decide` in Python. Use it when several programs need the model, or when you have many decisions to
-make: requests that arrive at the same time are processed together.
+`votum serve` starts an HTTP server built on [vLLM](https://github.com/vllm-project/vllm). It takes the same requests
+as `vm.decide` and batches concurrent ones.
 
 ```bash
 pip install "votum[vllm] @ git+https://github.com/hypathia/votum"
