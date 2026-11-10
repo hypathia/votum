@@ -5,7 +5,7 @@ Every figure is drawn twice: <name>.png on a light grey backdrop with white elev
 where a viewer falls back to it on a dark background), and <name>_dark.png on a transparent canvas with translucent cards.
 The PNGs are stored as 8-bit palettes: every frequent flat colour keeps an exact palette entry, so only anti-aliased
 edges and shadows are approximated.
-Needs rsvg-convert, NumPy and Pillow.   python make_assets.py <out dir>
+Needs rsvg-convert, latex and dvisvgm (for the formula), NumPy and Pillow.   python make_assets.py <out dir>
 The example outputs are read from tests/fixtures (the reference scores of the released weights, checked by the GPU test)."""
 import io, json, math, subprocess, sys
 from pathlib import Path
@@ -93,7 +93,7 @@ def save(name, h, body):
             '<feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#000" flood-opacity=".05"/></filter>'
             f'<marker id="ah" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto">'
             f'<path d="M0 0 L8 4 L0 8 z" fill="{MUTED}"/></marker></defs>')
-    p.write_text(f'<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{h}" viewBox="0 0 {W} {h}" font-family="{FONT}">'
+    p.write_text(f'<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="{W}" height="{h}" viewBox="0 0 {W} {h}" font-family="{FONT}">'
                  f'{defs}{back}{body}</svg>')
     png = subprocess.run(["rsvg-convert", "-z", "2", str(p)], check=True, capture_output=True).stdout
     palettize(Image.open(io.BytesIO(png))).save(OUT / f"{name}{SUFFIX}.png", optimize=True)
@@ -190,54 +190,64 @@ def chevron(x, y):
 
 
 # ---------------------------------------------------------------------------------------------------------- architecture
+FORMULA = r"z_j=\frac{\langle q_0,\;W_o\,\mathrm{LN}(h_j)\rangle}{16}\qquad\quad p_j=\frac{e^{z_j/T}}{\sum_k e^{z_k/T}}"
+_TEX = {}
+
+
+def tex(src, x, y, scale, fill):
+    """a LaTeX formula as SVG outlines at (x, y), scale px per pt; returns (svg, width, height). Needs latex and dvisvgm."""
+    import re, tempfile
+    if src not in _TEX:
+        with tempfile.TemporaryDirectory() as d:
+            (Path(d) / "f.tex").write_text("\\documentclass{article}\\pagestyle{empty}\\begin{document}$\\displaystyle " + src + "$\\end{document}")
+            subprocess.run(["latex", "-interaction=batchmode", "f.tex"], cwd=d, check=True, capture_output=True)
+            subprocess.run(["dvisvgm", "--no-fonts", "--exact-bbox", "-o", "f.svg", "f.dvi"], cwd=d, check=True, capture_output=True)
+            svg = (Path(d) / "f.svg").read_text()
+        vb = [float(v) for v in re.search(r"viewBox='([^']+)'", svg).group(1).split()]
+        inner = re.search(r"<svg[^>]*>(.*)</svg>", svg, re.S).group(1)
+        _TEX[src] = (vb, re.sub(r"<!--.*?-->", "", inner, flags=re.S).replace("'", '"'))
+    vb, inner = _TEX[src]; w, h = vb[2] * scale, vb[3] * scale
+    return (f'<svg x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{h:.1f}" viewBox="{vb[0]} {vb[1]} {vb[2]} {vb[3]}" fill="{fill}">{inner}</svg>', w, h)
+
+
+def clip(s, n):
+    return s if len(s) <= n else s[:n - 1].rstrip() + "…"
+
+
 def architecture():
+    """one request through the model: the prompt as blocks, the attention mask between the blocks, the pointer head"""
     req, ans = fixture()[0]
     qs = [("team", req["questions"]["team"]), ("refund", req["questions"]["refund"])]
-    b = [head("Architecture", "How a decision is made", "One request, two questions, one forward pass: header and state are read once, every option is scored side by side")]
-    c1w, c2w = 432, 278; c3x = PAD + c1w + GAP + c2w + GAP; c3w = W - PAD - c3x
-    ctop = TOP; in_top = ctop + 56                       # card top; content top (below the step title)
-    mono, lh = 10.5, 13
-
-    # 1 the prompt: blocks in order, with the y of every option row (for the score column)
-    ax, aw = PAD + 16, c1w - 32
-    blocks, opt_y, q_y = [], [], {}
-    srt = sorted(qs[0][1]["criteria"].values())
-    hdr = ["Questions in this request:", "1. " + qs[0][1]["instructions"]] + [f"   - {t}" for t in srt] + ["2. " + qs[1][1]["instructions"]]
-    CUE = {"noul": " (Answer: the true or the false option.)", "choice": " (Choose exactly one option.)",
-           "score": " (Options are levels in increasing order; choose one.)"}          # as in src/votum/prompt.py
+    c1w, c2w = 424, 272; c2x = PAD + c1w + GAP; c3x = c2x + c2w + GAP; c3w = W - PAD - c3x
+    ctop = TOP; in_top = ctop + 58; mono = 10.5
     NOUL = {"true": "Yes / true: the proposition holds.", "false": "No / false: the proposition does not hold."}
-    state = wrap(req["state"], 56)
-    y = in_top
-    def block(tag, lines, kind, fill, qi=None):
+
+    # 1 the prompt as blocks: header, state, then each question with its options (each option ends with an end token)
+    ax, aw = PAD + 18, c1w - 36; blocks, parts, y = [], [], in_top
+    def block(tag, text, kind, qi=None):
         nonlocal y
-        h = 6 + lh * len(lines); blocks.append(dict(tag=tag, kind=kind, q=qi))
-        out = [bar(ax + 26, y, aw - 26, h, fill, 5), T(ax + 10, y + 3 + lh * .8, tag, 10.5, RED if kind == "O" else MUTED, 700, "middle")]
-        for k, ln in enumerate(lines):
-            out.append(T(ax + 36, y + 3 + lh * (k + .8), ln, mono, INK, 400, extra=f'font-family="{MONO}" xml:space="preserve"'))
-        yc = y + 3 + lh * .5; y += h + 2
-        return "".join(out), yc
-    parts = []
-    s_, _ = block("H", hdr, "H", OFF); parts.append(s_)
-    s_, _ = block("S", ["State:"] + state, "S", OFF); parts.append(s_)
+        opt = kind == "O"; ind = 16 if opt else 0; h = 22 if opt else 26; bx = ax + 30 + ind; bw = aw - 30 - ind
+        blocks.append(dict(tag=tag, kind=kind, q=qi))
+        text = clip(text, int((bw - (52 if opt else 18)) / 6.35))
+        out = [bar(bx, y, bw, h, SOFT if opt else OFF, 6), T(ax + 12, y + h / 2 + 3.6, tag, 10.5, RED if opt else MUTED, 700, "middle"),
+               T(bx + 10, y + h / 2 + 3.6, text, mono, INK, 400, extra=f'font-family="{MONO}" xml:space="preserve"')]
+        if opt:
+            cx = bx + 10 + 6.35 * len(text) + 8
+            out.append(bar(cx, y + h / 2 - 6, 27, 12, SWISS, 3) + T(cx + 13.5, y + h / 2 + 3.2, "end", 9, WHITE, 600, "middle"))
+        parts.append("".join(out)); y += h + (3 if opt else 5)
+    block("H", "Questions in this request: 1. Which team … 2. Does the …", "H")
+    block("S", "State: " + req["state"], "S")
+    outs = []
     for qi, (qid, q) in enumerate(qs):
         a = ans[qid]; labs = option_labels(q)
-        s_, yc = block(f"Q{qi + 1}", ["Question:"] + wrap(q["instructions"] + CUE[q["type"]], 56) + ["Options:"], "Q", OFF, qi)
-        parts.append(s_); q_y[qi] = yc
-        texts = [NOUL[i] for i in a["ids"]] if q["type"] == "noul" else [labs[i] for i in a["ids"]]
-        for oid, txt, z in zip(a["ids"], texts, a["scores"]):
-            s_, yc = block("o", ["- " + txt], "O", SOFT, qi); parts.append(s_)
-            cx = ax + 36 + 6.35 * (len(txt) + 2) + 6
-            parts.append(bar(cx, yc - 6, 27, 12, SWISS, 3) + T(cx + 13.5, yc + 3.2, "end", 9, WHITE, 600, "middle"))
-            opt_y.append((qi, oid, z, a["probs"][oid], yc))
-    a_bottom = y
-    cbot = a_bottom + 30; ch = cbot - ctop
-    b.append(card(PAD, ctop, c1w, ch) + step(PAD + 16, ctop + 32, 1, "One prompt"))
-    b += parts
+        block(f"Q{qi + 1}", "Question: " + q["instructions"], "Q", qi)
+        for oid in a["ids"]: block("o", NOUL[oid] if q["type"] == "noul" else labs[oid], "O", qi)
+        y += 2
+        outs.append((q["instructions"], sorted(((labs[i], a["scores"][k], a["probs"][i]) for k, i in enumerate(a["ids"])), key=lambda o: -o[2])))
+    h1 = y - ctop + 14
 
-    # 2 who reads whom
-    c2x = PAD + c1w + GAP
-    b.append(card(c2x, ctop, c2w, ch) + step(c2x + 16, ctop + 32, 2, "Custom attention mask"))
-    n = len(blocks); cs = 16; mx = c2x + 16 + 26 + 34; my = in_top + 16
+    # 2 custom attention mask: which block attends to which
+    n = len(blocks); cs = 20; mx = c2x + (c2w - n * cs) / 2 + 12; my = in_top + 18; m = []
     def reads(r, c):
         R_, C_ = blocks[r], blocks[c]
         if c == r: return 2
@@ -247,35 +257,42 @@ def architecture():
         return 0
     for k, bl in enumerate(blocks):
         col = RED if bl["kind"] == "O" else INK
-        b.append(T(mx - 6, my + k * cs + cs * .74, bl["tag"], 10, col, 650, "end"))
-        b.append(T(mx + k * cs + cs / 2, my - 6, bl["tag"], 10, col, 650, "middle"))
+        m.append(T(mx - 7, my + k * cs + cs * .7, bl["tag"], 10, col, 650, "end"))
+        m.append(T(mx + k * cs + cs / 2, my - 7, bl["tag"], 10, col, 650, "middle"))
         for c in range(n):
             v = reads(k, c)
-            b.append(f'<rect x="{mx + c * cs + .75:.1f}" y="{my + k * cs + .75:.1f}" width="{cs - 1.5:.1f}" height="{cs - 1.5:.1f}" rx="2.5" '
+            m.append(f'<rect x="{mx + c * cs + 1:.1f}" y="{my + k * cs + 1:.1f}" width="{cs - 2}" height="{cs - 2}" rx="3" '
                      f'fill="{(GRID, SUB, RED)[v] if v or c <= k else OFF}"/>')
-    ly = my + n * cs + 22; lx = c2x + 20
-    b.append(bar(lx, ly - 8, 9, 9, SUB, 2) + T(lx + 14, ly, "row reads column", 10.5, MUTED))
-    b.append(bar(lx, ly + 7, 9, 9, RED, 2) + T(lx + 14, ly + 15, "the block itself", 10.5, MUTED))
+    ly = my + n * cs + 24; lx = mx
+    m.append(bar(lx, ly - 8, 9, 9, SUB, 2) + T(lx + 14, ly, "row attends to column", 10.5, MUTED))
+    m.append(bar(lx, ly + 9, 9, 9, RED, 2) + T(lx + 14, ly + 17, "the block itself", 10.5, MUTED))
+    h2 = ly + 17 - ctop + 22
 
-    # 3 one pass, one score per option: backbone column + scores aligned with the option rows
-    b.append(card(c3x, ctop, c3w, ch) + step(c3x + 16, ctop + 32, 3, "One score per option"))
-    bx, bw = c3x + 24, 40; by = in_top + 2; lh2 = (a_bottom - 2 - by) / 32
-    b.append(bar(bx - 8, by - 8, bw + 16, 32 * lh2 + 14, OFF, 8))
-    for L in range(32):
-        bid = L in range(3, 32, 4)
-        b.append(bar(bx, by + L * lh2 + (lh2 - 4) / 2, bw, 4, RED if bid else NEUTRAL, 2))
-    b.append(T(bx + bw / 2, a_bottom + 16, "Apertus-8B", 10.5, MUTED, 600, "middle"))
-    px = bx + bw + 36; pr = c3x + c3w - 20
-    zx = px + 46
-    for qi, oid, z, p, yc in opt_y:
-        win = p == max(pp for qq, _, _, pp, _ in opt_y if qq == qi)
-        b.append(T(zx + 50, yc + 4, f"{z:+.2f}", 10.5, MUTED, 500, "end", f'font-family="{MONO}"'))
-        tx, tw = zx + 64, pr - 52 - (zx + 64)
-        b.append(bar(tx, yc - 4, tw, 8, GRID) + bar(tx, yc - 4, max(tw * p, 8), 8, RED if win else NEUTRAL))
-        if win: b.append(pill(pr, yc, f"{p:.2f}", 11))
-        else: b.append(T(pr - 2, yc + 4, f"{p:.2f}", 11.5, MUTED, 400, "end"))
-    for x in (PAD + c1w + GAP / 2, c3x - GAP / 2): b.append(chevron(x, ctop + ch / 2))
-    save("architecture", cbot + PAD, "".join(b))
+    # 3 pointer head: the backbone's layers, the formula, and the score and probability of every option
+    px = c3x + 20; pr = c3x + c3w - 20; hd = []; y3 = in_top + 4
+    hd.append(T(px, y3 + 4, "Apertus-1.5-8B", 11.5, INK, 650) + T(pr, y3 + 4, "32 layers · 8 bidirectional · LoRA r16", 10.5, MUTED, 400, "end"))
+    tw = (pr - px - 31 * 3) / 32
+    for L in range(32): hd.append(bar(px + L * (tw + 3), y3 + 16, tw, 14, RED if L in range(3, 32, 4) else NEUTRAL, 2.5))
+    y3 += 54
+    f, fw, fh = tex(FORMULA, px, y3, 1.42, INK); hd.append(f); y3 += fh + 26
+    for q, opts in outs:
+        hd.append(T(px, y3, q, 11, MUTED, 600)); y3 += 20
+        for i, (lab, z, pp) in enumerate(opts):
+            win = i == 0; lw = 150; zx = px + lw + 44; tx = zx + 12; tw2 = pr - 52 - tx
+            hd.append(T(px, y3 + 4, lab, 11.5, INK, 650 if win else 400))
+            hd.append(T(zx, y3 + 4, f"{z:+.2f}", 10.5, MUTED, 500, "end", f'font-family="{MONO}"'))
+            hd.append(bar(tx, y3 - 4, tw2, 8, GRID) + bar(tx, y3 - 4, max(tw2 * pp, 8), 8, RED if win else NEUTRAL))
+            hd.append(pill(pr, y3, f"{pp:.2f}", 11) if win else T(pr - 2, y3 + 4, f"{pp:.2f}", 11.5, MUTED, 400, "end"))
+            y3 += 19
+        y3 += 12
+    h3 = y3 - ctop
+
+    ch = max(h1, h2, h3)
+    b = [card(PAD, ctop, c1w, ch) + step(PAD + 18, ctop + 34, 1, "One prompt"), *parts,
+         card(c2x, ctop, c2w, ch) + step(c2x + 18, ctop + 34, 2, "Custom attention mask"), *m,
+         card(c3x, ctop, c3w, ch) + step(c3x + 18, ctop + 34, 3, "Pointer head"), *hd]
+    for x in (c2x - GAP / 2, c3x - GAP / 2): b.append(chevron(x, ctop + ch / 2))
+    save("architecture", ctop + ch + PAD, "".join(b))
 
 
 # ---------------------------------------------------------------------------------------------------------- examples

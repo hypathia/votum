@@ -260,7 +260,7 @@ Accuracy is much higher on high-confidence answers, so the confidence can be use
 Votum is Apertus-1.5-8B with a LoRA adapter (rank 16, all 32 layers), a custom attention mask and a pointer head. The
 language-model head is not used: nothing is generated.
 
-<picture><source media="(prefers-color-scheme: dark)" srcset="assets/architecture_dark.png"><img src="assets/architecture.png" alt="One request through the model in three panels: the prompt with header, state, questions and options; the attention mask between those blocks; the score and probability of each option"></picture>
+<picture><source media="(prefers-color-scheme: dark)" srcset="assets/architecture_dark.png"><img src="assets/architecture.png" alt="One request through the model in three panels: the prompt with header, state, questions and options; the attention mask between those blocks; the pointer-head formula z_j = <q_0, W_o LN(h_j)> / 16 with p_j = softmax(z / T)_j, and the score and probability of each option"></picture>
 
 **1. One prompt.** A request is rendered as a single prompt: a header that lists its questions, then the state, then
 each question with its options. Every option ends with an end token.
@@ -279,15 +279,8 @@ computed once and shared by every question of a request. It costs two: options c
 weighed against each other (the model rarely picks "none of the above" when it is right), and the model only works
 with the `votum` loader, not with plain transformers or vLLM.
 
-**3. Pointer head.** Option *j* is scored from the final hidden state *h<sub>j</sub>* at its end token, and a
-softmax over the options of a question gives the probabilities:
-
-$$
-z_j = \frac{\langle q_0,\ W_o\,\mathrm{LN}(h_j) \rangle}{16},
-\qquad
-p_j = \frac{\exp(z_j / T)}{\sum_k \exp(z_k / T)}
-$$
-
+**3. Pointer head.** Option *j* gets a score *z<sub>j</sub>* from the final hidden state *h<sub>j</sub>* at its end
+token, and a softmax over the options of a question gives the probabilities *p<sub>j</sub>* (formula in the figure).
 *q*<sub>0</sub> is a learned 256-dimensional query, *W<sub>o</sub>* a 256 × 4096 projection, LN a layer norm, and *T*
 a temperature per question type (1.516 for `choice`, 1.310 for `noul`, 1.182 for `score`), fitted on validation data.
 

@@ -20,15 +20,8 @@ computed once and shared by every question of a request. It costs two: options c
 weighed against each other (the model rarely picks "none of the above" when it is right), and the model only works
 with the `votum` loader, not with plain transformers or vLLM.
 
-**Pointer head.** Option *j* is scored from the final hidden state *h<sub>j</sub>* at its end token, and a softmax
-over the options of a question gives the probabilities:
-
-$$
-z_j = \frac{\langle q_0,\ W_o\,\mathrm{LN}(h_j) \rangle}{16},
-\qquad
-p_j = \frac{\exp(z_j / T)}{\sum_k \exp(z_k / T)}
-$$
-
+**Pointer head.** Option *j* gets a score *z<sub>j</sub>* from the final hidden state *h<sub>j</sub>* at its end
+token, and a softmax over the options of a question gives the probabilities *p<sub>j</sub>* (formula in the figure).
 *q*<sub>0</sub> is a learned 256-dimensional query, *W<sub>o</sub>* a 256 × 4096 projection, LN a layer norm, and *T*
 a temperature per question type, stored in `votum_config.json`.
 
