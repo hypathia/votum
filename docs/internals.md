@@ -15,8 +15,8 @@ the state does not attend to the questions, so both are the same for every quest
 once. An option attends to the header, the state and its own question, never to another option, and nothing outside
 an option attends to it. All options of a question start at the same position id, so their order carries no signal.
 
-The mask buys two things: answers that do not depend on option order or on which other options are listed, and a
-header and state that are computed once and shared by every question of a request. It costs two: options cannot be
+The mask buys two things: answers that do not depend on the order of the options, and a header and state that are
+computed once and shared by every question of a request. It costs two: options cannot be
 weighed against each other (the model rarely picks "none of the above" when it is right), and the model only works
 with the `votum` loader, not with plain transformers or vLLM.
 
