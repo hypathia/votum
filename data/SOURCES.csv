@@ -7,7 +7,7 @@ source,licence,train_rows_as_trained,removed_by_second_licence_review,train_rows
 "AmbiEnt (Liu et al. 2023, EMNLP)",CC-BY-4.0 [commercial],239,no,237
 "Austria RIS Judikatur (VwGH decisions, OGD API)",CC-BY-4.0 [commercial],1928,no,1927
 Breast Cancer Wisconsin (Diagnostic),CC-BY-4.0 [commercial],339,no,339
-"Bundestag DIP (Vorgaenge, petitions and bills)",MIT [commercial],594,no,594
+"Bundestag DIP (Vorgaenge, petitions and bills)",DIP-terms [commercial] | attribution required (Deutscher Bundestag/DIP),594,no,594
 CADA avis et conseils (FR),Etalab-2.0 [commercial],1791,no,1791
 "CANTEMIST (Spanish oncology case reports, ICD-O morphology)",CC-BY-4.0 [commercial],156,no,156
 CBP CROSS customs rulings (HTS classification),Public-Domain [commercial],1779,no,1771
@@ -30,7 +30,7 @@ Wikipedia Talk Labels: Toxicity,"CC0-1.0 [commercial] | attribution required (Wi
 Wikipedia featured article candidates (FAC) discussions,"CC-BY-SA [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",4956,no,4106
 Wikipedia page-protection requests and admin decisions (RfPP archive),"CC-BY-SA [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",2987,no,2985
 "ZH Kantonsrat Geschaefte (XML, public interface)",portal terms (commercial use allowed) [commercial],479,no,479
-ch_cantonal_parl,MIT [commercial],2146,no,2146
+ch_cantonal_parl,"per row: CC-BY-4.0 (Basel-Stadt), CC0-1.0 (Thurgau), cantonal open-data terms with attribution (Bern, Basel-Landschaft) [commercial]",2146,no,2146
 de_fr_it/fineweb_c,ODC-By [commercial],1069,no,1067
 de_fr_it/frenchmedmcqa,Apache-2.0 [commercial],240,yes,0
 de_fr_it/german_argument_mining,CC-BY-4.0 [commercial],712,no,712
@@ -89,7 +89,7 @@ lab/snips,CC0-1.0 [commercial],876,no,875
 lab/taskmaster,CC-BY-4.0 [commercial],707,no,669
 lab/wands,MIT [commercial],2920,no,2884
 massive_ml,CC-BY-4.0 [commercial],13714,no,13711
-miracl,"Apache-2.0 [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",16558,no,16335
+miracl,"Apache-2.0 [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",16558,no,16311
 morocco_cassation,CC-BY-4.0 [commercial],1986,no,1986
 multi3nlu,CC-BY-4.0 [commercial],1425,no,1425
 nusaparagraph,Apache-2.0 [commercial],11877,no,11877
@@ -214,5 +214,5 @@ tasksource/toxic_conversations,CC0-1.0 [commercial],438,no,435
 tasksource/wands,MIT [commercial],141,no,139
 tasksource/wikipedia-detox/toxicity,"CC0-1.0 [commercial] | attribution required (Wikipedia contributors, CC-BY-SA)",2,no,2
 tasksource/wikipedia-detox/toxicity_score,"CC0-1.0 [commercial] | attribution required (Wikipedia contributors, CC-BY-SA)",2,no,2
-tydiqa,"CC-BY-SA [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",17884,no,17814
+tydiqa,"CC-BY-SA [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",17884,no,17813
 zueri_wie_neu,CC0-1.0 [commercial],11918,no,11918

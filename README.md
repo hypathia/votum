@@ -16,7 +16,7 @@
   <a href="#quickstart">Quickstart</a> ·
   <a href="#serve">Serve</a> ·
   <a href="#how-it-works">How it works</a> ·
-  <a href="#reproduce">Reproduce</a> ·
+  <a href="#reproduce">Reproduce and fine-tune</a> ·
   <a href="https://huggingface.co/{{ORG}}/Votum-8B">Model card</a>
 </p>
 
@@ -36,11 +36,12 @@ pip install "votum @ git+https://github.com/{{ORG}}/votum"            # PyTorch 
 pip install "votum[vllm] @ git+https://github.com/{{ORG}}/votum"      # + the vLLM server (install this one directly if you will serve)
 ```
 
-Requirements: Python 3.11 or newer (3.12 tested), a CUDA GPU with 24 GB for the bf16 weights (16 GB for the
-[FP8 variant](#serve)); tested with torch 2.14, transformers 5.20 and vLLM 0.33.0, the versions `votum[vllm]` pins. The
-reference path also runs on the CPU, slowly. Accept the Apertus Acceptable Use Policy on
-[{{ORG}}/Votum-8B](https://huggingface.co/{{ORG}}/Votum-8B) and run `hf auth login`. The repository holds everything the
-model needs.
+You need Python 3.11 or newer and a CUDA GPU with 24 GB (16 GB is enough for the [FP8 variant](#serve)). It also runs
+on a CPU, slowly.
+
+Before the first download, accept the Apertus Acceptable Use Policy on
+[{{ORG}}/Votum-8B](https://huggingface.co/{{ORG}}/Votum-8B) and run `hf auth login`. That repository holds everything
+the model needs; there is no base model to fetch.
 
 ```python
 from votum import Votum
@@ -60,8 +61,8 @@ out = vm.decide({
 out["answers"]["team"]     # {"type": "choice", "choice": "billing", "confidence": ..., "probabilities": {...}}
 ```
 
-A request takes up to 8 questions about one state; they are answered together, in one pass over the state. The
-request and the answers, field by field:
+A request asks up to 8 questions about one state, and they are answered together in one pass over that state. There
+are three kinds of question, each with its own answer:
 
 | Question (`questions.<id>`) | Answer (`answers.<id>`) |
 |---|---|
@@ -69,8 +70,9 @@ request and the answers, field by field:
 | `{"type": "noul", "instructions": str, "criteria": {"true": text, "false": text}}` (criteria optional) | `{"type": "noul", "noul": p(yes)}` |
 | `{"type": "score", "instructions": str, "criteria": [level texts, low to high]}` | `{"type": "score", "score": expected level index (float), "confidence": p of the most likely level, "legend": {"0": text, ...}, "probabilities": {"0": p, ...}}` |
 
-`state` is a string or any JSON object (serialised with sorted keys). The response also carries `usage.output_tokens: 0`
-(nothing is generated); a question whose prompt exceeds 8,192 tokens is an error (HTTP 413 on the server; a malformed request is 400).
+The `state` is a string or any JSON object. A question whose prompt is longer than 8,192 tokens is refused, not
+truncated: an error in Python, HTTP 413 on the server (a malformed request is 400). The response also carries
+`usage.output_tokens: 0`, because nothing is generated.
 
 ## Serve
 
@@ -79,15 +81,15 @@ pip install "votum[vllm] @ git+https://github.com/{{ORG}}/votum"
 VOTUM_API_KEY=... votum serve --model {{ORG}}/Votum-8B --host 0.0.0.0 --port 8011
 ```
 
-`POST /v1/systemone` takes the same request as `vm.decide` and returns the same answers. For 16 GB cards there is
-[{{ORG}}/Votum-8B-FP8](https://huggingface.co/{{ORG}}/Votum-8B-FP8), the same model with FP8 weights (8.5 GB; it gives
-the same answer as the bf16 weights 96–98 % of the time; `scripts/quantize_fp8.py` rebuilds it); pass it to `votum serve`
-or `VotumVLLM` in place of the bf16 repo. The PyTorch reference path does not load it. Concurrent requests are
-batched. Start-up takes about a minute: the server compiles its
-attention kernels for every shape class first, so no request pays for one.
+`POST /v1/systemone` takes the same request as `vm.decide` and returns the same answers. Concurrent requests are
+batched. Start-up takes about a minute.
 
-One decision costs one read. Median latency per answer on one RTX 4090 with the same Apertus-8B backbone, on
-256-request samples of OpenDecisions, one question per request; the alternatives generate text:
+**On a 16 GB card**, serve [{{ORG}}/Votum-8B-FP8](https://huggingface.co/{{ORG}}/Votum-8B-FP8) instead: the same model
+in half the memory, which gives the same answer 96–98 % of the time. It runs on the server only, not in the Python
+quickstart above.
+
+**How fast is it?** A decision costs one read of the prompt. Here it is next to asking the same backbone to write its
+answer, on one RTX 4090:
 
 | Mode | Median latency | Tokens written | Requests/s (batched) |
 |---|---:|---:|---:|
@@ -96,16 +98,14 @@ One decision costs one read. Median latency per answer on one RTX 4090 with the 
 | JSON: choice and probabilities (structured output) | 1.1 s | 54 | 10.9 |
 | Reason first, then the JSON | 10.5 s | 370 | 1.9 |
 
-<sub>Decision row: these merged weights on vLLM 0.33. Generative rows: vLLM 0.12, a different 256-row sample; the last
-row batches 64 requests and times 10. Latency is one request at a time, median of 50.</sub>
-
-The questions of a request share one pass over the state, so more questions per request means more decisions per
-second: on 3,200-token documents, 3.1 decisions/s with one question per request, 9.7 with four and 15.8 with eight.
+Questions about the same state share one pass over it, so asking several at once is cheaper than asking them one by
+one: on long documents the server makes 3.1 decisions per second with one question per request, and 15.8 with eight.
+The [model card](https://huggingface.co/{{ORG}}/Votum-8B#performance) has the full measurements.
 
 <details>
 <summary><b>Server settings</b></summary>
 
-All through the environment:
+All settings are environment variables:
 
 | Variable | Default | Effect |
 |---|---|---|
@@ -125,32 +125,39 @@ exact block caches above take their place.
 
 ## How it works
 
-The diagram at the top shows the path of a request. The parts:
+The diagram at the top follows one request through the model.
 
-- **One prompt per request.** A header lists every question of the request, then comes the state, then each question
-  with its options. The model was trained in this layout.
-- **Block mask.** The header never reads the state, the state never reads a question, and options never see each
-  other. The header-plus-state block is therefore identical for all questions and computed once.
-- **Shared positions.** Every option starts at the same position id, so option order carries no positional signal.
-- **Pointer head.** Each option is scored from the final hidden state at its end token,
-  score = ⟨q₀, W_o · LN(h)⟩ / 16; the probabilities are a softmax over those scores.
-- **Bidirectional layers** 3, 7, …, 31; the other 24 stay causal.
-- **Limits.** 8,192 tokens per question's prompt (header, state, question and options; set by training, enforced by
-  the checkpoint and the server, raisable but unverified beyond), any number of options within it (accuracy falls as
-  they grow), and up to 8 questions per request in the header. The model card's Limitations section has the details.
+**One prompt.** A request becomes a single prompt: a header that lists its questions, then the state, then each
+question with its options. The model was trained on this layout.
+
+**Who reads whom.** An attention mask keeps the parts apart. The header never reads the state, the state never reads
+a question, and the options never see each other. Because of that, the header and the state are the same for every
+question of the request and are computed once. Every option also starts at the same position, so the order in which
+you list the options carries no signal.
+
+**One score per option.** Each option ends with an end token. A small head reads the model's final state there and
+turns it into a score; the probabilities are a softmax over the scores of a question's options.
+
+**Limits.** A question's prompt can hold 8,192 tokens, which is how far the model was trained and tested. Any number
+of options fits within that, though accuracy falls as their number grows. A request can ask up to 8 questions. The
+model card's Limitations section has the details.
 
 <details>
 <summary><b>Weights and implementation</b></summary>
 
-- The LoRA adapter is merged into the Apertus weights (bf16), so the checkpoint loads like any 8B model. The exact
-  unmerged form is in the repo's `adapter/` folder (`Votum.from_pretrained(repo, exact=True)` or `votum build --exact`);
-  the two agree on about 98 % of answers. `votum build` rebuilds the shipped weights byte for byte from the official
-  Apertus snapshot and the adapter.
-- The attention layout is rules, not weights. They live in `votum_config.json`; `src/votum/modeling.py` applies them as
-  dense SDPA masks, `src/votum/vllm/isolate.py` as FlexAttention with packing, and `tests/test_masks.py` proves the two
-  equal.
-- The PyTorch reference runs one pass per question. The server packs a request's questions into one prompt, each at
-  the positions of its own single-question prompt, and gives the same answers.
+- **Merged weights.** The LoRA adapter is folded into the Apertus weights (bf16), so the checkpoint loads like any 8B
+  model. The unmerged adapter is in the model repo's `adapter/` folder; load it with
+  `Votum.from_pretrained(repo, exact=True)` or build a serving checkpoint with `votum build --exact`. The two forms
+  agree on about 98 % of answers. `votum build` rebuilds the shipped weights byte for byte from the official Apertus
+  snapshot and the adapter.
+- **Layers and head.** Eight of the 32 layers (3, 7, …, 31) attend in both directions; the other 24 stay causal. The
+  head scores an option as ⟨q₀, W_o · LN(h)⟩ / 16, where h is the final hidden state at the option's end token.
+- **The attention layout is rules, not weights.** The rules live in `votum_config.json`. `src/votum/modeling.py`
+  applies them as dense masks and `src/votum/vllm/isolate.py` as FlexAttention; `tests/test_masks.py` checks that the
+  two produce the same mask and positions for single-question prompts.
+- **Two paths.** The PyTorch reference runs one pass per question. The server packs a request's questions into one
+  prompt, each at the positions it would have alone; the two agree on 97 to 99 % of answers (parity numbers are on the
+  model card).
 
 </details>
 
@@ -167,16 +174,20 @@ tests/              masks, positions, renderer, request format (CPU) · end-to-e
 
 ## Reproduce
 
-1. **Data:** the cleaned pool is [{{ORG}}/Votum-Pool](https://huggingface.co/datasets/{{ORG}}/Votum-Pool); the pipeline
-   that builds it is in `data/`.
-2. **Training:** `training/README.md` has the exact command. One 96 GB GPU, about 7 hours.
-   **Fine-tuning on your own data** is covered there too: `prepare_data.py`, `finetune.py` (from the released adapter;
-   a 24 GB card trains rows up to 3,072 tokens, or 2,048 if it also drives a display), `export_hf.py` and `calibrate.py`.
-3. **Export:** `python scripts/export_hf.py --ckpt <run>/ckpt_600 --out <dir>` reproduces the published repository
-   byte for byte.
+**Fine-tune on your own data.** [`training/README.md`](training/README.md) is a step-by-step guide: prepare your rows,
+train from the released checkpoint, export, calibrate. A 24 GB card trains rows up to 3,072 tokens, or 2,048 if it
+also drives a display.
 
-The released checkpoint was trained before the pool was cleaned; its known training-data issues are on the model card,
-and a re-train on the published pool is planned.
+**Reproduce the release.**
+
+1. **Data.** The cleaned pool is [{{ORG}}/Votum-Pool](https://huggingface.co/datasets/{{ORG}}/Votum-Pool); the pipeline
+   that builds it is in `data/`.
+2. **Training.** `training/README.md` has the exact command of the released run: one 96 GB GPU, about 7 hours.
+3. **Export.** `python scripts/export_hf.py --ckpt <run>/ckpt_600 --out <dir>` reproduces the published model
+   repository byte for byte.
+
+The released checkpoint was trained before the pool was cleaned. Its known training-data issues are listed on the
+model card, and a re-train on the published pool is planned.
 
 ## Tests
 

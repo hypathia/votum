@@ -900,7 +900,7 @@
  },
  "miracl": {
   "license": "Apache-2.0 [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",
-  "train_rows": 16335,
+  "train_rows": 16311,
   "val_rows": 121,
   "excluded": false,
   "config": "share_alike",
@@ -2078,7 +2078,7 @@
  },
  "tydiqa": {
   "license": "CC-BY-SA [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",
-  "train_rows": 17814,
+  "train_rows": 17813,
   "val_rows": 116,
   "excluded": false,
   "config": "share_alike",

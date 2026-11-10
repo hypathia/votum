@@ -380,11 +380,11 @@ def examples():
 # ---------------------------------------------------------------------------------------------------------- pool
 def pool():
     steps = [("Pool used for Votum-8B", 405547), ("13 sources: licence review", -19950), ("bias_in_bios, LLM-generated sets", -27163),
-             ("ContractNLI test split", -1982), ("benchmark overlap (8-gram)", -16903), ("portal / government terms", -11419),
-             ("conflicting licence tags", -441), ("Votum Pool", 327689)]
+             ("ContractNLI test split", -1982), ("benchmark overlap (8-gram)", -16928), ("portal / government terms", -11419),
+             ("conflicting licence tags", -441), ("Votum Pool", 327664)]
     b = [head("Data", "From training pool to dataset", "Training rows removed at each step, and the licence mix of what remains")]
     tw = (W - 2 * PAD - 3 * GAP) / 4; th = 108
-    for i, (k, v, lab) in enumerate([("Training rows", "327,689", "plus 2,797 validation rows"), ("Sources", "181", "164 public datasets, 17 collected"),
+    for i, (k, v, lab) in enumerate([("Training rows", "327,664", "plus 2,797 validation rows"), ("Sources", "181", "164 public datasets, 17 collected"),
                                      ("Languages", "73", "language codes; about 38 % English"), ("Configs", "2", "default · share_alike")]):
         b.append(tile(PAD + i * (tw + GAP), TOP, tw, th, k, v, lab, hero=i == 0))
     cy = TOP + th + GAP; rh = 24; ch = 40 + rh * len(steps) + 76
@@ -398,8 +398,8 @@ def pool():
             b.append(pill(X(v) + 62, y, f"{v:,}", 11) if i else T(X(v) + 9, y + 4, f"{v:,}", 12.5, INK, 700))
         else:
             nxt = cur + v; b.append(bar(X(nxt), y - 7, X(cur) - X(nxt), 14, PINK, 4)); b.append(T(X(cur) + 9, y + 4, f"−{-v:,}", 11.5, MUTED, 500)); cur = nxt
-    fams = [("CC-BY", 98626, FAM[0]), ("Apache / MIT / AFL", 64958, FAM[1]), ("CC0 / PDDL / PD", 56885, FAM[2]),
-            ("other open", 3421, FAM[3]), ("CC-BY-SA / ODbL · share_alike", 103799, RED)]
+    fams = [("CC-BY", 99341, FAM[0]), ("Apache / MIT / AFL", 62218, FAM[1]), ("CC0 / PDDL / PD", 57226, FAM[2]),
+            ("other open", 5105, FAM[3]), ("CC-BY-SA / ODbL · share_alike", 103774, RED)]
     y0 = top + rh * len(steps) + 14; tot = sum(v for _, v, _ in fams); x = PAD + 22; ww_all = W - 2 * PAD - 44
     for lab, v, c in fams:
         ww = ww_all * v / tot; b.append(bar(x, y0, ww - 2, 12, c, 3)); x += ww

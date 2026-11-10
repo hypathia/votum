@@ -1,7 +1,8 @@
 # Training data
 
-Votum-8B was trained on "pool v7": public decision data converted to one row format. The rows are not in this repository; the
-cleaned pool is published as the dataset [{{ORG}}/Votum-Pool](https://huggingface.co/datasets/{{ORG}}/Votum-Pool).
+Votum-8B was trained on "pool v7": public decision data converted to one row format. The rows themselves are not in
+this repository. A cleaned version of the pool is published as the dataset
+[{{ORG}}/Votum-Pool](https://huggingface.co/datasets/{{ORG}}/Votum-Pool).
 
 | Path | Contents |
 |---|---|
@@ -23,18 +24,19 @@ Rows by licence:
 
 | Licence family | Rows | Share |
 |---|---:|---:|
-| CC-BY | 144,536 | 35.6 % |
-| Apache-2.0 / MIT / AFL-3.0 | 98,753 | 24.4 % |
-| CC0 / PDDL / public domain | 76,912 | 19.0 % |
+| CC-BY | 145,251 | 35.8 % |
+| Apache-2.0 / MIT / AFL-3.0 | 96,013 | 23.7 % |
+| CC0 / PDDL / public domain | 77,253 | 19.0 % |
 | CC-BY-SA (share-alike) | 69,636 | 17.2 % |
-| Government / portal terms permitting reuse | 11,820 | 2.9 % |
+| Government / portal terms permitting reuse | 13,504 | 3.3 % |
 | ODC-By / ODbL / CDLA-Permissive / Etalab / OGL-UK | 3,890 | 1.0 % |
 
-Notes:
-- The licence tags come from each source's documentation and were not re-verified for this release.
-- Wikipedia-derived rows (101,874) carry the attribution "Wikipedia contributors, CC-BY-SA".
+The licence tags come from each source's documentation and were not re-verified for this release. Wikipedia-derived
+rows (101,874) carry the attribution "Wikipedia contributors, CC-BY-SA".
 
 ## Known issues in the released checkpoint's training data
+
+A review after training found the following. The cleaned pool removes or addresses each of them.
 
 - **ContractNLI test split:** 1,982 rows are in training, and 283 items of the Jev Decision Index test suite were seen
   in training.
@@ -55,14 +57,18 @@ Notes:
 ## The cleaned pool
 
 `clean/build_clean.py` removes three things:
+
 - the sources listed above, together with the 13 sources dropped by the licence review;
 - the ContractNLI test split;
-- every row whose state shares a word 8-gram with any benchmark item (document-level decontamination).
+- every row that overlaps a benchmark: its state shares a word 8-gram with a benchmark item (16-character grams for
+  scripts written without spaces), or its question quotes one.
 
-The result is 339,549 training rows from 188 sources. The PII pass then drops seven more sources, which leaves the
-327,689 training rows from 181 sources that are published (see `clean/README.md`).
+That leaves 339,524 training rows from 188 sources. The PII pass then drops seven more sources and masks personal
+data, which gives the published 327,664 training rows from 181 sources. `clean/README.md` describes each step.
 
-The code that converted each source into rows is not released: it depends on raw downloads, a per-source specification
-whose review notes quote personal data from source rows, and internal review records. `SOURCES.csv` and the published
-dataset record its result. Source names keep the prefix of the conversion batch they were added in (`tasksource/`,
-`lab/`, `expand/`, …); the prefix carries no other meaning.
+**What is not released.** The code that converted each source into rows stays private. It depends on raw downloads,
+on a per-source specification whose review notes quote personal data from source rows, and on internal review
+records. `SOURCES.csv` and the published dataset record its result.
+
+**Source names.** A name keeps the prefix of the conversion batch it was added in (`tasksource/`, `lab/`, `expand/`,
+…). The prefix carries no other meaning.
