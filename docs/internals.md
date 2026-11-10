@@ -9,13 +9,28 @@ For readers who want to change the model, check it or reproduce it. To use it, t
 **One prompt.** A request becomes a single prompt: a header that lists its questions, then the state, then each
 question with its options. The model was trained on this layout; the package builds it.
 
-**Who reads whom.** An attention mask defines which blocks of the prompt attend to which. The header never reads
-the state, the state never reads a question, and the options never see each other. Because of that, the header and
-the state are the same for every question of the request and are computed once. Every option also starts at the same position,
-so the order of the options carries no signal.
+**Custom attention mask.** Eight of the 32 layers (3, 7, …, 31) attend in both directions; the other 24 are
+causal. On top of that, a block mask isolates the parts of the prompt. The header does not attend to the state and
+the state does not attend to the questions, so both are the same for every question of the request and are computed
+once. An option attends to the header, the state and its own question, never to another option, and nothing outside
+an option attends to it. All options of a question start at the same position id, so their order carries no signal.
 
-**One score per option.** Each option ends with an end token. The pointer head turns the final hidden state at that
-token into a score, and a softmax over the scores of a question's options gives the probabilities.
+The mask buys two things: answers that do not depend on option order or on which other options are listed, and a
+header and state that are computed once and shared by every question of a request. It costs two: options cannot be
+weighed against each other (the model rarely picks "none of the above" when it is right), and the model only works
+with the `votum` loader, not with plain transformers or vLLM.
+
+**Pointer head.** Option *j* is scored from the final hidden state *h<sub>j</sub>* at its end token, and a softmax
+over the options of a question gives the probabilities:
+
+$$
+z_j = \frac{\langle q_0,\ W_o\,\mathrm{LN}(h_j) \rangle}{16},
+\qquad
+p_j = \frac{\exp(z_j / T)}{\sum_k \exp(z_k / T)}
+$$
+
+*q*<sub>0</sub> is a learned 256-dimensional query, *W<sub>o</sub>* a 256 × 4096 projection, LN a layer norm, and *T*
+a temperature per question type, stored in `votum_config.json`.
 
 ## Weights
 
@@ -33,15 +48,13 @@ Votum is a LoRA adapter and a pointer head on top of Apertus-1.5-8B.
 
 ## Implementation
 
-- **Layers and head.** Eight of the 32 layers (3, 7, …, 31) attend in both directions; the other 24 stay causal. The
-  head scores an option as ⟨q₀, W_o · LN(h)⟩ / 16, where h is the final hidden state at the option's end token.
-- **The attention layout is rules, not weights.** The rules live in `votum_config.json`. `src/votum/modeling.py`
+- **The attention mask is configuration, not weights.** Its rules live in `votum_config.json`. `src/votum/modeling.py`
   applies them as dense masks and `src/votum/vllm/isolate.py` as FlexAttention; `tests/test_masks.py` checks that the
   two produce the same mask and positions for single-question prompts.
 - **Two paths.** The PyTorch reference runs one pass per question. The server packs a request's questions into one
   prompt, each at the positions it would have alone; the two agree on 97 to 99 % of answers (the numbers are on the
   [model card](https://huggingface.co/votum-ai/Votum-8B#speed)).
-- **Load it with `votum`.** Plain transformers or plain vLLM would run the network without these rules and without
+- **Load it with `votum`.** Plain transformers or plain vLLM would run the network without the mask and without
   the head, and give wrong answers.
 
 The exact definition of every part is in the model card's

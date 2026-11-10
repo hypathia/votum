@@ -236,7 +236,7 @@ def architecture():
 
     # 2 who reads whom
     c2x = PAD + c1w + GAP
-    b.append(card(c2x, ctop, c2w, ch) + step(c2x + 16, ctop + 32, 2, "Who reads whom"))
+    b.append(card(c2x, ctop, c2w, ch) + step(c2x + 16, ctop + 32, 2, "Custom attention mask"))
     n = len(blocks); cs = 16; mx = c2x + 16 + 26 + 34; my = in_top + 16
     def reads(r, c):
         R_, C_ = blocks[r], blocks[c]
