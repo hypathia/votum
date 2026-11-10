@@ -269,6 +269,20 @@ def test_build_hf(tmp_path):
     assert json.load(open(d / "build_hf_stats.json"))["dropped_fields"] == {"n_tok": 1}
 
 
+def test_build_hf_trained_ids(tmp_path):
+    pq = pytest.importorskip("pyarrow.parquet")
+    d = _hf_inputs(tmp_path, HF_POLICY)
+    ids = tmp_path / "ids.txt.gz"
+    with gzip.open(ids, "wt") as f:
+        f.write("a/1\ns/1\n")
+    out = tmp_path / "hf"
+    _run("build_hf.py", "--pool-dir", d, "--policy", tmp_path / "policy.json", "--out-dir", out, "--trained-ids", ids)
+    default = pq.read_table(out / "data/default/train-00000-of-00001.parquet").to_pylist()
+    assert [(r["id"], r["in_votum_8b"]) for r in default] == [("a/1", True), ("f/1", False)]
+    assert pq.read_table(out / "data/default/validation-00000-of-00001.parquet").to_pylist()[0]["in_votum_8b"] is False
+    assert json.load(open(d / "build_hf_stats.json"))["in_votum_8b"]["default/train"] == 1
+
+
 @pytest.mark.parametrize("change, message", [
     ({"sa": dict(HF_POLICY["sa"], config="default")}, "share-alike"),
     ({"pub": dict(HF_POLICY["pub"], excluded=True)}, "excluded"),

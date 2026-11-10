@@ -392,17 +392,17 @@ def vision_examples():
 
 # ---------------------------------------------------------------------------------------------------------- pool
 def pool():
-    steps = [("Pool used for Votum-8B", 405547), ("13 sources: licence review", -19950), ("bias_in_bios, LLM-generated sets", -27163),
-             ("ContractNLI test split", -1982), ("benchmark overlap (8-gram)", -16928), ("portal / government terms", -11419),
-             ("conflicting licence tags", -441), ("Votum Pool", 327664)]
+    steps = [("All converted rows", 881143), ("13 sources: licence review", -57169), ("LLM-generated sets", -53620),
+             ("ContractNLI test split", -1982), ("benchmark overlap (8-gram)", -24315), ("portal / government terms", -20059),
+             ("conflicting licence tags", -741), ("Votum Pool", 723257)]
     b = [head("Data", "From training pool to dataset", "Training rows removed at each step, and the licence mix of what remains")]
     tw = (W - 2 * PAD - 3 * GAP) / 4; th = 108
-    for i, (k, v, lab) in enumerate([("Training rows", "327,664", "plus 2,797 validation rows"), ("Sources", "181", "164 public datasets, 17 collected"),
-                                     ("Languages", "73", "language codes; about 38 % English"), ("Configs", "2", "default · share_alike")]):
+    for i, (k, v, lab) in enumerate([("Training rows", "723,257", "plus 6,087 validation rows"), ("Sources", "181", "164 public datasets, 17 collected"),
+                                     ("Languages", "73", "language codes; about 41 % English"), ("Configs", "2", "default · share_alike")]):
         b.append(tile(PAD + i * (tw + GAP), TOP, tw, th, k, v, lab, hero=i == 0))
     cy = TOP + th + GAP; rh = 24; ch = 40 + rh * len(steps) + 76
     b.append(card(PAD, cy, W - 2 * PAD, ch))
-    top = cy + 40; x0, x1 = PAD + 270, W - PAD - 130; X = lambda v: x0 + v / 405547 * (x1 - x0); cur = 0
+    top = cy + 40; x0, x1 = PAD + 270, W - PAD - 130; X = lambda v: x0 + v / 881143 * (x1 - x0); cur = 0
     for i, (lab, v) in enumerate(steps):
         y = top + i * rh; end = i in (0, len(steps) - 1)
         b.append(T(PAD + 22, y + 4, lab, 12.5, INK, 650 if end else 400))
@@ -411,8 +411,8 @@ def pool():
             b.append(pill(X(v) + 62, y, f"{v:,}", 11) if i else T(X(v) + 9, y + 4, f"{v:,}", 12.5, INK, 700))
         else:
             nxt = cur + v; b.append(bar(X(nxt), y - 7, X(cur) - X(nxt), 14, PINK, 4)); b.append(T(X(cur) + 9, y + 4, f"−{-v:,}", 11.5, MUTED, 500)); cur = nxt
-    fams = [("CC-BY", 99341, FAM[0]), ("Apache / MIT / AFL", 62218, FAM[1]), ("CC0 / PDDL / PD", 57226, FAM[2]),
-            ("other open", 5105, FAM[3]), ("CC-BY-SA / ODbL · share_alike", 103774, RED)]
+    fams = [("CC-BY", 208579, FAM[0]), ("Apache / MIT / AFL", 128234, FAM[1]), ("CC0 / PDDL / PD", 130272, FAM[2]),
+            ("other open", 14316, FAM[3]), ("CC-BY-SA / ODbL · share_alike", 241856, RED)]
     y0 = top + rh * len(steps) + 14; tot = sum(v for _, v, _ in fams); x = PAD + 22; ww_all = W - 2 * PAD - 44
     for lab, v, c in fams:
         ww = ww_all * v / tot; b.append(bar(x, y0, ww - 2, 12, c, 3)); x += ww
@@ -473,7 +473,7 @@ class Sankey:
 
 def selection():
     """how the sources and the rows were selected: two Sankey diagrams (numbers: data/README.md and the dataset card)"""
-    b = [head("Data", "From 1,289 candidate sources to 330,461 rows", "How sources were selected, and what happened to the rows converted from them")]
+    b = [head("Data", "From 1,289 candidate sources to 729,344 rows", "How sources were selected, and what happened to the rows converted from them")]
     ch = 392; b.append(card(PAD, TOP, W - 2 * PAD, ch)); y0, y1 = TOP + 62, TOP + ch - 44
     b.append(T(PAD + 22, TOP + 32, "Sources", 14, INK, 700)); b.append(T(PAD + 775, TOP + 32, "Rows", 14, INK, 700))
     s = Sankey(y0, y1, 1289, 5); xa, xb, xc = PAD + 172, PAD + 290, PAD + 525
@@ -486,13 +486,12 @@ def selection():
     for k, v in (("pub", 181), ("late", 36), ("out", 1072)): s.link("cand", k, v)
     for k, v, *_ in reasons: s.link("out", k, v)
     b.append(s.draw())
-    r = Sankey(y0, y1, 901098, 3); xr, xs = PAD + 775, PAD + 900
+    r = Sankey(y0, y1, 901098, 2); xr, xs = PAD + 775, PAD + 900
     r.column(xr, [("conv", 901098, True, "901,098", "rows converted")], None)
-    r.column(xs, [("pub", 330461, True, "330,461", "published", "327,664 training, 2,797 validation"),
-                  ("late", 78459, False, "78,459", "removed before release", "licence review, benchmark overlap"),
-                  ("cap", 480047, False, "480,047", "above the per-source cap", "large sources are capped"),
-                  ("dup", 12131, False, "12,131", "duplicates and other filters")], "right")
-    for k, v in (("pub", 330461), ("late", 78459), ("cap", 480047), ("dup", 12131)): r.link("conv", k, v)
+    r.column(xs, [("pub", 729344, True, "729,344", "published", "723,257 training, 6,087 validation"),
+                  ("late", 159015, False, "159,015", "removed before release", "licence review, benchmark overlap"),
+                  ("dup", 12739, False, "12,739", "duplicates and other filters")], "right")
+    for k, v in (("pub", 729344), ("late", 159015), ("dup", 12739)): r.link("conv", k, v)
     b.append(r.draw())
     b.append(f'<text x="{xr + 3.5:.1f}" y="{y1 + 24:.1f}" font-size="12.5" text-anchor="middle" xml:space="preserve"><tspan font-weight="700" fill="{INK}">901,098</tspan>'
              f'<tspan fill="{MUTED}"> rows converted</tspan></text>')

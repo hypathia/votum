@@ -1,122 +1,122 @@
 source,licence,train_rows_as_trained,removed_by_second_licence_review,train_rows_in_cleaned_pool
-01 Stanford Politeness Corpus (ConvoKit wikipedia-politeness-corpus),"CC-BY [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",2597,no,2587
+01 Stanford Politeness Corpus (ConvoKit wikipedia-politeness-corpus),"CC-BY [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",2597,no,4294
 03 NYC 311 service requests (agency routing),NYC Open Data (Local Law 11: no restrictions on use) [commercial],1596,no,1596
-05 UK Employment Tribunal decisions (GOV.UK),OGL-UK-3.0 [commercial],355,no,334
-13 NYC DOHMH restaurant inspection results,NYC Open Data (Local Law 11: no restrictions on use) [commercial],599,no,599
+05 UK Employment Tribunal decisions (GOV.UK),OGL-UK-3.0 [commercial],355,no,335
+13 NYC DOHMH restaurant inspection results,NYC Open Data (Local Law 11: no restrictions on use) [commercial],599,no,2959
 16 Rechtspraak.nl open data (Dutch court decisions),Public-Domain [commercial],1188,no,1186
-"AmbiEnt (Liu et al. 2023, EMNLP)",CC-BY-4.0 [commercial],239,no,237
+"AmbiEnt (Liu et al. 2023, EMNLP)",CC-BY-4.0 [commercial],239,no,456
 "Austria RIS Judikatur (VwGH decisions, OGD API)",CC-BY-4.0 [commercial],1928,no,1927
-Breast Cancer Wisconsin (Diagnostic),CC-BY-4.0 [commercial],339,no,339
-"Bundestag DIP (Vorgaenge, petitions and bills)",DIP-terms [commercial] | attribution required (Deutscher Bundestag/DIP),594,no,594
-CADA avis et conseils (FR),Etalab-2.0 [commercial],1791,no,1791
+Breast Cancer Wisconsin (Diagnostic),CC-BY-4.0 [commercial],339,no,567
+"Bundestag DIP (Vorgaenge, petitions and bills)",DIP-terms [commercial] | attribution required (Deutscher Bundestag/DIP),594,no,1789
+CADA avis et conseils (FR),Etalab-2.0 [commercial],1791,no,5246
 "CANTEMIST (Spanish oncology case reports, ICD-O morphology)",CC-BY-4.0 [commercial],156,no,156
-CBP CROSS customs rulings (HTS classification),Public-Domain [commercial],1779,no,1771
+CBP CROSS customs rulings (HTS classification),Public-Domain [commercial],1779,no,3564
 ContractNLI,CC-BY-4.0 [commercial],9730,no,101
 D3CODE (Davani et al. 2024),CC-BY-4.0 [commercial],4476,no,4474
 "Entity matching benchmark: Abt-Buy (Leipzig, perfect mapping)",CC-BY-4.0 [commercial],2145,no,2145
-"German Wikipedia Löschkandidaten (AfD-style, de)","CC-BY-SA [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",4960,no,4955
-Heart Disease (Cleveland),CC-BY-4.0 [commercial],182,no,182
+"German Wikipedia Löschkandidaten (AfD-style, de)","CC-BY-SA [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",4960,no,11246
+Heart Disease (Cleveland),CC-BY-4.0 [commercial],182,no,302
 HopeEDI Tamil + Malayalam (LT-EDI),CC-BY-4.0 [commercial],2984,yes,0
-MAUD remainder (86 of 92 deal-point questions; pool has 6),CC-BY-4.0 [commercial],7159,no,3786
-"PMC: Plausibility Machine Commonsense (Nananukul et al. 2024, Data in Brief)",CC-BY-4.0 [commercial],594,no,593
-ParlLawSpeech (AT Nationalrat 1996-2019; DE Bundestag 2009-2021),CC-BY-4.0 [commercial],1195,no,1195
-San Francisco 311 cases (routing to agency),PDDL-1.0 [commercial],17876,no,17876
-UKPConvArg1 (Habernal and Gurevych 2016),CC-BY-4.0 [commercial],900,no,886
-Wikimedia Commons deletion requests,"CC-BY-SA [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",897,no,896
-Wikipedia Articles for Deletion (AfD) corpus 2005-2018 (en),"CC-BY-SA [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",11916,no,11755
-Wikipedia Talk Labels: Aggression,"CC0-1.0 [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",2381,no,2372
-Wikipedia Talk Labels: Personal Attacks (Wulczyn et al. 2017),"CC0-1.0 [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",4767,no,4734
-Wikipedia Talk Labels: Toxicity,"CC0-1.0 [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",4777,no,4747
-Wikipedia featured article candidates (FAC) discussions,"CC-BY-SA [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",4956,no,4106
-Wikipedia page-protection requests and admin decisions (RfPP archive),"CC-BY-SA [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",2987,no,2985
-"ZH Kantonsrat Geschaefte (XML, public interface)",portal terms (commercial use allowed) [commercial],479,no,479
-ch_cantonal_parl,"per row: CC-BY-4.0 (Basel-Stadt), CC0-1.0 (Thurgau), cantonal open-data terms with attribution (Bern, Basel-Landschaft) [commercial]",2146,no,2146
+MAUD remainder (86 of 92 deal-point questions; pool has 6),CC-BY-4.0 [commercial],7159,no,6519
+"PMC: Plausibility Machine Commonsense (Nananukul et al. 2024, Data in Brief)",CC-BY-4.0 [commercial],594,no,1775
+ParlLawSpeech (AT Nationalrat 1996-2019; DE Bundestag 2009-2021),CC-BY-4.0 [commercial],1195,no,3527
+San Francisco 311 cases (routing to agency),PDDL-1.0 [commercial],17876,no,37936
+UKPConvArg1 (Habernal and Gurevych 2016),CC-BY-4.0 [commercial],900,no,2663
+Wikimedia Commons deletion requests,"CC-BY-SA [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",897,no,2042
+Wikipedia Articles for Deletion (AfD) corpus 2005-2018 (en),"CC-BY-SA [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",11916,no,22624
+Wikipedia Talk Labels: Aggression,"CC0-1.0 [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",2381,no,5752
+Wikipedia Talk Labels: Personal Attacks (Wulczyn et al. 2017),"CC0-1.0 [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",4767,no,14172
+Wikipedia Talk Labels: Toxicity,"CC0-1.0 [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",4777,no,13157
+Wikipedia featured article candidates (FAC) discussions,"CC-BY-SA [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",4956,no,9916
+Wikipedia page-protection requests and admin decisions (RfPP archive),"CC-BY-SA [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",2987,no,5472
+"ZH Kantonsrat Geschaefte (XML, public interface)",portal terms (commercial use allowed) [commercial],479,no,1423
+ch_cantonal_parl,"per row: CC-BY-4.0 (Basel-Stadt), CC0-1.0 (Thurgau), cantonal open-data terms with attribution (Bern, Basel-Landschaft) [commercial]",2146,no,8585
 de_fr_it/fineweb_c,ODC-By [commercial],1069,no,1067
 de_fr_it/frenchmedmcqa,Apache-2.0 [commercial],240,yes,0
-de_fr_it/german_argument_mining,CC-BY-4.0 [commercial],712,no,712
+de_fr_it/german_argument_mining,CC-BY-4.0 [commercial],712,no,870
 de_fr_it/massive,CC-BY-4.0 [commercial],1171,no,1171
 de_fr_it/medexpqa,CC-BY-4.0 [commercial],397,yes,0
-de_fr_it/multi_eurlex,CC-BY-4.0 [commercial],900,no,898
-de_fr_it/pxcorpus,CC-BY-4.0 [commercial],89,no,89
-de_fr_it/swiss_caselaw_cantonal,CC0-1.0 [commercial],584,no,580
+de_fr_it/multi_eurlex,CC-BY-4.0 [commercial],900,no,1479
+de_fr_it/pxcorpus,CC-BY-4.0 [commercial],89,no,235
+de_fr_it/swiss_caselaw_cantonal,CC0-1.0 [commercial],584,no,926
 de_fr_it/swissspark,CC-BY-4.0 [commercial],141,no,140
 decider/bias_in_bios,MIT [commercial],2350,yes,0
-decider/newsgroups,CC-BY-4.0 [commercial],2524,no,2506
-"eLife open peer review (2023+ reviewed-preprint XML, assessment-based)",CC-BY-4.0 [commercial],2983,no,2924
-"entscheidsuche.ch (Swiss court decisions, all cantons + federal)",entscheidsuche.ch terms (free use) [commercial],2089,no,2085
-eurotender_cpv,CC-BY-4.0 [commercial],30476,no,30462
+decider/newsgroups,CC-BY-4.0 [commercial],2524,no,2508
+"eLife open peer review (2023+ reviewed-preprint XML, assessment-based)",CC-BY-4.0 [commercial],2983,no,4715
+"entscheidsuche.ch (Swiss court decisions, all cantons + federal)",entscheidsuche.ch terms (free use) [commercial],2089,no,4273
+eurotender_cpv,CC-BY-4.0 [commercial],30476,no,54825
 expand/aegis2,CC-BY-4.0 [commercial],4774,no,0
-expand/casino,CC-BY-4.0 [commercial],1954,no,1945
+expand/casino,CC-BY-4.0 [commercial],1954,no,5822
 expand/claimbuster,CC-BY-4.0 [commercial],1742,no,1719
-expand/cmu_movies,CC-BY-SA [commercial] | attribution required | share-alike,3979,no,3944
+expand/cmu_movies,CC-BY-SA [commercial] | attribution required | share-alike,3979,no,11844
 expand/convabuse,CC-BY-4.0 [commercial],841,no,841
-expand/cuad_clause,CC-BY-4.0 [commercial],2992,no,2420
-expand/cve,CC0-1.0 [commercial],9547,no,9546
-expand/dices,CC-BY-4.0 [commercial],801,no,791
+expand/cuad_clause,CC-BY-4.0 [commercial],2992,no,7107
+expand/cve,CC0-1.0 [commercial],9547,no,28600
+expand/dices,CC-BY-4.0 [commercial],801,no,1320
 expand/expertqa,MIT [commercial],5958,no,0
-expand/fda_recall,CC0-1.0 [commercial],7954,no,7931
-expand/feverous,"CC-BY-SA [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",5950,no,5599
-expand/fewrel,"CC-BY-SA [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",4963,no,4908
-expand/ghc,CC-BY-4.0 [commercial],4754,no,4749
+expand/fda_recall,CC0-1.0 [commercial],7954,no,23785
+expand/feverous,"CC-BY-SA [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",5950,no,16833
+expand/fewrel,"CC-BY-SA [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",4963,no,14747
+expand/ghc,CC-BY-4.0 [commercial],4754,no,14266
 expand/hh_redteam,MIT [commercial],3599,no,0
-expand/maven,"CC-BY-SA [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",4969,no,4944
+expand/maven,"CC-BY-SA [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",4969,no,14825
 expand/nhtsa,Public-Domain [commercial],7957,yes,0
 expand/p4g,Apache-2.0 [commercial],597,no,594
-expand/personachat,CC-BY-4.0 [commercial],1489,no,1485
+expand/personachat,CC-BY-4.0 [commercial],1489,no,4459
 ib/alia_stance,CC-BY-4.0 [commercial],2934,no,2933
-ib/camara_br,Câmara dos Deputados Dados Abertos (commercial use allowed) [commercial],1579,no,1579
-ib/cawikitc,"CC-BY-SA [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",1788,no,1787
-ib/elkarhizketak,"CC-BY-SA [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",294,no,294
-ib/head_qa,MIT [commercial],747,no,747
-ib/nlucat,CC-BY-4.0 [commercial],1488,no,1488
+ib/camara_br,Câmara dos Deputados Dados Abertos (commercial use allowed) [commercial],1579,no,4727
+ib/cawikitc,"CC-BY-SA [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",1788,no,5360
+ib/elkarhizketak,"CC-BY-SA [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",294,no,884
+ib/head_qa,MIT [commercial],747,no,2236
+ib/nlucat,CC-BY-4.0 [commercial],1488,no,4468
 ib/parafrases_gl,"CC-BY-4.0 [commercial] | attribution required (Wikipedia contributors, CC-BY-SA)",475,no,475
 ib/parlamento_pt,"Assembleia da República open data (free reuse, cite source) [commercial]",5081,no,5081
-ib/wikicat_ca,"CC-BY-SA-4.0 [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",1194,no,1194
-ib/wikicat_es,"CC-BY-SA-3.0 [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",1193,no,1192
+ib/wikicat_ca,"CC-BY-SA-4.0 [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",1194,no,3580
+ib/wikicat_es,"CC-BY-SA-3.0 [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",1193,no,3580
 lab/civil_comments,CC0-1.0 [commercial],429,no,427
 lab/doc2dial,CC-BY-3.0 [commercial],749,no,723
 lab/helpsteer2,CC-BY-4.0 [commercial],2958,no,0
 lab/helpsteer2_pref,CC-BY-4.0 [commercial],2936,no,0
 lab/helpsteer3_pref,CC-BY-4.0 [commercial],1411,no,0
-lab/hwu64,CC-BY-4.0 [commercial],869,no,869
-lab/massive,CC-BY-4.0 [commercial],884,no,883
+lab/hwu64,CC-BY-4.0 [commercial],869,no,5423
+lab/massive,CC-BY-4.0 [commercial],884,no,2966
 lab/multi_eurlex,CC-BY-4.0 [commercial],1773,no,4
-lab/multiwoz22,Apache-2.0 [commercial],1770,no,1379
+lab/multiwoz22,Apache-2.0 [commercial],1770,no,2277
 lab/nhamcs,Public-Domain [commercial],1034,no,1034
-lab/re_docred,"MIT [commercial] | attribution required (Wikipedia contributors, CC-BY-SA)",1761,no,1553
-lab/slurp,CC-BY-4.0 [commercial],887,no,886
-lab/snips,CC0-1.0 [commercial],876,no,875
-lab/taskmaster,CC-BY-4.0 [commercial],707,no,669
-lab/wands,MIT [commercial],2920,no,2884
-massive_ml,CC-BY-4.0 [commercial],13714,no,13711
-miracl,"Apache-2.0 [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",16558,no,16311
-morocco_cassation,CC-BY-4.0 [commercial],1986,no,1986
-multi3nlu,CC-BY-4.0 [commercial],1425,no,1425
-nusaparagraph,Apache-2.0 [commercial],11877,no,11877
+lab/re_docred,"MIT [commercial] | attribution required (Wikipedia contributors, CC-BY-SA)",1761,no,2587
+lab/slurp,CC-BY-4.0 [commercial],887,no,2729
+lab/snips,CC0-1.0 [commercial],876,no,2921
+lab/taskmaster,CC-BY-4.0 [commercial],707,no,670
+lab/wands,MIT [commercial],2920,no,2913
+massive_ml,CC-BY-4.0 [commercial],13714,no,41111
+miracl,"Apache-2.0 [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",16558,no,48980
+morocco_cassation,CC-BY-4.0 [commercial],1986,no,5964
+multi3nlu,CC-BY-4.0 [commercial],1425,no,4281
+nusaparagraph,Apache-2.0 [commercial],11877,no,15361
 offenseval_dravidian,CC-BY-4.0 [commercial],2686,yes,0
 prdect_id,CC-BY-4.0 [commercial],1786,yes,0
-procedural/arithmetic,Apache-2.0 [commercial],1770,no,1770
-procedural/entity_belief_tracking,Apache-2.0 [commercial],1758,no,1758
-procedural/event_state_reconstruction,Apache-2.0 [commercial],1765,no,1765
-procedural/event_triggered_execution,Apache-2.0 [commercial],1766,no,1766
-procedural/evidence_sufficiency,Apache-2.0 [commercial],1773,no,1773
-procedural/goal_directed_planning,Apache-2.0 [commercial],1761,no,1761
-procedural/graph_navigation,Apache-2.0 [commercial],1764,no,1764
-procedural/instruction_execution,Apache-2.0 [commercial],1760,no,1760
-procedural/multi_view_adjudication,Apache-2.0 [commercial],3550,no,3550
-procedural/needle_retrieval,Apache-2.0 [commercial],1766,no,1766
-procedural/partial_observation_calibration,Apache-2.0 [commercial],5857,no,5857
-procedural/policy_applicability,Apache-2.0 [commercial],1754,no,1754
-procedural/policy_under_uncertainty,Apache-2.0 [commercial],3526,no,3526
-procedural/record_aggregation,Apache-2.0 [commercial],1753,no,1753
-procedural/record_eligibility,Apache-2.0 [commercial],3523,no,3523
-procedural/state_perturbation,Apache-2.0 [commercial],1771,no,1771
-procedural/table_lookup,Apache-2.0 [commercial],1750,no,1750
-procedural/taxonomy_routing,Apache-2.0 [commercial],1767,no,1767
-rm_canton_laws,CC0-1.0 [commercial],2500,no,2500
+procedural/arithmetic,Apache-2.0 [commercial],1770,no,5534
+procedural/entity_belief_tracking,Apache-2.0 [commercial],1758,no,5925
+procedural/event_state_reconstruction,Apache-2.0 [commercial],1765,no,3948
+procedural/event_triggered_execution,Apache-2.0 [commercial],1766,no,5916
+procedural/evidence_sufficiency,Apache-2.0 [commercial],1773,no,5933
+procedural/goal_directed_planning,Apache-2.0 [commercial],1761,no,5844
+procedural/graph_navigation,Apache-2.0 [commercial],1764,no,2258
+procedural/instruction_execution,Apache-2.0 [commercial],1760,no,5917
+procedural/multi_view_adjudication,Apache-2.0 [commercial],3550,no,5940
+procedural/needle_retrieval,Apache-2.0 [commercial],1766,no,5924
+procedural/partial_observation_calibration,Apache-2.0 [commercial],5857,no,5909
+procedural/policy_applicability,Apache-2.0 [commercial],1754,no,5907
+procedural/policy_under_uncertainty,Apache-2.0 [commercial],3526,no,5921
+procedural/record_aggregation,Apache-2.0 [commercial],1753,no,5893
+procedural/record_eligibility,Apache-2.0 [commercial],3523,no,5911
+procedural/state_perturbation,Apache-2.0 [commercial],1771,no,5931
+procedural/table_lookup,Apache-2.0 [commercial],1750,no,5887
+procedural/taxonomy_routing,Apache-2.0 [commercial],1767,no,5923
+rm_canton_laws,CC0-1.0 [commercial],2500,no,4500
 rm_quotidiana,CC-BY-4.0 [commercial],892,yes,0
-semeval2021_t12_postevaluation_bundle,CC-BY-4.0 [commercial],1191,no,1150
-tasksource/CONDAQA,"Apache-2.0 [commercial] | attribution required (Wikipedia contributors, CC-BY-SA)",730,no,715
+semeval2021_t12_postevaluation_bundle,CC-BY-4.0 [commercial],1191,no,3363
+tasksource/CONDAQA,"Apache-2.0 [commercial] | attribution required (Wikipedia contributors, CC-BY-SA)",730,no,721
 tasksource/HelpSteer2/coherence,CC-BY-4.0 [commercial],688,no,0
 tasksource/HelpSteer2/complexity,CC-BY-4.0 [commercial],697,no,0
 tasksource/HelpSteer2/correctness,CC-BY-4.0 [commercial],636,no,0
@@ -126,93 +126,93 @@ tasksource/HelpSteer3/edit_quality,CC-BY-4.0 [commercial],664,no,0
 tasksource/HelpSteer3/feedback,CC-BY-4.0 [commercial],665,no,0
 tasksource/HelpSteer3/preference_strength,CC-BY-4.0 [commercial],665,no,0
 tasksource/HelpSteer3/principle,CC-BY-4.0 [commercial],408,no,0
-tasksource/ambient,CC-BY-4.0 [commercial],10,no,10
-tasksource/balanced-copa,CC-BY-4.0 [commercial],59,no,59
+tasksource/ambient,CC-BY-4.0 [commercial],10,no,20
+tasksource/balanced-copa,CC-BY-4.0 [commercial],59,no,198
 tasksource/circa,CC-BY-4.0 [commercial],226,yes,0
-tasksource/civil_comments/identity_attack_share,CC0-1.0 [commercial],56,no,55
-tasksource/civil_comments/insult_share,CC0-1.0 [commercial],282,no,280
-tasksource/civil_comments/obscene_share,CC0-1.0 [commercial],35,no,35
-tasksource/civil_comments/severe_toxicity_share,CC0-1.0 [commercial],1,no,1
-tasksource/civil_comments/sexual_explicit_share,CC0-1.0 [commercial],16,no,16
-tasksource/civil_comments/threat_share,CC0-1.0 [commercial],31,no,31
-tasksource/civil_comments/toxicity_share,CC0-1.0 [commercial],277,no,276
-tasksource/commonsense_qa_2.0,CC-BY-4.0 [commercial],100,no,100
-tasksource/cuad/answerability,CC-BY-4.0 [commercial],45,no,3
-tasksource/dbpedia_14/dbpedia_14,CC-BY-SA [commercial] | attribution required | share-alike,447,no,406
-tasksource/defeasible-nli/atomic,CC-BY-4.0 [commercial],216,no,216
+tasksource/civil_comments/identity_attack_share,CC0-1.0 [commercial],56,no,155
+tasksource/civil_comments/insult_share,CC0-1.0 [commercial],282,no,346
+tasksource/civil_comments/obscene_share,CC0-1.0 [commercial],35,no,90
+tasksource/civil_comments/severe_toxicity_share,CC0-1.0 [commercial],1,no,3
+tasksource/civil_comments/sexual_explicit_share,CC0-1.0 [commercial],16,no,49
+tasksource/civil_comments/threat_share,CC0-1.0 [commercial],31,no,98
+tasksource/civil_comments/toxicity_share,CC0-1.0 [commercial],277,no,457
+tasksource/commonsense_qa_2.0,CC-BY-4.0 [commercial],100,no,337
+tasksource/cuad/answerability,CC-BY-4.0 [commercial],45,no,7
+tasksource/dbpedia_14/dbpedia_14,CC-BY-SA [commercial] | attribution required | share-alike,447,no,531
+tasksource/defeasible-nli/atomic,CC-BY-4.0 [commercial],216,no,592
 tasksource/disrpt/eng.dep.scidtb.rels,Apache-2.0 [commercial],226,yes,0
-tasksource/docred,"MIT [commercial] | attribution required (Wikipedia contributors, CC-BY-SA)",728,no,633
-tasksource/dynahate,CC-BY-4.0 [commercial],441,no,441
-tasksource/dynasent/r2_votes,CC-BY-4.0 [commercial],444,no,444
+tasksource/docred,"MIT [commercial] | attribution required (Wikipedia contributors, CC-BY-SA)",728,no,634
+tasksource/dynahate,CC-BY-4.0 [commercial],441,no,741
+tasksource/dynasent/r2_votes,CC-BY-4.0 [commercial],444,no,748
 tasksource/faithdial/grounding,MIT [commercial],119,no,118
-tasksource/fool-me-twice,"Apache-2.0 [commercial] | attribution required (Wikipedia contributors, CC-BY-SA)",728,no,695
+tasksource/fool-me-twice,"Apache-2.0 [commercial] | attribution required (Wikipedia contributors, CC-BY-SA)",728,no,700
 tasksource/fracas,Public-Domain [commercial],93,yes,0
-tasksource/gap,"Apache-2.0 [commercial] | attribution required (Wikipedia contributors, CC-BY-SA)",59,no,59
-tasksource/glue/qnli,"CC-BY-SA-4.0 [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",288,no,287
-tasksource/glue/wnli,CC-BY-4.0 [commercial],179,no,179
-tasksource/infotabs,"Apache-2.0 [commercial] | attribution required (Wikipedia contributors, CC-BY-SA)",86,no,86
-tasksource/maud/antitrust-efforts,CC-BY-4.0 [commercial],24,no,17
+tasksource/gap,"Apache-2.0 [commercial] | attribution required (Wikipedia contributors, CC-BY-SA)",59,no,87
+tasksource/glue/qnli,"CC-BY-SA-4.0 [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",288,no,370
+tasksource/glue/wnli,CC-BY-4.0 [commercial],179,no,593
+tasksource/infotabs,"Apache-2.0 [commercial] | attribution required (Wikipedia contributors, CC-BY-SA)",86,no,137
+tasksource/maud/antitrust-efforts,CC-BY-4.0 [commercial],24,no,27
 tasksource/maud/bringdown-timing,CC-BY-4.0 [commercial],20,no,19
-tasksource/maud/consideration,CC-BY-4.0 [commercial],22,no,17
+tasksource/maud/consideration,CC-BY-4.0 [commercial],22,no,28
 tasksource/maud/ordinary-course-consent,CC-BY-4.0 [commercial],7,no,7
 tasksource/maud/ordinary-course-efforts,CC-BY-4.0 [commercial],9,no,6
 tasksource/maud/specific-performance,CC-BY-4.0 [commercial],11,no,0
 tasksource/maven-arg/role,"CC-BY-SA [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",98,yes,0
-tasksource/maven/event,"CC-BY-SA [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",49,no,49
-tasksource/moral_stories/full,MIT [commercial],186,no,186
-tasksource/multidogo/airline/intent,CDLA-Permissive-1.0 [commercial],40,no,40
-tasksource/multidogo/fastfood/intent,CDLA-Permissive-1.0 [commercial],39,no,39
-tasksource/multidogo/finance/intent,CDLA-Permissive-1.0 [commercial],37,no,36
-tasksource/multidogo/insurance/intent,CDLA-Permissive-1.0 [commercial],38,no,37
-tasksource/multidogo/media/intent,CDLA-Permissive-1.0 [commercial],39,no,39
-tasksource/multidogo/software/intent,CDLA-Permissive-1.0 [commercial],38,no,38
-tasksource/multilingual/massive,CC-BY-4.0 [commercial],434,no,434
-tasksource/multilingual/paws-x/de,"Google free-use terms (attribution appreciated) [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",30,no,30
-tasksource/multilingual/paws-x/en,"Google free-use terms (attribution appreciated) [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",32,no,32
-tasksource/multilingual/paws-x/es,"Google free-use terms (attribution appreciated) [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",33,no,33
-tasksource/multilingual/paws-x/fr,"Google free-use terms (attribution appreciated) [commercial] | attribution required (Wikipedia contributors, CC-BY-SA)",16,no,16
-tasksource/multilingual/paws-x/ja,"Google free-use terms (attribution appreciated) [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",17,no,17
-tasksource/multilingual/paws-x/ko,"Google free-use terms (attribution appreciated) [commercial] | attribution required (Wikipedia contributors, CC-BY-SA)",31,no,31
-tasksource/multilingual/paws-x/zh,"Google free-use terms (attribution appreciated) [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",34,no,34
-tasksource/multilingual/wili_2018,"ODbL-1.0 [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",444,no,442
-tasksource/multilingual/xcopa/et,CC-BY-4.0 [commercial],4,no,4
-tasksource/multilingual/xcopa/ht,CC-BY-4.0 [commercial],4,no,4
-tasksource/multilingual/xcopa/id,CC-BY-4.0 [commercial],4,no,4
-tasksource/multilingual/xcopa/it,CC-BY-4.0 [commercial],3,no,3
-tasksource/multilingual/xcopa/sw,CC-BY-4.0 [commercial],4,no,4
-tasksource/multilingual/xcopa/ta,CC-BY-4.0 [commercial],4,no,4
-tasksource/multilingual/xcopa/th,CC-BY-4.0 [commercial],4,no,4
-tasksource/multilingual/xcopa/tr,CC-BY-4.0 [commercial],4,no,4
-tasksource/multilingual/xcopa/vi,CC-BY-4.0 [commercial],4,no,4
-tasksource/multilingual/xcopa/zh,CC-BY-4.0 [commercial],4,no,4
-tasksource/multiwoz22/categorical-slot,Apache-2.0 [commercial],70,no,39
-tasksource/multiwoz22/dialogue-act,Apache-2.0 [commercial],66,no,46
-tasksource/nevir,"MIT [commercial] | attribution required (Wikipedia contributors, CC-BY-SA)",59,no,58
+tasksource/maven/event,"CC-BY-SA [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",49,no,142
+tasksource/moral_stories/full,MIT [commercial],186,no,625
+tasksource/multidogo/airline/intent,CDLA-Permissive-1.0 [commercial],40,no,64
+tasksource/multidogo/fastfood/intent,CDLA-Permissive-1.0 [commercial],39,no,50
+tasksource/multidogo/finance/intent,CDLA-Permissive-1.0 [commercial],37,no,61
+tasksource/multidogo/insurance/intent,CDLA-Permissive-1.0 [commercial],38,no,46
+tasksource/multidogo/media/intent,CDLA-Permissive-1.0 [commercial],39,no,45
+tasksource/multidogo/software/intent,CDLA-Permissive-1.0 [commercial],38,no,62
+tasksource/multilingual/massive,CC-BY-4.0 [commercial],434,no,684
+tasksource/multilingual/paws-x/de,"Google free-use terms (attribution appreciated) [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",30,no,52
+tasksource/multilingual/paws-x/en,"Google free-use terms (attribution appreciated) [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",32,no,52
+tasksource/multilingual/paws-x/es,"Google free-use terms (attribution appreciated) [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",33,no,55
+tasksource/multilingual/paws-x/fr,"Google free-use terms (attribution appreciated) [commercial] | attribution required (Wikipedia contributors, CC-BY-SA)",16,no,49
+tasksource/multilingual/paws-x/ja,"Google free-use terms (attribution appreciated) [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",17,no,55
+tasksource/multilingual/paws-x/ko,"Google free-use terms (attribution appreciated) [commercial] | attribution required (Wikipedia contributors, CC-BY-SA)",31,no,51
+tasksource/multilingual/paws-x/zh,"Google free-use terms (attribution appreciated) [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",34,no,56
+tasksource/multilingual/wili_2018,"ODbL-1.0 [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",444,no,734
+tasksource/multilingual/xcopa/et,CC-BY-4.0 [commercial],4,no,12
+tasksource/multilingual/xcopa/ht,CC-BY-4.0 [commercial],4,no,12
+tasksource/multilingual/xcopa/id,CC-BY-4.0 [commercial],4,no,12
+tasksource/multilingual/xcopa/it,CC-BY-4.0 [commercial],3,no,10
+tasksource/multilingual/xcopa/sw,CC-BY-4.0 [commercial],4,no,12
+tasksource/multilingual/xcopa/ta,CC-BY-4.0 [commercial],4,no,13
+tasksource/multilingual/xcopa/th,CC-BY-4.0 [commercial],4,no,12
+tasksource/multilingual/xcopa/tr,CC-BY-4.0 [commercial],4,no,13
+tasksource/multilingual/xcopa/vi,CC-BY-4.0 [commercial],4,no,12
+tasksource/multilingual/xcopa/zh,CC-BY-4.0 [commercial],4,no,12
+tasksource/multiwoz22/categorical-slot,Apache-2.0 [commercial],70,no,69
+tasksource/multiwoz22/dialogue-act,Apache-2.0 [commercial],66,no,75
+tasksource/nevir,"MIT [commercial] | attribution required (Wikipedia contributors, CC-BY-SA)",59,no,99
 tasksource/nli_fever,"CC-BY-SA [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",735,no,599
-tasksource/oasst2/creativity,Apache-2.0 [commercial],450,no,427
+tasksource/oasst2/creativity,Apache-2.0 [commercial],450,no,428
 tasksource/oasst2/helpfulness,Apache-2.0 [commercial],530,no,494
 tasksource/oasst2/humor,Apache-2.0 [commercial],563,no,536
-tasksource/oasst2/quality,Apache-2.0 [commercial],613,no,572
-tasksource/oasst2/toxicity,Apache-2.0 [commercial],591,no,539
-tasksource/patent-classification/abstract,CC-BY-4.0 [commercial],443,no,443
-tasksource/paws/labeled_final,"Google free-use terms (attribution appreciated) [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",96,no,96
-tasksource/paws/labeled_swap,"Google free-use terms (attribution appreciated) [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",108,no,102
-tasksource/piqa,AFL-3.0 [commercial],327,no,326
-tasksource/poem_sentiment,CC-BY-4.0 [commercial],222,no,222
-tasksource/proto_qa/proto_qa,CC-BY-4.0 [commercial],226,no,226
-tasksource/quarel,CC-BY-4.0 [commercial],132,no,132
-tasksource/redial/preference,CC-BY-4.0 [commercial],41,no,37
+tasksource/oasst2/quality,Apache-2.0 [commercial],613,no,574
+tasksource/oasst2/toxicity,Apache-2.0 [commercial],591,no,543
+tasksource/patent-classification/abstract,CC-BY-4.0 [commercial],443,no,614
+tasksource/paws/labeled_final,"Google free-use terms (attribution appreciated) [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",96,no,307
+tasksource/paws/labeled_swap,"Google free-use terms (attribution appreciated) [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",108,no,324
+tasksource/piqa,AFL-3.0 [commercial],327,no,549
+tasksource/poem_sentiment,CC-BY-4.0 [commercial],222,no,741
+tasksource/proto_qa/proto_qa,CC-BY-4.0 [commercial],226,no,755
+tasksource/quarel,CC-BY-4.0 [commercial],132,no,358
+tasksource/redial/preference,CC-BY-4.0 [commercial],41,no,126
 tasksource/scone,CC-BY-SA [commercial] | attribution required | share-alike,15,yes,0
-tasksource/slurp/intent,CC-BY-4.0 [commercial],68,no,68
-tasksource/slurp/slot-type,CC-BY-4.0 [commercial],69,no,69
-tasksource/sms_spam,CC-BY-4.0 [commercial],279,no,279
-tasksource/snips_built_in_intents,CC0-1.0 [commercial],112,no,112
-tasksource/squad-v2/answerability,"CC-BY-SA-4.0 [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",74,no,73
-tasksource/super_glue/axg,MIT [commercial],230,no,181
+tasksource/slurp/intent,CC-BY-4.0 [commercial],68,no,107
+tasksource/slurp/slot-type,CC-BY-4.0 [commercial],69,no,112
+tasksource/sms_spam,CC-BY-4.0 [commercial],279,no,443
+tasksource/snips_built_in_intents,CC0-1.0 [commercial],112,no,378
+tasksource/squad-v2/answerability,"CC-BY-SA-4.0 [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",74,no,122
+tasksource/super_glue/axg,MIT [commercial],230,no,282
 tasksource/tabfact,"CC-BY-4.0 [commercial] | attribution required (Wikipedia contributors, CC-BY-SA)",128,no,126
-tasksource/toxic_conversations,CC0-1.0 [commercial],438,no,435
+tasksource/toxic_conversations,CC0-1.0 [commercial],438,no,535
 tasksource/wands,MIT [commercial],141,no,139
 tasksource/wikipedia-detox/toxicity,"CC0-1.0 [commercial] | attribution required (Wikipedia contributors, CC-BY-SA)",2,no,2
 tasksource/wikipedia-detox/toxicity_score,"CC0-1.0 [commercial] | attribution required (Wikipedia contributors, CC-BY-SA)",2,no,2
-tydiqa,"CC-BY-SA [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",17884,no,17813
-zueri_wie_neu,CC0-1.0 [commercial],11918,no,11918
+tydiqa,"CC-BY-SA [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",17884,no,23479
+zueri_wie_neu,CC0-1.0 [commercial],11918,no,21461

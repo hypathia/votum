@@ -1,7 +1,8 @@
 # From the training pool to the Votum Pool dataset
 
-These scripts turn the pool the released checkpoint was trained on ("pool v7") into the published dataset
-`votum-ai/Votum-Pool`, which is also the input of the planned re-train. There are four build steps and one audit.
+These scripts turn the converted rows of the pool ("pool v7", without the per-source limit that was applied for
+training the released checkpoint) into the published dataset `votum-ai/Votum-Pool`, which is also the input of the
+planned re-train. There are four build steps and one audit.
 
 | Step | Script | In one line | Writes |
 |---|---|---|---|
@@ -13,9 +14,9 @@ These scripts turn the pool the released checkpoint was trained on ("pool v7") i
 
 | Stage | Training rows |
 |---|---:|
-| pool v7 | 405,547 |
-| after step 1 | 339,524 (188 sources) |
-| after step 2 | 327,664 (181 sources) |
+| pool v7, all converted rows | 881,143 |
+| after step 1 | 744,057 (188 sources) |
+| after step 2 | 723,257 (181 sources) |
 
 The pool v7 files themselves are not public (see `../README.md`), so the scripts are shared to show exactly what was
 done, and to let you apply the same steps to your own data in the same row format.
@@ -23,7 +24,7 @@ done, and to let you apply the same steps to your own data in the same row forma
 ## Requirements
 
 Python 3.11 or newer and `pip install -r requirements.txt` (numpy, pyarrow, gliner with torch). Step 2 runs a NER
-model: on a GPU it takes about 20 minutes for the whole pool. Steps 1, 3 and 4 run on the CPU in a few minutes.
+model: on a GPU it takes about 40 minutes for the whole pool. Steps 1, 3 and 4 run on the CPU in a few minutes.
 
 ## Run it
 
@@ -41,7 +42,7 @@ python -I build_clean.py --train <pool>/train.jsonl.gz --val <pool>/val.jsonl.gz
 python -I pii_pass.py --train clean/train.jsonl.gz --val clean/val.jsonl.gz --policy pii_policy.json \
     --stop-spans pii_stop_spans.txt --out-dir clean_pii
 python -I email_sweep.py --pool-dir clean_pii
-python -I build_hf.py --pool-dir clean_pii --policy pii_policy.json --out-dir Votum-Pool
+python -I build_hf.py --pool-dir clean_pii --policy pii_policy.json --out-dir Votum-Pool [--trained-ids ids.txt.gz]
 python -I audit.py sample --audit-dir audit --pool-dir clean_pii --policy pii_policy.json
 python -I audit.py regex  --audit-dir audit          # then spacy and gliner (optional), then:
 python -I audit.py report --audit-dir audit --policy pii_policy.json
@@ -116,12 +117,13 @@ elsewhere can mask a few names differently.
 
 **3. `email_sweep.py`** replaces every e-mail address with `[EMAIL]`, in place. It keeps seven office mailboxes of
 Bernese and Zurich courts and cantonal services (listed in the script, each checked by hand) and the reserved
-`example.com/org/net` addresses. It changes 19 rows; a second run changes none.
+`example.com/org/net` addresses. It changes 36 rows; a second run changes none.
 
 **4. `build_hf.py`** writes the two parquet configs (`default`, `share_alike`) and `SOURCES.csv`. It also corrects a
 row's licence tag where the policy says the pool's own tag was wrong (`license_fix`; the two parliamentary sources
 that had been tagged MIT now carry their portals' real terms), and it stops if a share-alike row would land in the
-`default` config.
+`default` config. With `--trained-ids` (a file with one row id per line) it adds the column `in_votum_8b`, true for
+the rows the released checkpoint was trained on.
 
 **5. `audit.py`** draws 500 masked rows and looks for what the pass missed, with the pass's own patterns, looser
 patterns of its own, spaCy on English rows and GLiNER at a lower threshold on the others. Its hit files contain

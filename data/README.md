@@ -1,13 +1,13 @@
 # Training data
 
 Votum-8B was trained on "pool v7": public decision data converted to one row format. The rows themselves are not in
-this repository. A cleaned version of the pool is published as the dataset
+this repository. A cleaned and larger version of the pool is published as the dataset
 [votum-ai/Votum-Pool](https://huggingface.co/datasets/votum-ai/Votum-Pool).
 
 | Path | Contents |
 |---|---|
 | `SOURCES.csv` | every source: licence tags, training rows, whether the second licence review removed it, rows in the cleaned pool |
-| `clean/` | the scripts that turn pool v7 into the cleaned pool used for the re-train |
+| `clean/` | the scripts that turn the converted rows into the cleaned pool used for the re-train |
 
 ## The pool as trained
 
@@ -56,6 +56,10 @@ A review after training found the following. The cleaned pool removes or address
 
 ## The cleaned pool
 
+For training, each source of pool v7 was cut to a limit so that no single source dominates. The cleaned pool has no
+such limit: it starts from all the rows the converters produced for those sources, 881,143 training rows after
+duplicates are removed. Every pool v7 row is among them, unchanged.
+
 `clean/build_clean.py` removes three things:
 
 - the sources listed above, together with the 13 sources dropped by the licence review;
@@ -63,8 +67,9 @@ A review after training found the following. The cleaned pool removes or address
 - every row that overlaps a benchmark: its state shares a word 8-gram with a benchmark item (16-character grams for
   scripts written without spaces), or its question quotes one.
 
-That leaves 339,524 training rows from 188 sources. The PII pass then drops seven more sources and masks personal
-data, which gives the published 327,664 training rows from 181 sources. `clean/README.md` describes each step.
+That leaves 744,057 training rows from 188 sources. The PII pass then drops seven more sources and masks personal
+data, which gives the published 723,257 training rows from 181 sources; 328,075 of them were in pool v7 (column
+`in_votum_8b` of the dataset). `clean/README.md` describes each step.
 
 **What is not released.** The code that converted each source into rows stays private. It depends on raw downloads,
 on a per-source specification whose review notes quote personal data from source rows, and on internal review

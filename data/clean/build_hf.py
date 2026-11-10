@@ -2,6 +2,7 @@
 """Step 4: write the Hugging Face dataset files (two parquet configs and SOURCES.csv) from the masked pool.
 
     python3 -I build_hf.py --pool-dir clean_pii --policy pii_policy.json --out-dir Votum-Pool [--shard-mb 200]
+                           [--trained-ids ids.txt.gz]
 
 Writes into --out-dir:
   data/default/{train,validation}-XXXXX-of-YYYYY.parquet       sources whose policy says "config": "default"
@@ -13,7 +14,9 @@ files. The dataset card (README.md) is written by hand.
 Rows keep the fields in KEEP; the other pool fields (token counts, annotation details, ...) are dropped and counted.
 A JSON state is stored as a JSON string with sorted keys. A policy entry may carry
 "license_fix": [[text found in the row's license_detail, licence tag], ...] (first match wins; "" matches every row):
-the tag replaces the row's `license` where the pool's own tag was wrong. The build stops if a share-alike row would
+the tag replaces the row's `license` where the pool's own tag was wrong. With --trained-ids (a text file, one row id
+per line, plain or gzip) every row also gets the boolean column `in_votum_8b`: true when its id is in that file, that
+is, when the row was in the training pool of the released checkpoint. The build stops if a share-alike row would
 land in the `default` config or if an excluded source is still in the input.
 
 Needs pyarrow.
@@ -41,14 +44,14 @@ CONFIGS = ("default", "share_alike")
 class Sharder:
     """Write one split of one config as parquet shards of roughly `shard_bytes`, named *-XXXXX-of-YYYYY on close."""
 
-    def __init__(self, d, split, shard_bytes):
-        self.d, self.split, self.lim = d, split, shard_bytes
+    def __init__(self, d, split, shard_bytes, schema=SCHEMA):
+        self.d, self.split, self.lim, self.schema = d, split, shard_bytes, schema
         self.n, self.files, self.w, self.sz = 0, [], None, 0
 
     def _open(self):
         p = os.path.join(self.d, f"{self.split}-tmp{self.n:05d}.parquet")
         self.files.append(p)
-        self.w = pq.ParquetWriter(p, SCHEMA, compression="zstd", compression_level=9)
+        self.w = pq.ParquetWriter(p, self.schema, compression="zstd", compression_level=9)
         self.sz = 0
         self.n += 1
 
@@ -57,7 +60,7 @@ class Sharder:
             return
         if self.w is None:
             self._open()
-        t = pa.Table.from_pylist(rows, schema=SCHEMA)
+        t = pa.Table.from_pylist(rows, schema=self.schema)
         self.w.write_table(t, row_group_size=2000)
         self.sz += t.nbytes // 3                                # rough compressed size (zstd ratio of about 3)
         if self.sz >= self.lim:
@@ -73,6 +76,12 @@ class Sharder:
         for i, p in enumerate(self.files):
             os.rename(p, os.path.join(self.d, f"{self.split}-{i:05d}-of-{n:05d}.parquet"))
         return n
+
+
+def read_ids(path):
+    """The row ids of a text file (one per line, plain or gzip)."""
+    with (gzip.open if path.endswith(".gz") else open)(path, "rt", encoding="utf-8") as f:
+        return {line.rstrip("\n") for line in f if line.strip()}
 
 
 def conv(r, fix=()):
@@ -96,9 +105,14 @@ def main():
     ap.add_argument("--policy", required=True, help="pii_policy.json")
     ap.add_argument("--out-dir", required=True, help="the dataset repository directory")
     ap.add_argument("--shard-mb", type=int, default=200, help="approximate parquet shard size")
+    ap.add_argument("--trained-ids", default=None, help="row ids the released checkpoint was trained on; adds the column in_votum_8b")
     a = ap.parse_args()
     with open(a.policy) as f:
         pol = json.load(f)
+
+    trained = read_ids(a.trained_ids) if a.trained_ids else None
+    schema = SCHEMA.append(pa.field("in_votum_8b", pa.bool_())) if trained is not None else SCHEMA
+    in_trained = collections.Counter()
 
     rows = collections.Counter()
     dropped_fields = collections.Counter()
@@ -112,7 +126,7 @@ def main():
             os.remove(f)
 
     for split, fn in (("train", "train"), ("validation", "val")):
-        sh = {c: Sharder(os.path.join(a.out_dir, "data", c), split, a.shard_mb * 1024 * 1024) for c in CONFIGS}
+        sh = {c: Sharder(os.path.join(a.out_dir, "data", c), split, a.shard_mb * 1024 * 1024, schema) for c in CONFIGS}
         buf = {c: [] for c in CONFIGS}
         with gzip.open(os.path.join(a.pool_dir, f"{fn}.jsonl.gz"), "rt", encoding="utf-8") as f:
             for line in f:
@@ -127,6 +141,9 @@ def main():
                 o = conv(r, p.get("license_fix") or ())
                 if c == "default" and any(k in (o["license"] or "").lower() for k in SHARE_ALIKE):
                     raise SystemExit(f"{r['id']} ({r['source']}): licence {o['license']!r} is share-alike but the policy puts the source in `default`")
+                if trained is not None:
+                    o["in_votum_8b"] = r["id"] in trained
+                    in_trained[(c, split)] += o["in_votum_8b"]
                 buf[c].append(o)
                 rows[(c, split)] += 1
                 per_src[r["source"]][split] += 1
@@ -149,6 +166,7 @@ def main():
     out = {"rows": {f"{c}/{s}": v for (c, s), v in rows.items()},
            "shards": {f"{c}/{s}": v for (c, s), v in shards.items()},
            "dropped_fields": dict(dropped_fields),
+           **({"in_votum_8b": {f"{c}/{s}": v for (c, s), v in in_trained.items()}} if trained is not None else {}),
            "lang": {f"{c}/{lang}": v for (c, lang), v in langs.items()},
            "lic": {c: dict(v) for c, v in lics.items()}}
     with open(os.path.join(a.pool_dir, "build_hf_stats.json"), "w") as f:
