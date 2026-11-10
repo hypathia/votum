@@ -134,10 +134,10 @@ def tile(x, y, w, h, kicker, value, label, hero=False, unit=""):
     return "".join(b)
 
 
-def option_rows(x, y, w, opts, row=19, lab_w=0.36, size=12, bh=8):
+def option_rows(x, y, w, opts, row=19, lab_w=0.36, size=12, bh=8, lab_max=0.5):
     """option rows: label, track + bar, value; the first option is the answer (red bar, value in a red pill).
     The label column is lab_w of the width, or wider if the longest label needs it (at most half)."""
-    b = []; lw = min(max(w * lab_w, max(textw(lab, size) for lab, _ in opts) + 12), w * .5)
+    b = []; lw = min(max(w * lab_w, max(textw(lab, size) for lab, _ in opts) + 12), w * lab_max)
     for i, (lab, p) in enumerate(opts):
         win = i == 0; yy = y + i * row
         b.append(T(x, yy + 4, lab, size, INK, 650 if win else 400))
@@ -344,6 +344,60 @@ def examples():
     save("examples", y - GAP + PAD, head("Examples", "Real outputs", "Votum-8B as released (served temperatures); the answer carries the red bar") + "".join(parts))
 
 
+# ---------------------------------------------------------------------------------------------------------- image examples
+# per fixtures/vision_requests.json request: the card title
+VCARDS = ["Rail incident · triage", "Street scene · photo desk", "Aircraft · maintenance log", "Rail-yard camera · operations",
+          "Café · order check", "Scanned letter · mail room"]
+IMG_W = 196
+
+
+def thumb(path, w, h_max):
+    """a JPEG data URI of the image at 2x its drawn size, and the drawn width and height"""
+    import base64
+    im = Image.open(path).convert("RGB"); dh = min(h_max, w * im.height / im.width); dw = dh * im.width / im.height
+    im = im.resize((round(dw * 2), round(dh * 2)), Image.LANCZOS); b = io.BytesIO(); im.save(b, "JPEG", quality=88)
+    return "data:image/jpeg;base64," + base64.b64encode(b.getvalue()).decode(), dw, dh
+
+
+def vx_card(x, y, w, k, title, req, ans, h_min=0):
+    """one image card: the photo and the state's other fields on the left, the request's questions on the right"""
+    b = [eyebrow(x + 20, y + 28, title)]
+    src = next(v["image"] for v in req["state"].values() if isinstance(v, dict) and "image" in v)
+    uri, dw, dh = thumb(FIX / src, IMG_W, 210)
+    ix, iy = x + 20, y + 44
+    b.append(f'<clipPath id="vc{k}"><rect x="{ix:.1f}" y="{iy:.1f}" width="{dw:.1f}" height="{dh:.1f}" rx="8"/></clipPath>'
+             f'<image href="{uri}" x="{ix:.1f}" y="{iy:.1f}" width="{dw:.1f}" height="{dh:.1f}" clip-path="url(#vc{k})" preserveAspectRatio="none"/>'
+             f'<rect x="{ix + .5:.1f}" y="{iy + .5:.1f}" width="{dw - 1:.1f}" height="{dh - 1:.1f}" rx="7.5" fill="none" stroke="{EDGE}"/>')
+    rest = json.dumps({kk: ("@IMG@" if isinstance(v, dict) and "image" in v else v) for kk, v in req["state"].items()}, ensure_ascii=False)
+    yy = iy + dh + 4
+    for ln in wrap(rest.replace('"@IMG@"', "<image>"), 32):
+        yy += 14; b.append(T(ix, yy, ln, 9.5, MUTED, 400, extra=f'font-family="{MONO}"'))
+    qx = ix + IMG_W + 22; qw = x + w - 20 - qx; yq = y + 44
+    longest = max(textw(t, 11) for q in req["questions"].values() for t in option_labels(q).values())
+    lab = min(0.62, max(0.42, (longest * 1.12 + 18) / qw))      # one label column per card, wide enough for its longest label
+    for qid, q in req["questions"].items():
+        labs = option_labels(q); pr = ans[qid]["probs"]
+        opts = sorted(((labs[i], pr[i]) for i in pr), key=lambda o: -o[1])
+        b.append(T(qx, yq + 8, q["instructions"], 11, MUTED, 600))
+        b.append(option_rows(qx, yq + 26, qw, opts, 18, lab, 11, 7, lab_max=0.62))
+        yq += 26 + 18 * (len(opts) - 1) + 22
+    h = max(yq - y + 2, yy - y + 20, h_min)
+    return card(x, y, w, h) + "".join(b), h
+
+
+def vision_examples():
+    reqs = json.loads((FIX / "vision_requests.json").read_text()); exp = json.loads((FIX / "vision_expected.json").read_text())
+    E = [(t, r, {a["qid"]: a for a in e["answers"]}) for t, r, e in zip(VCARDS, reqs, exp)]
+    cw = (W - 2 * PAD - GAP) / 2; parts, y = [], TOP
+    for row in range(0, len(E), 2):
+        pair = E[row:row + 2]
+        h = max(vx_card(0, 0, cw, 99, *e)[1] for e in pair)
+        for c, e in enumerate(pair): parts.append(vx_card(PAD + c * (cw + GAP), y, cw, row + c, *e, h_min=h)[0])
+        y += h + GAP
+    save("examples_vision", y - GAP + PAD, head("Images", "Real outputs on images",
+         "Votum-8B as released: all questions of a request are answered in one pass over the image") + "".join(parts))
+
+
 # ---------------------------------------------------------------------------------------------------------- pool
 def pool():
     steps = [("Pool used for Votum-8B", 405547), ("13 sources: licence review", -19950), ("bias_in_bios, LLM-generated sets", -27163),
@@ -463,5 +517,5 @@ def flag():
 
 flag()
 for name in THEMES:
-    theme(name); architecture(); examples(); pool(); selection()
+    theme(name); architecture(); examples(); vision_examples(); pool(); selection()
 print("written to", OUT)

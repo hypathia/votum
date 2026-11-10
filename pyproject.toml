@@ -22,6 +22,8 @@ dependencies = [
 [project.optional-dependencies]
 # Serving: vLLM 0.33.0 exactly (the plugin hooks its attention implementation); it needs transformers 5.16-5.20.
 vllm = ["vllm==0.33.0", "fastapi>=0.110", "uvicorn>=0.29"]
+# Images in requests (votum.vision): decoding and the tokenizer's resize.
+vision = ["pillow>=10", "torchvision>=0.20"]
 test = ["pytest>=8"]
 
 [project.scripts]

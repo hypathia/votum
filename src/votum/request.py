@@ -8,14 +8,59 @@ request   {"state": str | object, "questions": {qid: {"type": "noul"|"choice"|"s
 answers   noul   {"type": "noul", "noul": P(true)}
           choice {"type": "choice", "choice": id, "confidence": p, "probabilities": {id: p}}
           score  {"type": "score", "score": expected level, "confidence": p, "legend": {level: text}, "probabilities": {level: p}}
+images    anywhere in an object state, a value {"image": <image>} is an image: base64 or a data URL (also a PIL image, bytes or
+          a file path in the Python API). It is shown to the model in place, as image tokens (votum.vision).
 Option conversion follows JevBench's semif_direct adapter (github.com/j-geuter/Jeff, Apache-2.0)."""
 from __future__ import annotations
 
-import json
+import json, secrets
 
 from .prompt import state_text
 
 QUESTION_TYPES = ("noul", "choice", "score")
+MAX_IMAGES = 8                    # images per request
+
+
+def is_image(x) -> bool:
+    return isinstance(x, dict) and len(x) == 1 and "image" in x
+
+
+def find_images(state):
+    """state -> (state with every image replaced by a mark string, [image values], [marks]), in the order of the walk.
+    A mark is random per call, so text in the request cannot contain one; the renderer puts the image's tokens where its
+    mark appears in the state text (prompt.render)."""
+    values, marks = [], []
+
+    def walk(x):
+        if is_image(x):
+            m = f"@@image-{secrets.token_hex(12)}@@"
+            values.append(x["image"]); marks.append(m)
+            return m
+        if isinstance(x, dict): return {k: walk(v) for k, v in x.items()}
+        if isinstance(x, list): return [walk(v) for v in x]
+        return x
+    return walk(state), values, marks
+
+
+def count_images(state) -> int:
+    if is_image(state): return 1
+    if isinstance(state, dict): return sum(count_images(v) for v in state.values())
+    if isinstance(state, list): return sum(count_images(v) for v in state)
+    return 0
+
+
+def request_rows(request: dict, encode_image=None) -> list[dict]:
+    """the rows of one request (one per question, in order). encode_image(value) -> {"h", "w", "codes"} turns the
+    request's images into codes (vision.Images.encode); without it, a request with images is refused."""
+    state, values, marks = find_images(request["state"])
+    if values and encode_image is None: raise ValueError('this request has images, but the model was loaded without image support (vision="off")')
+    imgs = [dict(encode_image(v), mark=m) for v, m in zip(values, marks)]
+    rows = []
+    for qid, q in request["questions"].items():
+        r = to_row(state, q, rid=str(qid))
+        if imgs: r["images"] = imgs
+        rows.append(r)
+    return rows
 
 
 def question_options(q: dict) -> list[dict]:
@@ -52,11 +97,32 @@ def _unicode_ok(x) -> bool:
     except (UnicodeEncodeError, TypeError, ValueError): return False
 
 
+def _images_ok(x) -> bool:
+    """every image value is a non-empty string, or (Python API) an object that is not JSON (a PIL image, bytes, a Path)"""
+    if is_image(x):
+        v = x["image"]
+        if isinstance(v, str): return bool(v.strip())
+        return not isinstance(v, (int, float, bool, list, dict, type(None)))
+    if isinstance(x, dict): return all(_images_ok(v) for v in x.values())
+    if isinstance(x, list): return all(_images_ok(v) for v in x)
+    return True
+
+
+def _without_images(x):
+    if is_image(x): return None
+    if isinstance(x, dict): return {k: _without_images(v) for k, v in x.items()}
+    if isinstance(x, list): return [_without_images(v) for v in x]
+    return x
+
+
 def validate(req, max_questions: int | None = None, max_options: int | None = None) -> str | None:
     """error message for an invalid request, else None. max_questions / max_options: optional caps (the HTTP server sets
     them); the shape checks always apply."""
     if not isinstance(req, dict) or "state" not in req: return "state is required"
-    if not _unicode_ok(req["state"]): return "state: not valid Unicode text or JSON"
+    n_img = count_images(req["state"])
+    if n_img > MAX_IMAGES: return f"too many images ({n_img}; at most {MAX_IMAGES} per request)"
+    if n_img and not _images_ok(req["state"]): return 'state: an image must be {"image": <base64 string or data URL>}'
+    if not _unicode_ok(_without_images(req["state"])): return "state: not valid Unicode text or JSON"
     qs = req.get("questions")
     if not isinstance(qs, dict) or not qs: return "at least one question is required"
     if max_questions is not None and len(qs) > max_questions: return f"too many questions ({len(qs)}; this server accepts {max_questions} per request)"
@@ -80,11 +146,12 @@ def validate(req, max_questions: int | None = None, max_options: int | None = No
     return None
 
 
-def decide(request: dict, decide_rows, max_tokens: int) -> dict:
-    """one request -> {"answers": {qid: answer}, "usage": {...}}, with decide_rows(rows, keys) of either implementation."""
+def decide(request: dict, decide_rows, max_tokens: int, encode_image=None) -> dict:
+    """one request -> {"answers": {qid: answer}, "usage": {...}}, with decide_rows(rows, keys) of either implementation
+    and encode_image (vision.Images.encode) for requests with images."""
     if (msg := validate(request)): raise ValueError(msg)
     qs = request["questions"]
-    res = decide_rows([to_row(request["state"], q, rid=str(qid)) for qid, q in qs.items()], [0] * len(qs))
+    res = decide_rows(request_rows(request, encode_image), [0] * len(qs))
     answers, used = {}, 0
     for (qid, q), r in zip(qs.items(), res):
         if r is None: raise ValueError(f"{qid}: prompt longer than {max_tokens} tokens or not renderable")

@@ -15,3 +15,14 @@ This software contains code derived from the following projects:
   Copyright 2026 Jonathan Geuter, Andrew Cheng, David Alvarez-Melis.
   src/votum/request.py converts TypeSafe questions to options the way jeff's typesafe.py does (which follows
   JevBench's semif_direct adapter, https://github.com/fstandhartinger/jevbench, MIT License).
+- Apertus 1.5 image tokenizer, Apache License 2.0: src/votum/vision.py is a standalone copy of the image tokenizer's
+  encoder and image processor from the Swiss AI Initiative's transformers (Apertus1p5VisionTokenizerModel,
+  Apertus1p5ImageProcessor; https://github.com/swiss-ai/transformers).
+
+Test images (tests/fixtures/images, also shown in assets/examples_vision*.png):
+
+- wreck.jpg, market.jpg, airplane.jpg, railyard.jpg: historical photographs from the Flickr Commons, licensed "no known
+  copyright restrictions" (https://flickr.com/commons/usage/), from the COCO 2017 test set (images 499685, 444112,
+  517361, 383758).
+- coffee.jpg: photograph by Rachel Michetti, dedicated to the public domain (CC0), from the scikit-image sample data.
+- reminder.png: made for this repository.

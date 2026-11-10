@@ -49,6 +49,24 @@ def state_text(st) -> str:
     return st if isinstance(st, str) else json.dumps(st, ensure_ascii=False, sort_keys=True)
 
 
+IMAGE_TOKEN = "<|image|>"
+
+
+def state_block(row: dict) -> tuple[str, list[dict]]:
+    """the state's prompt text (cleaned) and its images in the order they appear. An image's mark (request.find_images)
+    becomes one <|image|> placeholder token, replaced by the image's tokens after tokenization; clean() keeps any other
+    <|image|> out of the text, so only the request's own images can appear."""
+    st = state_text(row["state"]); imgs = row.get("images") or []
+    if not imgs: return clean(st), []
+    by = {im["mark"]: im for im in imgs}
+    parts, order, last = [], [], 0
+    for m in re.finditer("|".join(re.escape(k) for k in by), st):
+        parts.append(clean(st[last:m.start()])); order.append(by[m.group(0)]); last = m.end()
+    parts.append(clean(st[last:]))
+    if len(order) != len(by): raise ValueError(f"{row.get('id', '')}: {len(by)} images, {len(order)} found in the state")
+    return IMAGE_TOKEN.join(parts), order
+
+
 def option_text(o: dict, typ: str) -> str:
     if typ == "noul":
         t = o.get("text"); return t if t else NOUL_TXT.get(o["id"], o["id"])
@@ -112,8 +130,8 @@ def _prefix_len(tok, prompt: str, ids: list, cut: int) -> int | None:
 def render(tok, row: dict, header: str | None = None) -> Encoding:
     """row: {"type": "choice"|"noul"|"score", "state": str | object, "question": str, "options": [{"id", "text"?}, ...]};
     options in the row's order. The prompt ends after the last option's end marker and its line break."""
-    opts = row["options"]; n = len(opts)
-    head = (header or "") + (f"State:\n{clean(state_text(row['state']))}\n\nQuestion:\n{clean(row['question'])}"
+    opts = row["options"]; n = len(opts); st, imgs = state_block(row)
+    head = (header or "") + (f"State:\n{st}\n\nQuestion:\n{clean(row['question'])}"
                              f"{CUE.get(row['type'], '')}\n\nOptions:\n")
     user = "".join([head] + [f"- {clean(option_text(opts[i], row['type']))}{OPT_END}\n" for i in range(n)])
     prompt = tok.apply_chat_template([{"role": "system", "content": SYSTEM}, {"role": "user", "content": user}],
@@ -133,7 +151,23 @@ def render(tok, row: dict, header: str | None = None) -> Encoding:
     if (k2 := prompt.rfind("\n\nOptions:\n")) >= 0:
         ostart = _prefix_len(tok, prompt, ids, k2 + len("\n\nOptions:\n"))
         if ostart is not None and ostart > ends[0]: ostart = None
-    return Encoding(ids=ids, ends=ends, last=len(ids) - 1, qstart=qstart, ostart=ostart, hend=hend)
+    e = Encoding(ids=ids, ends=ends, last=len(ids) - 1, qstart=qstart, ostart=ostart, hend=hend)
+    return _with_images(tok, e, imgs, row.get("id", "")) if imgs else e
+
+
+def _with_images(tok, e: Encoding, imgs: list[dict], rid: str) -> Encoding:
+    """e with each <|image|> placeholder replaced by its image's tokens; the indices after an image move with it."""
+    from .vision import image_ids
+    ph = tok.convert_tokens_to_ids(IMAGE_TOKEN); at = [i for i, t in enumerate(e.ids) if t == ph]
+    if len(at) != len(imgs): raise ValueError(f"{rid}: {len(at)} image placeholders for {len(imgs)} images")
+    if e.qstart is None or at[-1] >= e.qstart: raise ValueError(f"{rid}: images must be in the state")
+    ids, shifts, prev = [], [], 0
+    for i, img in zip(at, imgs):
+        run = image_ids(tok, img); ids += e.ids[prev:i] + run; shifts.append((i, len(run) - 1)); prev = i + 1
+    ids += e.ids[prev:]
+    sh = lambda x: None if x is None else x + sum(d for i, d in shifts if i < x)
+    return Encoding(ids=ids, ends=[sh(x) for x in e.ends], last=len(ids) - 1, qstart=sh(e.qstart), ostart=sh(e.ostart),
+                    hend=e.hend)
 
 
 def _block_stops(e: Encoding, close_last: bool):

@@ -50,7 +50,8 @@ def register() -> None:
 class VotumVLLM:
     def __init__(self, path: str | Path, *, max_model_len: int = 8192, gpu_memory_utilization: float | None = None,
                  gpu_memory_gb: float | None = None, max_num_seqs: int = 256, pack: bool = True, prefix_cache_mb: float | None = None,
-                 state_cache_mb: float | None = None, warmup: bool = True, **engine_kwargs: Any) -> None:
+                 state_cache_mb: float | None = None, warmup: bool = True, image_device: str | None = None,
+                 max_image_codes: int = 1024, allow_image_paths: bool = True, vision="lazy", **engine_kwargs: Any) -> None:
         # the client registers prompt layouts in-process, so the engine must run in this process. Set here, not at
         # import: the plugin entry point imports this module for every vLLM run in the environment.
         os.environ.setdefault("VLLM_ENABLE_V1_MULTIPROCESSING", "0")
@@ -86,6 +87,10 @@ class VotumVLLM:
         mb = prefix_cache_mb if prefix_cache_mb is not None else float(os.environ.get("VOTUM_PREFIX_CACHE_MB", "512"))
         smb = state_cache_mb if state_cache_mb is not None else float(os.environ.get("VOTUM_STATE_CACHE_MB", "0"))
         isolate.CACHE = isolate.PrefixCache(mb, smb) if mb > 0 or smb > 0 else None
+        from ..vision import images_for
+        # the image tokenizer (0.9 GB, fp32) on image_device (default: the GPU, outside vLLM's reserved memory; "cpu" keeps it
+        # off the GPU at a few seconds per image); vision: "lazy" loads it on the first image, "eager" now, "off" never
+        self.images = images_for(str(path), vision, device=image_device, max_codes=max_image_codes, allow_paths=allow_image_paths)
         if warmup: self.warmup()
 
     def warmup(self) -> None:
@@ -150,6 +155,7 @@ class VotumVLLM:
             o["probs"] = {i: v / s for i, v in zip(o["ids"], e)}
         return out
 
-    def decide(self, request: dict) -> dict:
-        """one request in the SystemOne shape (votum.request) -> {"answers": ..., "usage": ...}."""
-        return R.decide(request, self.decide_rows, self.max_model_len)
+    def decide(self, request: dict, max_image_codes: int | None = None) -> dict:
+        """one request in the SystemOne shape (votum.request) -> {"answers": ..., "usage": ...}; images as in Votum.decide."""
+        enc = None if self.images is None else (lambda v: self.images.encode(v, max_image_codes))
+        return R.decide(request, self.decide_rows, self.max_model_len, encode_image=enc)

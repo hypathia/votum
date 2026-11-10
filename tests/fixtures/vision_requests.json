@@ -1,0 +1,198 @@
+[
+ {
+  "state": {
+   "photo": {
+    "image": "images/wreck.jpg"
+   },
+   "line": "mountain branch, km 41"
+  },
+  "questions": {
+   "incident": {
+    "type": "choice",
+    "instructions": "What happened?",
+    "criteria": {
+     "derailment": "A locomotive derailed",
+     "collision": "Two trains collided",
+     "fire": "A fire",
+     "none": "Nothing, normal operation"
+    }
+   },
+   "people": {
+    "type": "noul",
+    "instructions": "Are people at the scene?"
+   },
+   "severity": {
+    "type": "score",
+    "instructions": "How severe is the damage?",
+    "criteria": [
+     "minor",
+     "serious",
+     "severe"
+    ]
+   }
+  }
+ },
+ {
+  "state": {
+   "photo": {
+    "image": "images/market.jpg"
+   },
+   "section": "city life"
+  },
+  "questions": {
+   "scene": {
+    "type": "choice",
+    "instructions": "What is happening?",
+    "criteria": {
+     "market": "A street market",
+     "parade": "A parade",
+     "works": "Road works",
+     "accident": "An accident"
+    }
+   },
+   "produce": {
+    "type": "noul",
+    "instructions": "Are fruit or vegetables for sale?"
+   },
+   "building": {
+    "type": "choice",
+    "instructions": "What is the large building?",
+    "criteria": {
+     "church": "A church",
+     "stadium": "A stadium",
+     "factory": "A factory",
+     "castle": "A castle"
+    }
+   }
+  }
+ },
+ {
+  "state": {
+   "photo": {
+    "image": "images/airplane.jpg"
+   },
+   "log": "hangar 2"
+  },
+  "questions": {
+   "vehicle": {
+    "type": "choice",
+    "instructions": "What vehicle is shown?",
+    "criteria": {
+     "airplane": "An airplane",
+     "helicopter": "A helicopter",
+     "car": "A car",
+     "boat": "A boat"
+    }
+   },
+   "work": {
+    "type": "noul",
+    "instructions": "Is the vehicle being inspected or worked on?"
+   },
+   "colour": {
+    "type": "choice",
+    "instructions": "What colour is it?",
+    "criteria": [
+     "red",
+     "blue",
+     "silver",
+     "yellow"
+    ]
+   }
+  }
+ },
+ {
+  "state": {
+   "camera": {
+    "image": "images/railyard.jpg"
+   }
+  },
+  "questions": {
+   "weather": {
+    "type": "choice",
+    "instructions": "What are the conditions?",
+    "criteria": {
+     "snow": "Snow",
+     "rain": "Rain",
+     "dry": "Dry and sunny",
+     "fog": "Fog"
+    }
+   },
+   "place": {
+    "type": "choice",
+    "instructions": "Where is the camera?",
+    "criteria": {
+     "rail": "A rail yard",
+     "airport": "An airport",
+     "harbour": "A harbour",
+     "road": "A highway"
+    }
+   },
+   "steam": {
+    "type": "noul",
+    "instructions": "Is there steam or smoke?"
+   }
+  }
+ },
+ {
+  "state": {
+   "photo": {
+    "image": "images/coffee.jpg"
+   },
+   "table": 12
+  },
+  "questions": {
+   "drink": {
+    "type": "choice",
+    "instructions": "Which drink is served?",
+    "criteria": {
+     "espresso": "Espresso",
+     "latte": "Latte macchiato",
+     "tea": "Tea",
+     "chocolate": "Hot chocolate"
+    }
+   },
+   "takeaway": {
+    "type": "noul",
+    "instructions": "Is it served in a takeaway cup?"
+   },
+   "spoon": {
+    "type": "noul",
+    "instructions": "Is there a spoon on the saucer?"
+   }
+  }
+ },
+ {
+  "state": {
+   "scan": {
+    "image": "images/reminder.png"
+   },
+   "received_by": "mail room"
+  },
+  "questions": {
+   "doc": {
+    "type": "choice",
+    "instructions": "What kind of document is this?",
+    "criteria": {
+     "invoice": "An invoice or payment reminder",
+     "letter": "A personal letter",
+     "form": "A blank form",
+     "ad": "An advertisement"
+    }
+   },
+   "overdue": {
+    "type": "noul",
+    "instructions": "Does it say that a payment is overdue?"
+   },
+   "currency": {
+    "type": "choice",
+    "instructions": "In which currency is the amount?",
+    "criteria": [
+     "CHF",
+     "EUR",
+     "USD",
+     "GBP"
+    ]
+   }
+  }
+ }
+]

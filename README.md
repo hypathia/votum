@@ -14,6 +14,7 @@
 
 <p align="center">
   <a href="#quickstart">Quickstart</a> ·
+  <a href="#images">Images</a> ·
   <a href="#serve">Serve</a> ·
   <a href="#speed">Speed</a> ·
   <a href="#how-it-works">How it works</a> ·
@@ -23,8 +24,8 @@
 </p>
 
 **Votum** turns <img src="assets/flag.svg" width="14" height="14" alt="Swiss flag"> [Apertus-1.5-8B](https://huggingface.co/swiss-ai/Apertus-v1.5-8B)
-into a decision model. You give it some context (an email, a document, a JSON record), a question about it and the
-possible answers. It gives back a probability for each answer.
+into a decision model. You give it some context (an email, a document, a JSON record, a photo), a question about it and
+the possible answers. It gives back a probability for each answer.
 
 It does not write text. It reads the prompt once and scores the answers, so a decision takes about 40 ms on an
 RTX 4090, the result is always one of your options, and the probabilities always sum to one.
@@ -89,6 +90,56 @@ existing clients work unchanged.
 A question whose prompt is longer than 8,192 tokens is refused, not cut short: an error in Python, HTTP 413 on the
 server.
 
+## Images
+
+The state can also hold images. Put one anywhere in it as `{"image": ...}`:
+
+```python
+out = vm.decide({
+    "state": {"photo": {"image": "wreck.jpg"}, "line": "mountain branch, km 41"},
+    "questions": {
+        "incident": {"type": "choice", "instructions": "What happened?",
+                     "criteria": {"derailment": "A locomotive derailed", "collision": "Two trains collided",
+                                  "fire": "A fire", "none": "Nothing, normal operation"}},
+        "people":   {"type": "noul",   "instructions": "Are people at the scene?"},
+        "severity": {"type": "score",  "instructions": "How severe is the damage?",
+                     "criteria": ["minor", "serious", "severe"]},
+    },
+})
+```
+
+<picture><source media="(prefers-color-scheme: dark)" srcset="assets/examples_vision_dark.png"><img src="assets/examples_vision.png" alt="Real outputs of Votum-8B on images"></picture>
+
+This works with the released model as it is. Apertus 1.5 reads an image as tokens of its own vocabulary, one token per
+16 × 16 pixel patch, and Votum keeps that vocabulary. An image is scaled to at most 1,024 tokens, about 512 × 512
+pixels (`vm.decide(request, max_image_codes=...)`, or `--max-image-codes` on the server). On the server, all questions
+of a request share one pass over the image: the three questions above take one prompt of about 1,200 tokens and about
+130 ms on an RTX 4090.
+
+In Python an image can be a file path, bytes, a PIL image or base64. The server takes base64 or a data URL
+(`"data:image/png;base64,..."`) and never opens files or URLs named in a request; a request holds at most 8 images.
+Images need two more packages, `pip install "votum[vision]"`, and the first image downloads the image tokenizer
+(0.9 GB) from the [Apertus repository](https://huggingface.co/swiss-ai/Apertus-v1.5-8B), whose usage policy you accept
+there as well. Nothing is downloaded or loaded until the first image; `vision="eager"` (`--vision eager` on the server)
+loads it at start-up instead, and `vision="off"` refuses images. The tokenizer adds about 2 GB of GPU memory;
+`--image-device cpu` keeps it off the GPU, at a few seconds per image.
+
+**How well it works.** Votum-8B was never trained on images, so take this as a preview. Accuracy on held-out test sets,
+next to the Apertus model it is built on, answering with the letter of an option:
+
+| Test set (chance) | Votum-8B | Votum-8B-FP8 | Apertus-1.5-8B |
+|---|---:|---:|---:|
+| A-OKVQA: questions about photos, 4 options (25 %) | 68.3 % | 68.5 % | 76.0 % |
+| POPE: is this object in the photo? (50 %) | 80.4 % | 79.4 % | 82.8 % |
+| CIFAR-10: what does the photo show? 10 classes (10 %) | 73.1 % | 73.5 % | 71.4 % |
+| RVL-CDIP: which of 16 document types? (6 %) | 25.5 % | | 29.5 % |
+
+Everyday photos work well. Reading the text in a scanned document does not yet: the payment reminder above is
+classified correctly, but with little confidence. The figure shows 6 of the 12 image requests written for this page;
+across all 12, 29 of the 36 answers are right. In a test run, 1.5 hours of fine-tuning on images mixed with text raised
+A-OKVQA to 79 %, CIFAR-10 to 83 % and the document types to 64 %, with the text benchmarks unchanged; image support in
+the training kit is not released yet.
+
 ## Serve
 
 ```bash
@@ -137,9 +188,9 @@ about 445 prompt tokens each. Votum is compared with the same Apertus model writ
 | Text: the choice and its probabilities as JSON (structured output) | 1 question, ~445 tokens | 54 | 1.1 s | 10.9 |
 | Text: reasoning first, then the JSON | 1 question, ~445 tokens | 370 | 10.5 s | 1.9 (64 sent at once) |
 
-The Votum row is the released model on vLLM 0.33, with latency taken over 50 requests. The three text rows were
-measured earlier on the same card, with vLLM 0.12 and a different sample of 256 OpenDecisions items; the reasoning
-row is free text capped at 512 new tokens.
+The Votum row is the released model, with latency taken over 50 requests. The three text rows were measured earlier
+on the same card, with an older vLLM and a different sample of 256 OpenDecisions items; the reasoning row is free text
+capped at 512 new tokens.
 
 **A long document, several questions.** Each request carries a state of about 3,000 tokens and 1, 4 or 8 questions
 with up to 8 options each. Questions about the same state share one pass over it, so asking several at once is
@@ -151,7 +202,7 @@ cheaper than asking them one by one.
 | 4 | 3,190 | 392 ms | 9.7 (32 requests) |
 | 8 | 3,330 | 465 ms | 15.8 (32 requests) |
 
-Released model, vLLM 0.33, no reuse of results between requests. The [model card](https://huggingface.co/votum-ai/Votum-8B#performance) has more workloads.
+Released model, no reuse of results between requests. The [model card](https://huggingface.co/votum-ai/Votum-8B#performance) has more workloads.
 
 ## How it works
 
@@ -214,8 +265,8 @@ card, and a re-train on the published pool is planned.
 ## Repository
 
 ```
-src/votum/          the model in PyTorch · prompt builder · request format · checkpoint builder · FP8 · command line
-src/votum/vllm/     the vLLM 0.33 server: model, attention rules and caches, client, HTTP API
+src/votum/          the model in PyTorch · prompt builder · request format · images · checkpoint builder · FP8 · command line
+src/votum/vllm/     the vLLM server: model, attention rules and caches, client, HTTP API
 training/           fine-tuning kit (prepare_data · finetune · calibrate) and the trainer that produced Votum-8B
 data/               source list with licences · cleaning and personal-data removal
 scripts/            export a checkpoint to the Hub layout · smoke fixture · README graphics

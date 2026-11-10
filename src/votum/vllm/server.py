@@ -7,6 +7,8 @@ A full-precision and an FP8 checkpoint are served the same way; the format is re
 reserves the weights plus 3 GiB of GPU memory (about 18 GiB for Votum-8B, 12 for Votum-8B-FP8); --gpu-memory-gb changes it.
 
 POST /v1/systemone   {"model": str, "state": str | object, "questions": {qid: {"type", "instructions", "criteria"}}}
+                  images: {"image": "<base64 or data URL>"} values anywhere in an object state (at most 8 per request; the
+                  server never opens files or URLs); each is read at up to --max-image-codes codes
                   -> {"model": str, "answers": {qid: answer}, "usage": {"input_tokens": int, "output_tokens": 0}}
 GET  /v1/models, GET /health
 
@@ -107,7 +109,13 @@ def build_app(vm, model_name: str, api_key: str | None, window_ms: float, max_ba
         except Exception: return err(400, "body must be JSON")
         if (msg := R.validate(req, max_q, max_opts)): return err(400, msg)
         qs = req["questions"]
-        try: rows = [R.to_row(req["state"], q, rid=str(qid)) for qid, q in qs.items()]
+        try:
+            if R.count_images(req["state"]):      # decoding and image tokens off the event loop
+                if vm.images is None: return err(400, "this server does not accept images (started with --vision off)")
+                rows = await asyncio.to_thread(R.request_rows, req, vm.images.encode)
+            else:
+                rows = R.request_rows(req)
+        except ValueError as e: return err(400, str(e))
         except Exception: return err(400, "the request could not be read as questions and options")
         fut = batcher.submit(rows)
         if fut is None: return err(503, "the server is busy (queue full); retry shortly")
@@ -137,13 +145,16 @@ def main(argv=None) -> None:
     mem.add_argument("--gpu-memory-gb", type=float, help="GPU memory to reserve, in GiB (default: the weights plus 3)")
     mem.add_argument("--gpu-memory-utilization", type=float, help="the same as a share of the card, 0 to 1")
     ap.add_argument("--max-num-seqs", type=int, default=256, help="sequences per engine step (exact/LoRA checkpoints use at most 32)")
+    ap.add_argument("--max-image-codes", type=int, default=1024, help="image budget: at most this many image tokens per image (x 256 pixels; default 1,024: about 512 x 512)")
+    ap.add_argument("--vision", default="lazy", choices=["lazy", "eager", "off"], help="image tokenizer: loaded on the first image (lazy, default), at start-up (eager), or never: images are refused (off)")
+    ap.add_argument("--image-device", default=None, help="device of the image tokenizer (default: the GPU; cpu keeps its 0.9 GB off the GPU, at a few seconds per image)")
     a = ap.parse_args(argv)
     import torch
     if not torch.cuda.is_available(): sys.exit("votum serve needs a CUDA GPU (vLLM); none is visible to torch")
     import uvicorn
     from .client import VotumVLLM
     vm = VotumVLLM(a.model, max_model_len=a.max_model_len, gpu_memory_utilization=a.gpu_memory_utilization, gpu_memory_gb=a.gpu_memory_gb,
-                   max_num_seqs=a.max_num_seqs)
+                   max_num_seqs=a.max_num_seqs, image_device=a.image_device, max_image_codes=a.max_image_codes, allow_image_paths=False, vision=a.vision)
     name = a.name or model_name(a.model)
     what = ("FP8" if vm.fp8 else "full-precision") + " weights" + (f", {vm.memory_gib:.1f} GiB of GPU memory reserved" if vm.memory_gib else "")
     key = os.environ.get(a.api_key_env)

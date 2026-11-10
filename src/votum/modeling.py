@@ -147,17 +147,17 @@ class Votum(nn.Module):
 
     @classmethod
     def from_pretrained(cls, repo: str, *, exact: bool = False, base: str | None = None, revision: str | None = None,
-                        device: str | None = None, dtype=torch.bfloat16, token=None) -> "Votum":
+                        device: str | None = None, dtype=torch.bfloat16, token=None, vision="lazy") -> "Votum":
         import logging
         from transformers.utils import logging as hf_logging
         lvl = hf_logging.get_verbosity(); hf_logging.set_verbosity_error()     # the tokenizer's "incorrect regex" note and the pointer.* "unexpected keys" report are expected
         logging.getLogger("transformers").setLevel(logging.ERROR)
-        try: return cls._from_pretrained(repo, exact=exact, base=base, revision=revision, device=device, dtype=dtype, token=token)
+        try: return cls._from_pretrained(repo, exact=exact, base=base, revision=revision, device=device, dtype=dtype, token=token, vision=vision)
         finally: hf_logging.set_verbosity(lvl)
 
     @classmethod
     def _from_pretrained(cls, repo: str, *, exact: bool = False, base: str | None = None, revision: str | None = None,
-                         device: str | None = None, dtype=torch.bfloat16, token=None) -> "Votum":
+                         device: str | None = None, dtype=torch.bfloat16, token=None, vision="lazy") -> "Votum":
         """repo: the Votum repo id or a local checkpoint directory (votum build). Default: the merged weights in the repo
         (one download, no PEFT). exact=True: the unmerged form, the Apertus base (base: repo id or local snapshot; default
         the revision pinned in votum_config.json) plus the LoRA adapter in the repo's adapter/ folder, as in training."""
@@ -186,7 +186,12 @@ class Votum(nn.Module):
         if tok.convert_tokens_to_ids(cfg.opt_end_token) != cfg.opt_end_id:
             raise ValueError(f"tokenizer maps {cfg.opt_end_token} to {tok.convert_tokens_to_ids(cfg.opt_end_token)}, expected {cfg.opt_end_id}")
         net.to(device); net.eval()
-        return cls(net, tok, cfg, o, q0).to(device)
+        vm = cls(net, tok, cfg, o, q0).to(device)
+        from .vision import images_for
+        # vision: "lazy" (default) loads the image tokenizer (0.9 GB, from the repo's vision/ folder, else the Apertus base)
+        # on the first image, "eager" now, "off" never (requests with images are refused)
+        vm.images = images_for(str(repo), vision, device=device, token=token)
+        return vm
 
     # ------------------------------------------------------------------------------------------------------ forward
     @torch.no_grad()
@@ -250,7 +255,11 @@ class Votum(nn.Module):
             out[i] = {"ids": ids, "scores": z.tolist(), "probs": dict(zip(ids, p)), "n_tokens": len(e.ids)}
         return out
 
-    def decide(self, request: dict) -> dict:
-        """one request in the SystemOne shape (votum.request) -> {"answers": {qid: answer}, "usage": {...}}."""
+    def decide(self, request: dict, max_image_codes: int | None = None) -> dict:
+        """one request in the SystemOne shape (votum.request) -> {"answers": {qid: answer}, "usage": {...}}. Images in the
+        state ({"image": PIL image | bytes | path | base64}) are read at up to max_image_codes codes (default 1,024: about
+        512 x 512 pixels)."""
         from . import request as R
-        return R.decide(request, self.decide_rows, self.cfg.max_tokens)
+        enc = getattr(self, "images", None)       # None: loaded with vision="off"
+        return R.decide(request, self.decide_rows, self.cfg.max_tokens,
+                        encode_image=None if enc is None else (lambda v: enc.encode(v, max_image_codes)))
