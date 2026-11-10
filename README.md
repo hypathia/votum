@@ -237,7 +237,7 @@ text, about 27 times longer. [docs/benchmarks.md](docs/benchmarks.md) says exact
 Votum-8B is a small model, so expect solid everyday judgement, not expert knowledge. Some reference points, on public
 test sets it was not trained on:
 
-| Task | Correct | Correct among the half it is most sure about |
+| Task | Correct | Correct among the most confident half |
 |---|---:|---:|
 | Yes/no questions about a passage (BoolQ) | 88.9 % | 98.2 % |
 | Topic of a text, in 12 languages (SIB-200) | 82.4 % | 97.4 % |
