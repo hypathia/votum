@@ -90,10 +90,10 @@ def main():
         for c in sh:
             sh[c].write(buf[c]); shards[(c, split)] = sh[c].close()
     with open(os.path.join(a.out_dir, "SOURCES.csv"), "w", newline="") as f:
-        w = csv.writer(f); w.writerow(["source", "config", "origin", "licence_tags", "train_rows", "validation_rows", "names_masked", "upstream_release"])
+        w = csv.writer(f); w.writerow(["source", "config", "origin", "licence_tags", "train_rows", "validation_rows", "names_masked", "upstream_release", "description"])
         for s in sorted(stats["src"]):
             p = pol[s]; w.writerow([s, p["config"], p["origin"], p["license"], stats["src"][s]["train"], stats["src"][s]["validation"],
-                                    "yes" if (p["origin"] == "self-collected" and p["names"]) else "no", p.get("upstream", "")])
+                                    "yes" if (p["origin"] == "self-collected" and p["names"]) else "no", p.get("upstream", ""), p.get("description", "")])
     out = {"rows": {f"{c}/{s}": v for (c, s), v in stats["rows"].items()}, "shards": {f"{c}/{s}": v for (c, s), v in shards.items()},
            "dropped_fields": dict(stats["dropped_fields"]), "lang": {f"{c}/{l}": v for (c, l), v in stats["lang"].items()},
            "lic": {c: dict(v) for c, v in stats["lic"].items()}}

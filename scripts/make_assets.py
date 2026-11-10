@@ -378,6 +378,81 @@ def pool():
     save("pool", cy + ch + PAD, "".join(b))
 
 
+# ---------------------------------------------------------------------------------------------------- selection
+class Sankey:
+    """columns of nodes and the flows between them, on one scale (px per unit); kept flows red, removed flows grey"""
+    NODE_W, GAP, MIN_H, LABEL_DY = 7, 11, 2, 18
+
+    def __init__(self, y0, y1, total, gaps):
+        self.y0, self.y1 = y0, y1; self.scale = (y1 - y0 - gaps * self.GAP) / total; self.nodes, self.links = {}, []
+
+    def column(self, x, items, side):
+        """items: (key, value, kept, number, text[, second line]); stacked top to bottom, centred in the band"""
+        hs = [max(v * self.scale, self.MIN_H) for _, v, *_ in items]
+        y = self.y0 + (self.y1 - self.y0 - sum(hs) - self.GAP * (len(items) - 1)) / 2
+        for (key, v, kept, num, text, *rest), h in zip(items, hs):
+            self.nodes[key] = dict(x=x, y=y, h=h, v=v, kept=kept, num=num, text=text, line2=rest[0] if rest else None, side=side, out=0.0, inn=0.0)
+            y += h + self.GAP
+
+    def link(self, s, t, v):
+        self.links.append((s, t, v))
+
+    def draw(self):
+        b = []
+        for s, t, v in self.links:
+            S, Tn = self.nodes[s], self.nodes[t]
+            hs = max(v * self.scale, self.MIN_H) * S["h"] / max(S["v"] * self.scale, self.MIN_H)
+            ht = max(v * self.scale, self.MIN_H) * Tn["h"] / max(Tn["v"] * self.scale, self.MIN_H)
+            ya, yb, xa, xb = S["y"] + S["out"], Tn["y"] + Tn["inn"], S["x"] + self.NODE_W, Tn["x"]; xm = (xa + xb) / 2
+            fill, op = (RED, .30) if Tn["kept"] else (NEUTRAL, .38)
+            b.append(f'<path d="M{xa:.1f} {ya:.1f} C{xm:.1f} {ya:.1f} {xm:.1f} {yb:.1f} {xb:.1f} {yb:.1f} L{xb:.1f} {yb + ht:.1f} '
+                     f'C{xm:.1f} {yb + ht:.1f} {xm:.1f} {ya + hs:.1f} {xa:.1f} {ya + hs:.1f} Z" fill="{fill}" fill-opacity="{op}"/>')
+            S["out"] += hs; Tn["inn"] += ht
+        for n in self.nodes.values():
+            b.append(f'<rect x="{n["x"]:.1f}" y="{n["y"]:.1f}" width="{self.NODE_W}" height="{n["h"]:.1f}" rx="1.5" fill="{RED if n["kept"] else NEUTRAL}"/>')
+        for x in sorted({n["x"] for n in self.nodes.values()}):          # labels, nudged apart column by column
+            prev = None
+            for n in sorted((n for n in self.nodes.values() if n["x"] == x), key=lambda n: n["y"]):
+                yc = n["y"] + n["h"] / 2
+                if prev is not None and yc < prev + self.LABEL_DY: yc = prev + self.LABEL_DY
+                prev = yc + (self.LABEL_DY - 2 if n["line2"] else 0)
+                if n["side"] is None: continue
+                right = n["side"] == "right"; tx = n["x"] + self.NODE_W + 8 if right else n["x"] - 8; anchor = "start" if right else "end"
+                size, w2 = (15, 700) if n["kept"] else (12.5, 400)
+                num = f'<tspan font-weight="700" fill="{INK}">{esc(n["num"])}</tspan>'; txt = f'<tspan fill="{INK if w2 == 700 else MUTED}" font-weight="{w2}"> {esc(n["text"])}</tspan>'
+                b.append(f'<text x="{tx:.1f}" y="{yc + size * .35:.1f}" font-size="{size}" text-anchor="{anchor}" xml:space="preserve">{num}{txt}</text>')
+                if n["line2"]: b.append(T(tx, yc + size * .35 + self.LABEL_DY - 2, n["line2"], 11.5, MUTED, anchor=anchor))
+        return "".join(b)
+
+
+def selection():
+    """how the sources and the rows were selected: two Sankey diagrams (numbers: data/README.md and the dataset card)"""
+    b = [head("Data", "From 1,289 candidate sources to 330,461 rows", "How sources were selected, and what happened to the rows converted from them")]
+    ch = 392; b.append(card(PAD, TOP, W - 2 * PAD, ch)); y0, y1 = TOP + 62, TOP + ch - 44
+    b.append(T(PAD + 22, TOP + 32, "Sources", 14, INK, 700)); b.append(T(PAD + 775, TOP + 32, "Rows", 14, INK, 700))
+    s = Sankey(y0, y1, 1289, 5); xa, xb, xc = PAD + 172, PAD + 290, PAD + 525
+    s.column(xa, [("cand", 1289, True, "1,289", "candidates", "catalogues, hubs, portals")], "left")
+    s.column(xb, [("pub", 181, True, "181", "published"), ("late", 36, False, "36", "removed before release"),
+                  ("out", 1072, False, "1,072", "not selected")], "right")
+    reasons = [("lic", 372, "372", "licence or commercial use"), ("qual", 337, "337", "quality"), ("text", 174, "174", "third-party text rights"),
+               ("fake", 84, "84", "not real decisions"), ("crawl", 49, "49", "AI-crawler opt-out"), ("other", 56, "56", "duplicates and other reasons")]
+    s.column(xc, [(k, v, False, n, t) for k, v, n, t in reasons], "right")
+    for k, v in (("pub", 181), ("late", 36), ("out", 1072)): s.link("cand", k, v)
+    for k, v, *_ in reasons: s.link("out", k, v)
+    b.append(s.draw())
+    r = Sankey(y0, y1, 901098, 3); xr, xs = PAD + 775, PAD + 900
+    r.column(xr, [("conv", 901098, True, "901,098", "rows converted")], None)
+    r.column(xs, [("pub", 330461, True, "330,461", "published", "327,664 training, 2,797 validation"),
+                  ("late", 78459, False, "78,459", "removed before release", "licence review, benchmark overlap"),
+                  ("cap", 480047, False, "480,047", "above the per-source cap", "large sources are capped"),
+                  ("dup", 12131, False, "12,131", "duplicates and other filters")], "right")
+    for k, v in (("pub", 330461), ("late", 78459), ("cap", 480047), ("dup", 12131)): r.link("conv", k, v)
+    b.append(r.draw())
+    b.append(f'<text x="{xr + 3.5:.1f}" y="{y1 + 24:.1f}" font-size="12.5" text-anchor="middle" xml:space="preserve"><tspan font-weight="700" fill="{INK}">901,098</tspan>'
+             f'<tspan fill="{MUTED}"> rows converted</tspan></text>')
+    save("selection", TOP + ch + PAD, "".join(b))
+
+
 def flag():
     """assets/flag.svg: the Swiss flag (square; cross arms 1/6 longer than wide), vector and text-free, so it renders the
     same everywhere (a flag emoji needs a colour emoji font and shows as "CH" without one)."""
@@ -388,5 +463,5 @@ def flag():
 
 flag()
 for name in THEMES:
-    theme(name); architecture(); examples(); pool()
+    theme(name); architecture(); examples(); pool(); selection()
 print("written to", OUT)
