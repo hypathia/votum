@@ -5,6 +5,6 @@ authors:
   - name: "Claudio Vieira"
 license: Apache-2.0
 repository-code: "https://github.com/hypathia/votum"
-url: "https://huggingface.co/{{ORG}}/Votum-8B"
+url: "https://huggingface.co/votum-ai/Votum-8B"
 version: 0.1.0
 date-released: "{{RELEASE_DATE}}"

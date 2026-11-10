@@ -24,7 +24,7 @@ you first accept the Apertus usage policy on the Votum-8B model page; the downlo
 pip install "votum @ git+https://github.com/hypathia/votum" pyarrow
 hf auth login
 cd training
-hf download {{ORG}}/Votum-8B --local-dir ./Votum-8B
+hf download votum-ai/Votum-8B --local-dir ./Votum-8B
 ```
 
 Everything below is run from this `training` folder, and `./Votum-8B` is the folder you just downloaded.
@@ -240,7 +240,7 @@ This part is for readers who want to reproduce how the released Votum-8B was tra
 audit it. It is not needed for fine-tuning.
 
 The released model was trained for 600 steps, about seven hours, on a single 96 GB GPU. The training data was an
-earlier version of the public [Votum Pool](https://huggingface.co/datasets/{{ORG}}/Votum-Pool) dataset; that exact
+earlier version of the public [Votum Pool](https://huggingface.co/datasets/votum-ai/Votum-Pool) dataset; that exact
 file is not published, but the cleaned dataset that replaced it is, and `prepare_data.py --pool` converts it for
 training. The command was:
 

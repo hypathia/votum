@@ -2,7 +2,7 @@
 
 Votum-8B was trained on "pool v7": public decision data converted to one row format. The rows themselves are not in
 this repository. A cleaned version of the pool is published as the dataset
-[{{ORG}}/Votum-Pool](https://huggingface.co/datasets/{{ORG}}/Votum-Pool).
+[votum-ai/Votum-Pool](https://huggingface.co/datasets/votum-ai/Votum-Pool).
 
 | Path | Contents |
 |---|---|

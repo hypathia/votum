@@ -5,8 +5,8 @@
 <p align="center"><sub>Independent project, built on Apertus-1.5-8B (Swiss AI Initiative) · not affiliated</sub></p>
 
 <p align="center">
-  <a href="https://huggingface.co/{{ORG}}/Votum-8B"><img alt="model" src="https://img.shields.io/badge/model-Votum--8B-DA291C?logo=huggingface&logoColor=white"></a>
-  <a href="https://huggingface.co/datasets/{{ORG}}/Votum-Pool"><img alt="dataset" src="https://img.shields.io/badge/data-Votum--Pool-DA291C?logo=huggingface&logoColor=white"></a>
+  <a href="https://huggingface.co/votum-ai/Votum-8B"><img alt="model" src="https://img.shields.io/badge/model-Votum--8B-DA291C?logo=huggingface&logoColor=white"></a>
+  <a href="https://huggingface.co/datasets/votum-ai/Votum-Pool"><img alt="dataset" src="https://img.shields.io/badge/data-Votum--Pool-DA291C?logo=huggingface&logoColor=white"></a>
   <a href="https://huggingface.co/swiss-ai/Apertus-v1.5-8B"><img alt="base" src="https://img.shields.io/badge/base-Apertus--1.5--8B-1D1D1F"></a>
   <img alt="python" src="https://img.shields.io/badge/python-3.11%2B-1D1D1F">
   <img alt="license" src="https://img.shields.io/badge/license-Apache--2.0-1D1D1F">
@@ -17,7 +17,7 @@
   <a href="#serve">Serve</a> ·
   <a href="#how-it-works">How it works</a> ·
   <a href="#reproduce">Reproduce and fine-tune</a> ·
-  <a href="https://huggingface.co/{{ORG}}/Votum-8B">Model card</a>
+  <a href="https://huggingface.co/votum-ai/Votum-8B">Model card</a>
 </p>
 
 **Votum** turns <img src="assets/flag.svg" height="14" alt="Swiss flag"> [Apertus-1.5-8B](https://huggingface.co/swiss-ai/Apertus-v1.5-8B)
@@ -40,13 +40,13 @@ You need Python 3.11 or newer and a CUDA GPU with 24 GB (16 GB is enough for the
 on a CPU, slowly.
 
 Before the first download, accept the Apertus Acceptable Use Policy on
-[{{ORG}}/Votum-8B](https://huggingface.co/{{ORG}}/Votum-8B) and run `hf auth login`. That repository holds everything
+[votum-ai/Votum-8B](https://huggingface.co/votum-ai/Votum-8B) and run `hf auth login`. That repository holds everything
 the model needs; there is no base model to fetch.
 
 ```python
 from votum import Votum
 
-vm = Votum.from_pretrained("{{ORG}}/Votum-8B")     # ~16 GB in bf16; a 24 GB GPU is plenty
+vm = Votum.from_pretrained("votum-ai/Votum-8B")     # ~16 GB in bf16; a 24 GB GPU is plenty
 
 out = vm.decide({
     "state": {"from": "anna@example.com", "subject": "Invoice 4411", "body": "I was charged twice in October."},
@@ -78,13 +78,13 @@ truncated: an error in Python, HTTP 413 on the server (a malformed request is 40
 
 ```bash
 pip install "votum[vllm] @ git+https://github.com/hypathia/votum"
-VOTUM_API_KEY=... votum serve --model {{ORG}}/Votum-8B --host 0.0.0.0 --port 8011
+VOTUM_API_KEY=... votum serve --model votum-ai/Votum-8B --host 0.0.0.0 --port 8011
 ```
 
 `POST /v1/systemone` takes the same request as `vm.decide` and returns the same answers. Concurrent requests are
 batched. Start-up takes about a minute.
 
-**On a 16 GB card**, serve [{{ORG}}/Votum-8B-FP8](https://huggingface.co/{{ORG}}/Votum-8B-FP8) instead: the same model
+**On a 16 GB card**, serve [votum-ai/Votum-8B-FP8](https://huggingface.co/votum-ai/Votum-8B-FP8) instead: the same model
 in a little over half the memory (9.2 GB), which gives the same answer 96–99 % of the time. It runs on the server only, not in the Python
 quickstart above.
 
@@ -100,7 +100,7 @@ answer, on one RTX 4090:
 
 Questions about the same state share one pass over it, so asking several at once is cheaper than asking them one by
 one: on long documents the server makes 3.1 decisions per second with one question per request, and 15.8 with eight.
-The [model card](https://huggingface.co/{{ORG}}/Votum-8B#performance) has the full measurements.
+The [model card](https://huggingface.co/votum-ai/Votum-8B#performance) has the full measurements.
 
 <details>
 <summary><b>Server settings</b></summary>
@@ -180,7 +180,7 @@ also drives a display.
 
 **Reproduce the release.**
 
-1. **Data.** The cleaned pool is [{{ORG}}/Votum-Pool](https://huggingface.co/datasets/{{ORG}}/Votum-Pool); the pipeline
+1. **Data.** The cleaned pool is [votum-ai/Votum-Pool](https://huggingface.co/datasets/votum-ai/Votum-Pool); the pipeline
    that builds it is in `data/`.
 2. **Training.** `training/README.md` has the exact command of the released run: one 96 GB GPU, about 7 hours.
 3. **Export.** `python scripts/export_hf.py --ckpt <run>/ckpt_600 --out <dir>` reproduces the published model
@@ -195,7 +195,7 @@ model card, and a re-train on the published pool is planned.
 pip install -e ".[test]"
 pytest                                                     # CPU
 VOTUM_TOKENIZER=<dir with the Apertus tokenizer> pytest    # + renderer
-VOTUM_REPO={{ORG}}/Votum-8B pytest -m gpu                   # + end-to-end smoke test
+VOTUM_REPO=votum-ai/Votum-8B pytest -m gpu                   # + end-to-end smoke test
 ```
 
 ## License

@@ -4,7 +4,7 @@
     python prepare_data.py --rows my_rows.jsonl[.gz] [--val my_val.jsonl] [--val-frac 0.05] --out data/mine
     python prepare_data.py --csv tickets.csv --text-col text --label-col team --question "Which team should handle this ticket?" --out data/tickets
 
-Rows use the Votum Pool schema (hf.co/datasets/{{ORG}}/Votum-Pool): id, type (choice | noul | score), state (text or JSON
+Rows use the Votum Pool schema (hf.co/datasets/votum-ai/Votum-Pool): id, type (choice | noul | score), state (text or JSON
 object), question, options [{id, text}], target (one probability per option, in option order), and optionally group
 (rows about the same state; a group never spans train and validation), lang, source, license. Yes/no rows have option
 ids "true" and "false"; score rows list their levels from low to high. Anything else is passed through untouched.
@@ -156,7 +156,7 @@ def main(argv=None):
     ap.add_argument("--labels", default=None, help="with --csv: option texts per label, 'id=text;id=text' (default: the label values themselves)")
     ap.add_argument("--group-col", default=None, help="with --csv: column whose value groups rows about the same text (default: each row its own group)")
     ap.add_argument("--mix-pool", type=int, default=0, help="add this many randomly sampled Votum-Pool training rows (--pool-dir, config default) to the training file, to keep the general behaviour while fine-tuning on a narrow set")
-    ap.add_argument("--pool-dir", default="{{ORG}}/Votum-Pool", help="with --mix-pool: Votum-Pool dataset, local directory or Hub id")
+    ap.add_argument("--pool-dir", default="votum-ai/Votum-Pool", help="with --mix-pool: Votum-Pool dataset, local directory or Hub id")
     ap.add_argument("--config", default="default", choices=["default", "share_alike"], help="Pool config (with --pool)")
     ap.add_argument("--val", help="validation rows, a JSONL file in the Pool schema (with --rows or --csv); default: a --val-frac split by group")
     ap.add_argument("--val-frac", type=float, default=0.05, help="validation share when --val is not given (default 0.05)")

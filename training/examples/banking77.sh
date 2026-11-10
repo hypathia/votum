@@ -6,7 +6,7 @@
 #
 #     bash examples/banking77.sh [MODEL] [OUT_DIR]
 set -euo pipefail
-DEF="{{ORG}}/Votum-8B"; MODEL=${1:-${VOTUM_REPO:-$DEF}}; OUT=${2:-./Votum-8B-banking77}; W=./examples/banking77_work; mkdir -p "$W"
+DEF="votum-ai/Votum-8B"; MODEL=${1:-${VOTUM_REPO:-$DEF}}; OUT=${2:-./Votum-8B-banking77}; W=./examples/banking77_work; mkdir -p "$W"
 PY=${PYTHON:-python}
 
 echo "== data: PolyAI/banking77 from the Hub -> CSV (2,000 training rows) and a 1,000-row test file"
