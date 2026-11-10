@@ -1,6 +1,6 @@
 <h1 align="center"><img src="assets/flag.svg" width="28" height="28" alt=""> votum</h1>
 
-<p align="center"><b>A model that answers questions with probabilities instead of text.</b></p>
+<p align="center"><b>Code for the Votum decision models: run them, serve them, fine-tune them.</b></p>
 
 <p align="center"><sub>Independent project, built on Apertus-1.5-8B (Swiss AI Initiative) · not affiliated</sub></p>
 
@@ -21,28 +21,16 @@
   <a href="#documentation">Documentation</a>
 </p>
 
-**Votum** is a decision model. You give it some context (an email, a document, a JSON record, a photo), a question
-about it, and the possible answers. It gives back a probability for each answer.
+**Votum** turns <img src="assets/flag.svg" width="14" height="14" alt="Swiss flag"> [Apertus-1.5-8B](https://huggingface.co/swiss-ai/Apertus-v1.5-8B)
+into a decision model. You give it some context (an email, a document, a JSON record, a photo), a question about it and
+the possible answers. It gives back a probability for each answer.
 
-It never writes text. Compared with asking a language model to write the answer:
-
-| | A language model that writes | Votum |
-|---|---|---|
-| **The answer** | free text, which your program has to parse | always one of your options |
-| **How sure it is** | not known, or written out as text | a probability for every option; they sum to one |
-| **Time for one answer** | 0.2 to 10 seconds | about 40 ms |
-| **Explains or reasons step by step** | yes | no |
-
-<sub>Times are for one question about a short text on one NVIDIA RTX 4090; see <a href="#speed">Speed</a>.</sub>
-
-Use Votum to route tickets, classify documents, check a yes/no condition or grade something on a scale. It is not a
-chatbot: when the answer needs an explanation or a step-by-step calculation, use a language model that writes.
+It does not write text. It reads the prompt once and scores the answers, so a decision takes about 40 ms on an
+RTX 4090, the result is always one of your options, and the probabilities always sum to one.
 
 <picture><source media="(prefers-color-scheme: dark)" srcset="assets/examples_dark.png"><img src="assets/examples.png" alt="Four requests answered by Votum-8B. An email about a double charge: team is Billing and payments (0.96), the customer asks for money back (0.90), urgency is medium (0.41). A JSON order record: the total is 65.0 (0.73), no discount was applied (0.91). A photo of a derailed locomotive: a locomotive derailed (0.46), people are at the scene (0.76), the damage is serious (0.47). A photo of a market in front of a church: a street market (0.76), fruit or vegetables are for sale (0.79), the large building is a church (0.79)."></picture>
 
-Votum is built on [Apertus-1.5-8B](https://huggingface.co/swiss-ai/Apertus-v1.5-8B), the open Swiss language model.
-This repository holds the code to run it, serve it and fine-tune it; the weights are on
-[Hugging Face](https://huggingface.co/votum-ai/Votum-8B).
+This repository holds the code; the weights are on [Hugging Face](https://huggingface.co/votum-ai/Votum-8B).
 
 ## Quickstart
 
@@ -242,14 +230,15 @@ Votum builds on other people's work:
 
 - **[Apertus](https://huggingface.co/swiss-ai/Apertus-v1.5-8B)**, by the Swiss AI Initiative (EPFL, ETH Zurich, CSCS):
   the open model underneath Votum.
-- **Jev**: the original decision models. Votum uses their request format and is measured on their public benchmarks,
-  [JevBench](https://github.com/fstandhartinger/jevbench) and the Jev Decision Index.
+- **Jev**: the original decision models. Votum uses their request format (`choice`, `noul`, `score`).
 - **[Jeff](https://github.com/j-geuter/Jeff)**, by Jonathan Geuter, Andrew Cheng and David Alvarez-Melis
   ([Releasing the Inner Jev](https://arxiv.org/abs/2610.17205)): the open recipe for turning a language model into a
   decision model. Our evaluation was checked against their published numbers, and the code that reads requests is
   derived from theirs (see `NOTICE`).
 - **[JevPertus](https://huggingface.co/jaluus/jevpertus-v1.5-8B)** ([code](https://github.com/Jaluus/JevPertus)): an
   earlier decision model built on the same Apertus-1.5-8B.
+- **[JevBench](https://github.com/fstandhartinger/jevbench)** and the **Jev Decision Index**: independent public
+  benchmarks for decision models, on which Votum is measured.
 
 ## License
 
