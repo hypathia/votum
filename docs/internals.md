@@ -75,5 +75,5 @@ hours on one 96 GB GPU. The training data is published as
 `data/`. After training, `python scripts/export_hf.py --ckpt <run>/ckpt_600 --out <dir>` reproduces the published
 model repository byte for byte.
 
-The released model was trained before the pool was cleaned. Its known training-data issues are listed on the
-[model card](https://huggingface.co/votum-ai/Votum-8B#training), and a re-train on the published pool is planned.
+The released model was trained before the pool was cleaned. Its known training-data issues are listed in
+[`data/README.md`](../data/README.md), and a re-train on the published pool is planned.
