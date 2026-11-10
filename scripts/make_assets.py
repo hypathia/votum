@@ -190,7 +190,8 @@ def chevron(x, y):
 
 
 # ---------------------------------------------------------------------------------------------------------- architecture
-FORMULA = r"z_j=\frac{\langle q_0,\;W_o\,\mathrm{LN}(h_j)\rangle}{16}\qquad\quad p_j=\frac{e^{z_j/T}}{\sum_k e^{z_k/T}}"
+F_SCORE = r"z_j=\frac{\langle q_0,\;W_o\,\mathrm{LN}(h_j)\rangle}{16}"
+F_PROB = r"p_j=\frac{e^{z_j/T}}{\sum_k e^{z_k/T}}"
 _TEX = {}
 
 
@@ -205,7 +206,8 @@ def tex(src, x, y, scale, fill):
             svg = (Path(d) / "f.svg").read_text()
         vb = [float(v) for v in re.search(r"viewBox='([^']+)'", svg).group(1).split()]
         inner = re.search(r"<svg[^>]*>(.*)</svg>", svg, re.S).group(1)
-        _TEX[src] = (vb, re.sub(r"<!--.*?-->", "", inner, flags=re.S).replace("'", '"'))
+        inner = re.sub(r"<!--.*?-->", "", inner, flags=re.S).replace("'", '"'); k = f"t{len(_TEX)}-"   # glyph ids are per run: make them unique
+        _TEX[src] = (vb, inner.replace('id="', f'id="{k}').replace('href="#', f'href="#{k}'))
     vb, inner = _TEX[src]; w, h = vb[2] * scale, vb[3] * scale
     return (f'<svg x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{h:.1f}" viewBox="{vb[0]} {vb[1]} {vb[2]} {vb[3]}" fill="{fill}">{inner}</svg>', w, h)
 
@@ -274,11 +276,26 @@ def architecture():
     tw = (pr - px - 31 * 3) / 32
     for L in range(32): hd.append(bar(px + L * (tw + 3), y3 + 16, tw, 14, RED if L in range(3, 32, 4) else NEUTRAL, 2.5))
     y3 += 54
-    f, fw, fh = tex(FORMULA, px, y3, 1.42, INK); hd.append(f); y3 += fh + 26
-    for q, opts in outs:
+    # the two formulas, each under its name; then what h_j is, with the same "end" chip as in the prompt
+    px2 = px + (pr - px) * .56
+    hd.append(eyebrow(px, y3, "Score") + eyebrow(px2, y3, "Probability")); y3 += 12
+    f1, _, fh1 = tex(F_SCORE, px, y3, 1.42, INK); f2, _, fh2 = tex(F_PROB, px2, y3, 1.42, INK); fh = max(fh1, fh2)
+    hd.append(f1.replace(f'y="{y3:.1f}"', f'y="{y3 + (fh - fh1) / 2:.1f}"') + f2.replace(f'y="{y3:.1f}"', f'y="{y3 + (fh - fh2) / 2:.1f}"'))
+    y3 += fh + 20
+    g, gw, gh = tex("h_j", px, y3 - 9, 1.15, MUTED); hd.append(g)
+    lab = "hidden state at the option's"; hd.append(T(px + gw + 6, y3, lab, 10.5, MUTED))
+    cx = px + gw + 6 + textw(lab, 10.5) * .96 + 7
+    hd.append(bar(cx, y3 - 9.5, 27, 12, SWISS, 3) + T(cx + 13.5, y3 - .3, "end", 9, WHITE, 600, "middle") + T(cx + 33, y3, "token", 10.5, MUTED))
+    y3 += 22
+    lw = 150; zx = px + lw + 44; tx = zx + 12; tw2 = pr - 52 - tx
+    hd.append(bar(px, y3 - 8, pr - px, 1, GRID, 0)); y3 += 12                # column heads: the symbols of the formulas above
+    zh, zw, _ = tex("z_j", 0, y3 - 8, 1.3, SUB); hd.append(zh.replace('x="0.0"', f'x="{zx - zw:.1f}"'))
+    ph, pw, _ = tex("p_j", 0, y3 - 8, 1.3, SUB); hd.append(ph.replace('x="0.0"', f'x="{pr - 6 - pw:.1f}"'))
+    y3 += 20
+    for qn, (q, opts) in enumerate(outs):
         hd.append(T(px, y3, q, 11, MUTED, 600)); y3 += 20
         for i, (lab, z, pp) in enumerate(opts):
-            win = i == 0; lw = 150; zx = px + lw + 44; tx = zx + 12; tw2 = pr - 52 - tx
+            win = i == 0
             hd.append(T(px, y3 + 4, lab, 11.5, INK, 650 if win else 400))
             hd.append(T(zx, y3 + 4, f"{z:+.2f}", 10.5, MUTED, 500, "end", f'font-family="{MONO}"'))
             hd.append(bar(tx, y3 - 4, tw2, 8, GRID) + bar(tx, y3 - 4, max(tw2 * pp, 8), 8, RED if win else NEUTRAL))
