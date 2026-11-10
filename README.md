@@ -15,8 +15,9 @@
 <p align="center">
   <a href="#quickstart">Quickstart</a> ·
   <a href="#serve">Serve</a> ·
+  <a href="#speed">Speed</a> ·
   <a href="#how-it-works">How it works</a> ·
-  <a href="#reproduce">Reproduce and fine-tune</a> ·
+  <a href="#fine-tune">Fine-tune</a> ·
   <a href="#acknowledgements">Acknowledgements</a> ·
   <a href="https://huggingface.co/votum-ai/Votum-8B">Model card</a>
 </p>
@@ -39,8 +40,16 @@ pip install "votum @ git+https://github.com/hypathia/votum"            # to use 
 pip install "votum[vllm] @ git+https://github.com/hypathia/votum"      # the same, plus the HTTP server
 ```
 
-You need Python 3.11 or newer and a CUDA GPU with 24 GB, or 16 GB with the [FP8 variant](#on-a-16-gb-card). It also
-runs on a CPU, slowly.
+You need Python 3.11 or newer and a CUDA GPU. Which model to use depends on the card:
+
+| GPU memory | Model | Notes |
+|---|---|---|
+| 24 GB or more | [votum-ai/Votum-8B](https://huggingface.co/votum-ai/Votum-8B) | the full model: 16 GB of weights; the server reserves about 18 GB |
+| 16 GB | [votum-ai/Votum-8B-FP8](https://huggingface.co/votum-ai/Votum-8B-FP8) | the same model with weights stored in 8 bits instead of 16: 9.2 GB; the server reserves about 12 GB; gives the same answer as the full model 96–99 % of the time |
+| 24 GB, for fine-tuning | votum-ai/Votum-8B | trains on examples up to 3,072 tokens, or 2,048 if the card also drives a display ([guide](training/README.md)) |
+| none | either | runs on a CPU, slowly |
+
+The two models are used the same way; wherever `votum-ai/Votum-8B` appears below, the FP8 name works too.
 
 Before the first download, accept the Apertus Acceptable Use Policy on
 [votum-ai/Votum-8B](https://huggingface.co/votum-ai/Votum-8B) and run `hf auth login`. That repository holds everything
@@ -90,37 +99,7 @@ VOTUM_API_KEY=... votum serve --model votum-ai/Votum-8B --host 0.0.0.0 --port 80
 `POST /v1/systemone` takes the same request as `vm.decide` and returns the same answers. Requests that arrive at the
 same time are processed together. Start-up takes about a minute.
 
-### On a 16 GB card
-
-Use [votum-ai/Votum-8B-FP8](https://huggingface.co/votum-ai/Votum-8B-FP8): the same model with its weights stored in
-8 bits instead of 16. It takes a little over half the memory (9.2 GB) and gives the same answer as the full model
-96–99 % of the time. Everything above works unchanged with its name:
-
-```bash
-votum serve --model votum-ai/Votum-8B-FP8 --port 8011
-```
-
-```python
-vm = Votum.from_pretrained("votum-ai/Votum-8B-FP8")     # 8.5 GB on the GPU
-```
-
-The server reserves the weights plus 3 GB of GPU memory, so about 12 GB for this variant and 18 GB for the full one;
-`--gpu-memory-gb` changes that. To make an FP8 copy of your own fine-tuned checkpoint, run
-`votum quantize --model <dir> --out <dir>` (about a minute, no GPU needed).
-
-**How fast is it?** A decision costs one read of the prompt. Here it is next to asking the same Apertus model to write
-its answer as text, on one RTX 4090:
-
-| How the answer is produced | Typical latency | Tokens written | Requests per second under load |
-|---|---:|---:|---:|
-| **Votum: a decision** | **39 ms** | **0** | **23.5** |
-| Text: the choice as JSON (structured output) | 206 ms | 8 | 21.0 |
-| Text: the choice and its probabilities as JSON (structured output) | 1.1 s | 54 | 10.9 |
-| Text: reasoning first, then the JSON | 10.5 s | 370 | 1.9 |
-
-Questions about the same state share one pass over it, so asking several at once is cheaper than asking them one by
-one: on long documents the server makes 3.1 decisions per second with one question per request, and 15.8 with eight.
-The [model card](https://huggingface.co/votum-ai/Votum-8B#performance) has the full measurements.
+The server reserves the model's weights plus 3 GB of GPU memory; `--gpu-memory-gb` changes that.
 
 <details>
 <summary><b>Server settings</b></summary>
@@ -143,6 +122,22 @@ directions and need all of it at once. The two caches above take their place, an
 computation would.
 
 </details>
+
+## Speed
+
+A decision costs one read of the prompt. Here it is next to asking the same Apertus model to write
+its answer as text, on one RTX 4090:
+
+| How the answer is produced | Typical latency | Tokens written | Requests per second under load |
+|---|---:|---:|---:|
+| **Votum: a decision** | **39 ms** | **0** | **23.5** |
+| Text: the choice as JSON (structured output) | 206 ms | 8 | 21.0 |
+| Text: the choice and its probabilities as JSON (structured output) | 1.1 s | 54 | 10.9 |
+| Text: reasoning first, then the JSON | 10.5 s | 370 | 1.9 |
+
+Questions about the same state share one pass over it, so asking several at once is cheaper than asking them one by
+one: on long documents the server makes 3.1 decisions per second with one question per request, and 15.8 with eight.
+The [model card](https://huggingface.co/votum-ai/Votum-8B#performance) has the full measurements.
 
 ## How it works
 
@@ -184,6 +179,24 @@ model card's Limitations section has the details.
 
 </details>
 
+## Fine-tune
+
+To teach Votum your own task, follow [`training/README.md`](training/README.md). It is a step-by-step guide: prepare
+your examples, train from the released model, export the result and calibrate its probabilities. One 24 GB GPU is
+enough, and a fine-tuned model can be shrunk to FP8 afterwards with `votum quantize --model <dir> --out <dir>` (about
+a minute, no GPU needed).
+
+## Reproduce the release
+
+The same guide has the exact command of the released training run, which took about 7 hours on one 96 GB GPU. The
+training data is published as [votum-ai/Votum-Pool](https://huggingface.co/datasets/votum-ai/Votum-Pool), and the
+pipeline that builds it is in `data/`. After training,
+`python scripts/export_hf.py --ckpt <run>/ckpt_600 --out <dir>` reproduces the published model repository byte for
+byte.
+
+The released model was trained before the pool was cleaned. Its known training-data issues are listed on the model
+card, and a re-train on the published pool is planned.
+
 ## Repository
 
 ```
@@ -194,23 +207,6 @@ data/               source list with licences · cleaning and personal-data remo
 scripts/            export a checkpoint to the Hub layout · smoke fixture · README graphics
 tests/              attention rules, prompt builder, request format (CPU) · end-to-end test (GPU)
 ```
-
-## Reproduce
-
-**Fine-tune on your own data.** [`training/README.md`](training/README.md) is a step-by-step guide: prepare your rows,
-train from the released checkpoint, export, calibrate. A 24 GB card trains rows up to 3,072 tokens, or 2,048 if it
-also drives a display.
-
-**Reproduce the release.**
-
-1. **Data.** The cleaned pool is [votum-ai/Votum-Pool](https://huggingface.co/datasets/votum-ai/Votum-Pool); the pipeline
-   that builds it is in `data/`.
-2. **Training.** `training/README.md` has the exact command of the released run: one 96 GB GPU, about 7 hours.
-3. **Export.** `python scripts/export_hf.py --ckpt <run>/ckpt_600 --out <dir>` reproduces the published model
-   repository byte for byte.
-
-The released checkpoint was trained before the pool was cleaned. Its known training-data issues are listed on the
-model card, and a re-train on the published pool is planned.
 
 ## Tests
 
