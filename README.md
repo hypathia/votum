@@ -1,6 +1,6 @@
 <h1 align="center"><img src="assets/flag.svg" width="28" height="28" alt=""> votum</h1>
 
-<p align="center"><b>Code for the Votum decision models: run them, serve them, fine-tune them.</b></p>
+<p align="center"><b>A decision model on a fully open LLM backbone.</b></p>
 
 <p align="center"><sub>Independent project, built on Apertus-1.5-8B (Swiss AI Initiative) · not affiliated</sub></p>
 
