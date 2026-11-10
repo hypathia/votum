@@ -60,31 +60,51 @@ hf auth login
 ```python
 from votum import Votum
 
-vm = Votum.from_pretrained("votum-ai/Votum-8B")   # downloads the model the first time
+vm = Votum.from_pretrained("votum-ai/Votum-8B")  # downloads the model the first time
 
-out = vm.decide({
+request = {
     "state": "Hi, I was charged twice for my October invoice (INV-4411). Could you refund one of the two payments?",
     "questions": {
-        "team":    {"type": "choice", "instructions": "Which team should handle this ticket?",
-                    "criteria": {"billing": "Billing and payments", "tech": "Technical support",
-                                 "sales": "Sales", "hr": "Human resources"}},
-        "refund":  {"type": "noul",   "instructions": "Does the customer ask for money back?"},
-        "urgency": {"type": "score",  "instructions": "How urgent is this ticket?",
-                    "criteria": ["low", "medium", "high"]},
+        "team": {
+            "type": "choice",
+            "instructions": "Which team should handle this ticket?",
+            "criteria": {
+                "billing": "Billing and payments",
+                "tech": "Technical support",
+                "sales": "Sales",
+                "hr": "Human resources",
+            },
+        },
+        "refund": {"type": "noul", "instructions": "Does the customer ask for money back?"},
+        "urgency": {
+            "type": "score",
+            "instructions": "How urgent is this ticket?",
+            "criteria": ["low", "medium", "high"],
+        },
     },
-})
+}
+
+out = vm.decide(request)
 
 print(out["answers"])
 ```
 
 ```python
 {
-  "team":    {"type": "choice", "choice": "billing", "confidence": 0.9619,
-              "probabilities": {"billing": 0.9619, "tech": 0.0079, "sales": 0.0243, "hr": 0.0059}},
-  "refund":  {"type": "noul", "noul": 0.8994},
-  "urgency": {"type": "score", "score": 0.9621, "confidence": 0.4133,
-              "legend": {"0": "low", "1": "medium", "2": "high"},
-              "probabilities": {"0": 0.3123, "1": 0.4133, "2": 0.2744}},
+    "team": {
+        "type": "choice",
+        "choice": "billing",
+        "confidence": 0.9619,
+        "probabilities": {"billing": 0.9619, "tech": 0.0079, "sales": 0.0243, "hr": 0.0059},
+    },
+    "refund": {"type": "noul", "noul": 0.8994},
+    "urgency": {
+        "type": "score",
+        "score": 0.9621,
+        "confidence": 0.4133,
+        "legend": {"0": "low", "1": "medium", "2": "high"},
+        "probabilities": {"0": 0.3123, "1": 0.4133, "2": 0.2744},
+    },
 }
 ```
 
@@ -124,12 +144,23 @@ decision models. Votum follows it so that programs written for those models work
 A state can hold images. Put one anywhere in it as `{"image": ...}`:
 
 ```python
-out = vm.decide({
+request = {
     "state": {"photo": {"image": "wreck.jpg"}, "line": "mountain branch, km 41"},
-    "questions": {"incident": {"type": "choice", "instructions": "What happened?",
-                               "criteria": {"derailment": "A locomotive derailed", "collision": "Two trains collided",
-                                            "fire": "A fire", "none": "Nothing, normal operation"}}},
-})
+    "questions": {
+        "incident": {
+            "type": "choice",
+            "instructions": "What happened?",
+            "criteria": {
+                "derailment": "A locomotive derailed",
+                "collision": "Two trains collided",
+                "fire": "A fire",
+                "none": "Nothing, normal operation",
+            },
+        }
+    },
+}
+
+out = vm.decide(request)
 ```
 
 This needs two more packages: `pip install "votum[vision] @ git+https://github.com/hypathia/votum"`.

@@ -3,17 +3,29 @@
 The state of a request can hold images. Put one anywhere in it as `{"image": ...}`:
 
 ```python
-out = vm.decide({
+request = {
     "state": {"photo": {"image": "wreck.jpg"}, "line": "mountain branch, km 41"},
     "questions": {
-        "incident": {"type": "choice", "instructions": "What happened?",
-                     "criteria": {"derailment": "A locomotive derailed", "collision": "Two trains collided",
-                                  "fire": "A fire", "none": "Nothing, normal operation"}},
-        "people":   {"type": "noul",   "instructions": "Are people at the scene?"},
-        "severity": {"type": "score",  "instructions": "How severe is the damage?",
-                     "criteria": ["minor", "serious", "severe"]},
+        "incident": {
+            "type": "choice",
+            "instructions": "What happened?",
+            "criteria": {
+                "derailment": "A locomotive derailed",
+                "collision": "Two trains collided",
+                "fire": "A fire",
+                "none": "Nothing, normal operation",
+            },
+        },
+        "people": {"type": "noul", "instructions": "Are people at the scene?"},
+        "severity": {
+            "type": "score",
+            "instructions": "How severe is the damage?",
+            "criteria": ["minor", "serious", "severe"],
+        },
     },
-})
+}
+
+out = vm.decide(request)
 ```
 
 <picture><source media="(prefers-color-scheme: dark)" srcset="../assets/examples_vision_dark.png"><img src="../assets/examples_vision.png" alt="Answers of Votum-8B to six requests with an image: a rail incident, a street market, an aircraft, a rail yard, a cup of coffee and a scanned payment reminder"></picture>
