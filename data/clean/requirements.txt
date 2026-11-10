@@ -1,0 +1,7 @@
+# Dataset pipeline (data/clean). Python 3.11+. The versions in the comments are the ones the published dataset was built with.
+numpy>=1.26          # build_clean.py                 (2.5.4)
+pyarrow>=14          # build_hf.py                    (26.0.1)
+gliner==0.2.30       # pii_pass.py, audit.py gliner   (pulls in torch and transformers; torch 2.15.0, transformers 5.22.2)
+torch>=2.1
+# email_sweep.py and audit.py sample/regex/report need only the standard library.
+# Optional, for `audit.py spacy`:  pip install spacy && python -m spacy download en_core_web_trf
