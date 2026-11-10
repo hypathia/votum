@@ -240,16 +240,16 @@ Measured on one NVIDIA RTX 4090 (24 GB) with the full Votum-8B, running as a ser
 
 | Request | Prompt tokens | Latency | Decisions/s, many requests at once |
 |---|---:|---:|---:|
-| 1 question about a short text | ~450 | 39 ms | 23.5 |
-| 1 question about a long document | ~3,000 | 323 ms | 3.1 |
-| 8 questions about a long document | ~3,300 | 465 ms | 15.8 |
+| 1 question about a short text | ~450 | ~40 ms | 23.5 |
+| 1 question about a long document | ~3,000 | ~320 ms | 3.1 |
+| 8 questions about a long document | ~3,300 | ~470 ms | 15.8 |
 
 Asking several questions about the same state at once is cheaper than asking them one by one, because the state is
 read only once. With eight questions per request, the long document gives 5 times as many decisions per second as
 with one.
 
-For comparison, Apertus-1.5-8B generating the choice and its probabilities as structured output takes 1.1 s for the
-short text, against 39 ms. [docs/benchmarks.md](docs/benchmarks.md) says exactly how each number was measured.
+For comparison, Apertus-1.5-8B generating the choice and its probabilities as structured output takes about 1.1 s for
+the short text, against about 40 ms. [docs/benchmarks.md](docs/benchmarks.md) says exactly how each number was measured.
 
 ## How good are the answers?
 
