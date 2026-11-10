@@ -7,12 +7,12 @@ For readers who want to change the model, check it or reproduce it. To use it, t
 ## One request
 
 **One prompt.** A request becomes a single prompt: a header that lists its questions, then the state, then each
-question with its options. The model was trained on this layout, and the package builds it for you.
+question with its options. The model was trained on this layout; the package builds it.
 
 **Who reads whom.** An attention mask defines which blocks of the prompt attend to which. The header never reads
 the state, the state never reads a question, and the options never see each other. Because of that, the header and
 the state are the same for every question of the request and are computed once. Every option also starts at the same position,
-so the order in which you list the options carries no signal.
+so the order of the options carries no signal.
 
 **One score per option.** Each option ends with an end token. The pointer head turns the final hidden state at that
 token into a score, and a softmax over the scores of a question's options gives the probabilities.

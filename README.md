@@ -36,7 +36,7 @@ The open weights and the open dataset are on Hugging Face: [Votum-8B](https://hu
 
 ## Quickstart
 
-You need Python 3.11 or newer and an NVIDIA GPU. Pick the model that fits it:
+Requirements: Python 3.11 or newer and an NVIDIA GPU.
 
 | GPU memory | Model | Notes |
 |---|---|---|
@@ -56,7 +56,7 @@ pip install "votum @ git+https://github.com/hypathia/votum"
 hf auth login
 ```
 
-**3. Ask.** This is the email from the figure above, with its three questions:
+**3. Run a request.** The email from the figure above, with its three questions:
 
 ```python
 from votum import Votum
@@ -136,7 +136,7 @@ Votum returns probabilities, not just a label, so high-confidence answers can be
 A request has two parts:
 
 - **`state`**: the context to decide on. A string, or any JSON object.
-- **`questions`**: up to 8 questions about that state, each under a name you choose. They are answered together.
+- **`questions`**: up to 8 questions about that state, keyed by an id. They are answered together.
 
 Every question has `instructions` (the question text) and a `type`:
 
@@ -146,12 +146,13 @@ Every question has `instructions` (the question text) and a `type`:
 | `noul` | a yes/no question | nothing | `noul`: the probability that the answer is yes |
 | `score` | a rating on a scale | `criteria`: the levels, lowest first | `score`: the expected level, counting from 0 (0.96 is close to level 1, the second one). `confidence` and `probabilities` per level, and `legend`: which number is which level |
 
-Three things help the model:
+Notes:
 
-- **Describe the options.** `{"billing": "Billing and payments"}` works better than a bare `"billing"`.
-- **Ask in the language of your text, or in English.** Votum was built for English, German, French and Italian.
-- **Keep it within 8,192 tokens** for the state, one question and its options. A longer
-  request is refused with an error; it is never silently cut short.
+- **Option descriptions.** `{"billing": "Billing and payments"}` works better than a bare `"billing"`.
+- **Languages.** Votum was built for English, German, French and Italian; instructions can be in the language of the
+  state or in English.
+- **Context.** The state, one question and its options must fit in 8,192 tokens. A longer request is refused with an
+  error, never truncated.
 
 The request format (`noul`, `instructions`, `criteria`) is that of [Jev and Jeff](#acknowledgements), so their clients
 work unchanged.
@@ -191,8 +192,8 @@ named in a request.
 
 This needs two more packages: `pip install "votum[vision] @ git+https://github.com/hypathia/votum"`.
 
-Treat images as a preview. Votum-8B was never trained on them: everyday photos work well, text inside scanned
-documents does not yet. [docs/images.md](docs/images.md) has more examples, the accuracy we measured and the settings.
+Image support is a preview. Votum-8B was never trained on images: everyday photos work well, text inside scanned
+documents does not yet. [docs/images.md](docs/images.md) has more examples, the measured accuracy and the settings.
 
 ## Run it as a server
 
@@ -256,9 +257,9 @@ Accuracy is much higher on high-confidence answers, so the confidence can be use
 
 ## How it works
 
-1. **Your request becomes one prompt:** the list of questions, then the state, then each question with its options.
-2. **The model reads it once.** An attention mask keeps the options from seeing each other, so the order in which
-   you list them does not change the answer.
+1. **The request becomes one prompt:** the list of questions, then the state, then each question with its options.
+2. **The model reads it once.** An attention mask keeps the options from seeing each other, so their order does not
+   change the answer.
 3. **Each option gets a score,** computed from the hidden state at the option's last token. A softmax over the
    scores of a question gives its probabilities.
 
@@ -267,9 +268,8 @@ Nothing is generated at any point, which is where the speed comes from.
 
 ## Fine-tuning
 
-To fine-tune Votum on your own task, follow [training/README.md](training/README.md). It is a step-by-step guide: prepare
-your examples, train from the released model, export the result and calibrate its probabilities. One 24 GB GPU is
-enough.
+[training/README.md](training/README.md) covers fine-tuning on your own data: prepare the rows, train from the released
+model, export the checkpoint and refit the calibration temperatures. One 24 GB GPU is enough.
 
 ## Documentation
 
