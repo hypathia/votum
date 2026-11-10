@@ -189,6 +189,10 @@ request = {
 out = vm.decide(request)
 ```
 
+In Python, the image can be a file path (as here), raw bytes, a PIL image or a base64 string. Over HTTP it must be
+base64-encoded, either plain or as a data URL (`"data:image/png;base64,..."`): the server never opens files or URLs
+named in a request.
+
 This needs two more packages: `pip install "votum[vision] @ git+https://github.com/hypathia/votum"`.
 
 Treat images as a preview. Votum-8B was never trained on them: everyday photos work well, text inside scanned
