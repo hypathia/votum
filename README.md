@@ -30,7 +30,9 @@ RTX 4090, the result is always one of your options, and the probabilities always
 
 <picture><source media="(prefers-color-scheme: dark)" srcset="assets/examples_dark.png"><img src="assets/examples.png" alt="Four requests answered by Votum-8B. An email about a double charge: team is Billing and payments (0.96), the customer asks for money back (0.90), urgency is medium (0.41). A JSON order record: the total is 65.0 (0.73), no discount was applied (0.91). A photo of a derailed locomotive: a locomotive derailed (0.46), people are at the scene (0.76), the damage is serious (0.47). A photo of a market in front of a church: a street market (0.76), fruit or vegetables are for sale (0.79), the large building is a church (0.79)."></picture>
 
-This repository holds the code; the weights are on [Hugging Face](https://huggingface.co/votum-ai/Votum-8B).
+The open weights and the open dataset are on Hugging Face: [Votum-8B](https://huggingface.co/votum-ai/Votum-8B),
+[Votum-8B-FP8](https://huggingface.co/votum-ai/Votum-8B-FP8) (smaller) and the training data,
+[Votum-Pool](https://huggingface.co/datasets/votum-ai/Votum-Pool). This repository holds the code.
 
 ## Quickstart
 
@@ -48,8 +50,9 @@ You need Python 3.11 or newer and an NVIDIA graphics card (GPU). Pick the model 
 pip install "votum @ git+https://github.com/hypathia/votum"
 ```
 
-**2. Get access to the model.** Open [votum-ai/Votum-8B](https://huggingface.co/votum-ai/Votum-8B), accept the Apertus
-Acceptable Use Policy there, then log in on your machine:
+**2. Get access to the model.** The download needs nothing but this one repository, but it is gated, because it
+contains Apertus weights: open [votum-ai/Votum-8B](https://huggingface.co/votum-ai/Votum-8B), accept the Apertus
+Acceptable Use Policy there once, then log in on your machine:
 
 ```bash
 hf auth login
