@@ -7,7 +7,7 @@ own. That is fine-tuning, and this page shows how to do it.
 
 You need labelled examples (a few hundred already help, a few thousand are better), one NVIDIA GPU with 24 GB of
 memory, and about an hour. You do not need to know how the model works inside. In our reference run, 2,000 examples
-of banking customer messages took the model from 72 % to 85 % accuracy on 77 possible intents in 51 minutes.
+of banking customer messages took the model from 72 % to 86 % accuracy on 77 possible intents in 49 minutes.
 
 The second half of the page is for a different reader: someone who wants to reproduce how the released model itself
 was trained. If you only want to fine-tune, you can stop before it.
@@ -139,9 +139,9 @@ Here is what it produced on a single RTX 4090, measured on 1,000 messages the mo
 
 | | Original Votum-8B | After fine-tuning |
 |---|---|---|
-| Correct answers | 72.4 % | **84.7 %** |
+| Correct answers | 72.4 % | **85.6 %** |
 | Calibration error (0 is perfect) | 0.29 | 0.04 |
-| Time | | 51 minutes of training |
+| Time | | 49 minutes of training, 57 minutes for the whole example |
 
 Calibration error is the average gap between how confident the model says it is and how often it is right. The
 original model was unsure of itself on this task; the fine-tuned and calibrated one is both more accurate and more
