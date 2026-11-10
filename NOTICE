@@ -5,7 +5,7 @@ Licensed under the Apache License, Version 2.0 (see LICENSE).
 
 Votum is a decision model fine-tuned from swiss-ai/Apertus-v1.5-8B (Apertus 1.5, Swiss AI Initiative). The base model is
 distributed under the Apache License 2.0 and the Apertus Acceptable Use Policy v1.5
-(https://huggingface.co/swiss-ai/Apertus-v1.5-8B/blob/main/USAGE_POLICY.pdf); anyone who uses or redistributes Votum
+(https://github.com/swiss-ai/apertus-legal/blob/main/apertus_1.5/USAGE_POLICY.pdf); anyone who uses or redistributes Votum
 with the base model is bound by that policy. Votum is not affiliated with or endorsed by the Swiss AI Initiative,
 EPFL, ETH Zurich or CSCS.
 

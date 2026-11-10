@@ -85,7 +85,7 @@ VOTUM_API_KEY=... votum serve --model {{ORG}}/Votum-8B --host 0.0.0.0 --port 801
 batched. Start-up takes about a minute.
 
 **On a 16 GB card**, serve [{{ORG}}/Votum-8B-FP8](https://huggingface.co/{{ORG}}/Votum-8B-FP8) instead: the same model
-in half the memory, which gives the same answer 96–98 % of the time. It runs on the server only, not in the Python
+in a little over half the memory (9.2 GB), which gives the same answer 96–98 % of the time. It runs on the server only, not in the Python
 quickstart above.
 
 **How fast is it?** A decision costs one read of the prompt. Here it is next to asking the same backbone to write its
@@ -201,6 +201,6 @@ VOTUM_REPO={{ORG}}/Votum-8B pytest -m gpu                   # + end-to-end smoke
 ## License
 
 Apache-2.0 (`LICENSE`, `NOTICE`). The base model carries the
-[Apertus Acceptable Use Policy](https://huggingface.co/swiss-ai/Apertus-v1.5-8B/blob/main/USAGE_POLICY.pdf), which
+[Apertus Acceptable Use Policy](https://github.com/swiss-ai/apertus-legal/blob/main/apertus_1.5/USAGE_POLICY.pdf), which
 binds anyone who uses Votum. Votum is an independent project, not affiliated with or endorsed by the Swiss AI
 Initiative.

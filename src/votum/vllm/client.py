@@ -91,12 +91,21 @@ class VotumVLLM:
                 encs.append(None)
         cache = isolate.CACHE
         prompts, members, used, saved = isolate.build_prompts(encs, self.pack, self.max_model_len, cache)
-        keys_reg = [isolate.register(ids, lay) for ids, lay in prompts]; ok = False
+        # The model finds a prompt's layout by its token ids. Once a header or state block comes from the cache its tokens
+        # are no longer in the prompt, so two prompts of one call can have the same ids and different layouts: each such
+        # prompt goes to the engine in a call of its own (isolate.waves), so a layout is never overwritten while in use.
+        outs: list = [None] * len(prompts); ok = False
         try:
-            outs = self.llm.encode([{"prompt_token_ids": ids} for ids, _ in prompts], pooling_task="token_classify", use_tqdm=False,
-                                   lora_request=self.lora); ok = True
+            for wave in isolate.waves([ids for ids, _ in prompts]):
+                keys_reg = [isolate.register(prompts[j][0], prompts[j][1]) for j in wave]
+                try:
+                    res = self.llm.encode([{"prompt_token_ids": prompts[j][0]} for j in wave], pooling_task="token_classify", use_tqdm=False,
+                                          lora_request=self.lora)
+                finally:
+                    isolate.unregister(keys_reg)
+                for j, o in zip(wave, res): outs[j] = o
+            ok = True
         finally:
-            isolate.unregister(keys_reg)
             if cache is not None: cache.finish(used, saved, ok)
         res: list[dict | None] = [None] * len(rows)
         for mem, o in zip(members, outs):

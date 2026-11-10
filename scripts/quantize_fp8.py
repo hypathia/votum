@@ -70,7 +70,8 @@ def main(argv=None) -> None:
         "sparsity_config": {}, "ignore": ignore,
         "config_groups": {"group_0": {"targets": ["Linear"], "weights": {"num_bits": 8, "type": "float", "symmetric": True, "strategy": "channel", "dynamic": False, "observer": "minmax"},
                                       "input_activations": acts, "output_activations": None}},
-        "votum_fp8": {"source": a.model, "weights": "fp8 e4m3, per output channel", "activations": "fp8 per token (dynamic)" if a.activations else "bf16",
+        "votum_fp8": {"source": Path(a.model).name,   # the name only: a local path must not end up in a published config
+                      "weights": "fp8 e4m3, per output channel", "activations": "fp8 per token (dynamic)" if a.activations else "bf16",
                       "ignore_layers": sorted(ign_layers), "ignore_proj": sorted(ign_proj)}}
     (out / "config.json").write_text(json.dumps(cfg, indent=1) + "\n")
     for f in COPY:

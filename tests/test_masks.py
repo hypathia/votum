@@ -59,3 +59,19 @@ def test_padding_rows_are_finite():
     rng = random.Random(1); e1, e2 = make(rng), make(rng); T = max(len(e1.ids), len(e2.ids)) + 3
     c, b = attention_masks([e1, e2], VotumConfig(), T, "cpu")
     assert c.any(-1).all() and b.any(-1).all()                                       # every query row sees at least one key
+
+
+def test_same_token_prompts_never_share_an_engine_call():
+    """two prompts with the same token ids and different layouts (their header or state came from the cache) must not be
+    registered together: the registry is keyed by the ids, and the second layout would replace the first."""
+    a, b, c = [5, 6, 7, 8], [5, 6, 7, 8], [9, 9, 9]
+    lay = [{"H": 3, "h": b"H1"}, {"H": 5, "h": b"H2"}, {"H": 0, "h": None}]
+    prompts = [a, c, b, a]; layouts = [lay[0], lay[2], lay[1], lay[0]]
+    ws = isolate.waves(prompts)
+    assert sorted(j for w in ws for j in w) == [0, 1, 2, 3] and ws[0] == [0, 1] and ws[1] == [2] and ws[2] == [3]
+    for w in ws:                                             # what the client does per call
+        assert len({isolate.digest(prompts[j]) for j in w}) == len(w)
+        keys = [isolate.register(prompts[j], layouts[j]) for j in w]
+        for j in w: assert isolate.lookup(prompts[j]) is layouts[j]
+        isolate.unregister(keys)
+    assert isolate.lookup(a) is None and isolate.waves([]) == [] and isolate.waves([a]) == [[0]]

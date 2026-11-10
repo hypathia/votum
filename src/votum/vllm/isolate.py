@@ -48,6 +48,17 @@ def register(ids, layout: dict) -> bytes:
     return k
 
 
+def waves(id_lists) -> list[list[int]]:
+    """indices of the prompts, split into engine calls so that no call holds two prompts with the same token ids (the
+    registry is keyed by them). Almost always a single call; the k-th repeat of a prompt goes to call k."""
+    seen: dict = {}; out: list[list[int]] = []
+    for j, ids in enumerate(id_lists):
+        d = digest(ids); k = seen.get(d, 0); seen[d] = k + 1
+        if k == len(out): out.append([])
+        out[k].append(j)
+    return out
+
+
 def unregister(keys) -> None:
     with _REG_LOCK:
         for k in keys: _REG.pop(k, None)
