@@ -134,8 +134,6 @@ Read it as: send the ticket to billing (96 % sure); the customer very likely wan
 around medium, and the model is not sure (41 %). That is why Votum returns probabilities and not just a label: your
 program can act on the confident answers and pass the others to a person.
 
-Wherever `votum-ai/Votum-8B` appears on this page, `votum-ai/Votum-8B-FP8` works the same way.
-
 ## Ask a question
 
 A request has two parts:
