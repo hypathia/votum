@@ -219,7 +219,7 @@ and the other settings.
 
 Measured on one NVIDIA RTX 4090 (24 GB) with the full Votum-8B, running as a server:
 
-| What is asked | Size of the prompt | Time for one request | Decisions per second when many arrive at once |
+| What is asked | Size of the prompt | Time for one request | Decisions/s, many requests at once |
 |---|---|---:|---:|
 | 1 question about a short text | about 450 tokens | 39 ms | 23.5 |
 | 1 question about a long document | about 3,000 tokens | 323 ms | 3.1 |
