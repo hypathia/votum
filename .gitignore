@@ -1,17 +1,42 @@
+# Python
 __pycache__/
 *.py[cod]
 *.egg-info/
 build/
 dist/
-.pytest_cache/
 .venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
 # never commit weights or data
 *.safetensors
 *.pt
+*.bin
 *.jsonl.gz
+*.parquet
+
+# secrets and local settings
+.env
+.env.*
+
+# logs
+*.log
+
 # training run outputs (training/common.py)
 training/runs/
 # prepare_data.py outputs
 training/data/
 training/examples/banking77_work/
-training/Votum-8B*/
+# checkpoints written by export_hf.py, `votum build` and `votum quantize` (e.g. ./Votum-8B-tickets, ./Votum-8B-FP8)
+Votum-8B*/
+# data/clean work directories (pool.py --work, --out)
+work/
+# scripts/make_assets.py default output
+/out/
+
+# editors and OS
+.DS_Store
+.idea/
+.vscode/
