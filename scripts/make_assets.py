@@ -295,8 +295,8 @@ def architecture():
 
 # ---------------------------------------------------------------------------------------------------------- examples
 # per fixture request: title, and the question rows (questions in one row are set side by side)
-CARDS = [("Support ticket · 3 questions, one request", [["team"], ["refund", "urgency"]]), ("German · routing", [["team"]]),
-         ("JSON state · arithmetic", [["total"], ["discount"]]), ("French · intent and language", [["action", "lang"]])]
+CARDS = [("An email · three questions in one request", [["team"], ["refund", "urgency"]]), ("German · routing", [["team"]]),
+         ("A JSON record · arithmetic", [["total"], ["discount"]]), ("French · intent and language", [["action", "lang"]])]
 
 
 def ex_card(x, y, w, title, state, rows, json_state, h_min=0):
@@ -335,18 +335,20 @@ def examples():
             labs = option_labels(q); pr = ans[qid]["probs"]
             qd[qid] = (q["instructions"], sorted(((labs[i], pr[i]) for i in pr), key=lambda o: -o[1]))
         E.append((t, st, [[qd[q] for q in row] for row in layout], not isinstance(req["state"], str)))
-    grid = [(E[0], E[2]), (E[1], E[3])]                     # rows of the 2 x 2 grid; cards in a row share a height
+    V = vision_cards()[:2]                                  # the rail incident and the street market
     parts, y = [], TOP
-    for row in grid:
-        h = max(ex_card(0, 0, cw, *e)[1] for e in row)
-        for c, e in enumerate(row): parts.append(ex_card(PAD + c * (cw + GAP), y, cw, *e, h_min=h)[0])
-        y += h + GAP
-    save("examples", y - GAP + PAD, head("Examples", "Real outputs", "Votum-8B as released (served temperatures); the answer carries the red bar") + "".join(parts))
+    h = max(ex_card(0, 0, cw, *e)[1] for e in (E[0], E[2]))   # row 1: the support ticket and the JSON order (cards share a height)
+    for c, e in enumerate((E[0], E[2])): parts.append(ex_card(PAD + c * (cw + GAP), y, cw, *e, h_min=h)[0])
+    y += h + GAP
+    h = max(vx_card(0, 0, cw, 99, *e)[1] for e in V)        # row 2: two photos
+    for c, e in enumerate(V): parts.append(vx_card(PAD + c * (cw + GAP), y, cw, c, *e, h_min=h)[0])
+    y += h + GAP
+    save("examples", y - GAP + PAD, head("Examples", "What Votum answers", "Real answers of Votum-8B to four requests. The red bar marks the answer; the numbers are probabilities.") + "".join(parts))
 
 
 # ---------------------------------------------------------------------------------------------------------- image examples
 # per fixtures/vision_requests.json request: the card title
-VCARDS = ["Rail incident · triage", "Street scene · photo desk", "Aircraft · maintenance log", "Rail-yard camera · operations",
+VCARDS = ["A photo · incident triage", "A photo · what is in it", "Aircraft · maintenance log", "Rail-yard camera · operations",
           "Café · order check", "Scanned letter · mail room"]
 IMG_W = 196
 
@@ -385,17 +387,22 @@ def vx_card(x, y, w, k, title, req, ans, h_min=0):
     return card(x, y, w, h) + "".join(b), h
 
 
-def vision_examples():
+def vision_cards():
+    """[(title, request, {qid: answer})] of tests/fixtures/vision_*.json"""
     reqs = json.loads((FIX / "vision_requests.json").read_text()); exp = json.loads((FIX / "vision_expected.json").read_text())
-    E = [(t, r, {a["qid"]: a for a in e["answers"]}) for t, r, e in zip(VCARDS, reqs, exp)]
+    return [(t, r, {a["qid"]: a for a in e["answers"]}) for t, r, e in zip(VCARDS, reqs, exp)]
+
+
+def vision_examples():
+    E = vision_cards()
     cw = (W - 2 * PAD - GAP) / 2; parts, y = [], TOP
     for row in range(0, len(E), 2):
         pair = E[row:row + 2]
         h = max(vx_card(0, 0, cw, 99, *e)[1] for e in pair)
         for c, e in enumerate(pair): parts.append(vx_card(PAD + c * (cw + GAP), y, cw, row + c, *e, h_min=h)[0])
         y += h + GAP
-    save("examples_vision", y - GAP + PAD, head("Images", "Real outputs on images",
-         "Votum-8B as released: all questions of a request are answered in one pass over the image") + "".join(parts))
+    save("examples_vision", y - GAP + PAD, head("Images", "Answers on images",
+         "Real answers of Votum-8B. All questions of a request are answered in one pass over the image.") + "".join(parts))
 
 
 # ---------------------------------------------------------------------------------------------------------- pool
