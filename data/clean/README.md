@@ -1,98 +1,125 @@
-# From the training pool to the Votum Pool dataset
+# From converted rows to the Votum Pool dataset
 
-These scripts turn the converted rows of the pool ("pool v7", without the per-source limit that was applied for
+`pool.py` turns the converted rows of the pool ("pool v7", without the per-source limit that was applied for
 training the released checkpoint) into the published dataset `votum-ai/Votum-Pool`, which is also the input of the
-planned re-train. There are four build steps and one audit.
+planned re-train. It has three stages and an audit.
 
-| Step | Script | In one line | Writes |
-|---|---|---|---|
-| 1 | `build_clean.py` | removes sources and rows that should not be in the pool | `clean/` |
-| 2 | `pii_pass.py` | masks personal data in the sources the builder collected itself | `clean_pii/` |
-| 3 | `email_sweep.py` | masks the e-mail addresses still left anywhere | `clean_pii/`, in place |
-| 4 | `build_hf.py` | writes the dataset files | `Votum-Pool/` |
-| 5 | `audit.py` | checks a 500-row sample independently | `audit/` |
+| Stage | In one line | Writes |
+|---|---|---|
+| `clean` | removes sources and rows that should not be in the pool | `clean/` |
+| `mask` | masks personal data, and e-mail addresses everywhere | `clean_pii/` |
+| `export` | writes the dataset files | `dataset/` |
+| `audit` | checks a 500-row sample independently | `audit/` |
 
 | Stage | Training rows |
 |---|---:|
 | pool v7, all converted rows | 881,143 |
-| after step 1 | 744,057 (188 sources) |
-| after step 2 | 723,257 (181 sources) |
+| after `clean` | 744,057 (188 sources) |
+| after `mask` | 723,257 (181 sources) |
 
-The pool v7 files themselves are not public (see `../README.md`), so the scripts are shared to show exactly what was
-done, and to let you apply the same steps to your own data in the same row format.
+The pool v7 files themselves are not public (see `../README.md`). The pipeline is shared to show exactly what was
+done, and so that you can run the same stages on your own rows: nothing in the code is specific to this pool. What
+happens to each source, and every setting, is in one file, `pool.json`.
 
 ## Requirements
 
-Python 3.11 or newer and `pip install -r requirements.txt` (numpy, pyarrow, gliner with torch). Step 2 runs a NER
-model: on a GPU it takes about 40 minutes for the whole pool. Steps 1, 3 and 4 run on the CPU in a few minutes.
+Python 3.11 or newer and `pip install -r requirements.txt` (numpy, pyarrow, gliner with torch). The `mask` stage runs
+a NER model and wants a GPU; everything else runs on the CPU.
 
 ## Run it
 
-All steps in one go:
+All stages in one go:
 
 ```bash
-./run_all.sh <dir with train.jsonl.gz and val.jsonl.gz> <work dir> <benchmark jsonl files ...>
+python -I pool.py run --pool <dir with train.jsonl.gz and val.jsonl.gz> --work <work dir> --bench <benchmark jsonl files ...>
 ```
 
-Or one step at a time:
+Or one stage at a time:
 
 ```bash
-python -I build_clean.py --train <pool>/train.jsonl.gz --val <pool>/val.jsonl.gz --out-dir clean \
-    --bench <benchmark jsonl files ...>
-python -I pii_pass.py --train clean/train.jsonl.gz --val clean/val.jsonl.gz --policy pii_policy.json \
-    --stop-spans pii_stop_spans.txt --out-dir clean_pii
-python -I email_sweep.py --pool-dir clean_pii
-python -I build_hf.py --pool-dir clean_pii --policy pii_policy.json --out-dir Votum-Pool [--trained-ids ids.txt.gz]
-python -I audit.py sample --audit-dir audit --pool-dir clean_pii --policy pii_policy.json
-python -I audit.py regex  --audit-dir audit          # then spacy and gliner (optional), then:
-python -I audit.py report --audit-dir audit --policy pii_policy.json
+python -I pool.py clean  --pool <pool> --out work/clean --bench <benchmark jsonl files ...>
+python -I pool.py mask   --pool work/clean --out work/clean_pii
+python -I pool.py export --pool work/clean_pii --out work/dataset [--flag in_votum_8b=ids.txt.gz]
+python -I pool.py audit sample --pool work/clean_pii --audit-dir work/audit
+python -I pool.py audit regex  --audit-dir work/audit          # then spacy and gliner (optional), then:
+python -I pool.py audit report --audit-dir work/audit
 ```
 
-Every script explains its options with `--help`. Step 2 saves its work in chunks, so an interrupted run resumes
-where it stopped; `--part k/N` splits it over N processes (`run_all.sh` does this with `NER_PARTS=N`).
+`python -I pool.py <stage> --help` lists a stage's options. `run --from mask` starts at a later stage.
+
+## Speed
+
+Every stage reads its input once, spreads the work over all CPU cores and writes rows in input order, so the result
+does not depend on the number of workers. On the whole pool (888,000 rows, 2.4 GB of text) with 26 workers:
+
+| Stage | Time |
+|---|---:|
+| `clean` | 25 s |
+| `mask`, texts already seen by the model | 14 s |
+| `export` | 7 s |
+| all stages and the audit sample | 56 s |
+
+The NER model is the only slow part, so its output is cached per text, in `work/ner_cache`. Only texts the model has
+not seen go through it: adding rows, changing a threshold, the stop spans or a source's entry costs seconds, and a
+run with a complete cache needs no GPU. The cache holds offsets of personal data; keep it local.
+
+A first run has to send every text through the model. On one RTX 4090, for the 203,000 distinct texts of the
+self-collected sources:
+
+| Setting | Time | Rows masked differently |
+|---|---:|---:|
+| default (fp32) | 32 min | reference |
+| `--precision fp16 --flash` | 8 min | 733 of the 216,654 self-collected rows (0.3 %) |
+
+The differences are borderline spans, as many gained as lost.
+
+The published dataset was made with the default. `--flash` needs `pip install flashdeberta`. With several GPUs, run
+`mask --part k/N --device cuda:k` once per GPU, then `mask` once more to write the rows.
 
 ## The row format
 
-One JSON object per line, gzip-compressed. Steps 1 to 3 read these fields and carry every other field through
-unchanged; step 4 keeps only the fields listed here.
+One JSON object per line, gzip-compressed. `clean` and `mask` read these fields and carry every other field through
+unchanged; `export` keeps only the fields listed here.
 
 | Field | Meaning |
 |---|---|
 | `id` | unique row id |
-| `source` | source name; it selects the row's entry in `pii_policy.json` |
+| `source` | source name; it selects the row's entry in `pool.json` |
 | `state` | the context: a string, or a JSON object whose string values are the text |
 | `question` | the question |
 | `options` | list of `{"id", "text"}` |
-| `target`, `soft`, `type`, `kind`, `group`, `lang`, `license`, `license_detail` | carried into the dataset by step 4 |
-| `upstream_split` | only on ContractNLI rows; step 1 drops its `test` split |
+| `target`, `soft`, `type`, `kind`, `group`, `lang`, `license`, `license_detail` | carried into the dataset by `export` |
 
-Benchmark files for step 1 are JSON lines too. A record's text is read from `record.state`, `row.state` or `state`;
+Benchmark files for `clean` are JSON lines too. A record's text is read from `record.state`, `row.state` or `state`;
 records without state text fall back to their `questions.*.instructions`.
 
-## The policy file
+## The config file
 
-`pii_policy.json` has one entry per source:
+`pool.json` has one entry per source under `sources`:
 
 | Key | Meaning |
 |---|---|
-| `excluded` | `true`: every row of the source is dropped in step 2 (`exclude_reason` says why) |
-| `origin` | `redistributed` (a copy of a published dataset, left as its authors released it) or `self-collected` (masked in step 2) |
+| `drop` | the source is removed: `"clean"` (before anything else) or `"mask"` (not cleared for redistribution; removed after the benchmark comparison). `drop_reason` says why |
+| `origin` | `redistributed` (a copy of a published dataset, left as its authors released it) or `self-collected` (masked) |
 | `names` | `true`: person names are masked too (sources about private people) |
-| `config` | `default` or `share_alike`: the dataset config the rows go to |
-| `license`, `upstream` | the licence tags and the upstream release, copied to `SOURCES.csv` |
-| `license_fix` | optional `[[text in license_detail, corrected tag], ...]`, applied in step 4 |
+| `config` | the dataset config the rows go to (`default` or `share_alike`) |
+| `license`, `upstream`, `description` | the licence tags, the upstream release and one line on what the source is, copied to `SOURCES.csv` |
+| `license_fix` | optional `[[text in license_detail, corrected tag], ...]`, applied by `export` |
 | `reason` | one line on why the source is handled this way |
-| `description` | one line on what the source is, copied to `SOURCES.csv` (published sources only) |
-| `train_rows`, `val_rows` | row counts at the time of the review, for reference |
 
-`pii_stop_spans.txt` lists role words the NER model wrongly tags as names (Claimant, Antragsteller, she, ...). They
-are never masked.
+Every source in the data needs an entry. The other sections hold the settings of the stages:
 
-## What each step does
+| Section | Keys |
+|---|---|
+| `clean` | `drop_rows` (rows to drop by source, field and value), `must_drop_patterns` (a safety net: the run stops if a source name contains one of them and is not dropped), `decontaminate` (gram lengths and stop-list thresholds), and optionally `benchmarks` and `info_labels` |
+| `mask` | `model`, `thresholds`, `stop_spans` (a file of role words the model wrongly tags as names: Claimant, Antragsteller, she, ...), `keep_emails` and `keep_email_hosts` (addresses that are not masked) |
+| `export` | `configs`, `license_guard` (licence tags a config must not contain), and optionally `flags` |
 
-**1. `build_clean.py`** drops three things:
+## What each stage does
 
-- whole sources: the 13 removed by the licence review, bias_in_bios, and the LLM-generated sets with unverified terms;
+**`clean`** drops three things:
+
+- whole sources: the 13 removed by the licence review, and the LLM-generated sets with unverified terms;
 - the ContractNLI test split;
 - rows that overlap an evaluation benchmark. A row goes if its state shares a word 8-gram with any benchmark item. A
   short stop-list of contract and chat boilerplate is exempt. Scripts written without spaces (Chinese, Japanese,
@@ -102,34 +129,43 @@ are never masked.
 Kept rows are copied byte for byte. `REPORT.md` and `REPORT.json` give the counts per rule, source and benchmark;
 `dropped.tsv.gz` lists every dropped row with its rule.
 
-**2. `pii_pass.py`** follows `pii_policy.json`. It does three things:
+**`mask`** does four things:
 
 - drops the sources whose terms were not cleared for redistribution: six portal and government sources, and one
   source with conflicting licence tags;
 - leaves rows from already-published datasets as their authors released them;
 - masks the 17 sources the builder collected itself: structured identifiers by regular expression, names and
   addresses with the NER model `urchade/gliner_multi_pii-v1`. Names are masked only in the sources about private
-  people.
+  people;
+- replaces every e-mail address still left in any row with `[EMAIL]`. It keeps seven office mailboxes of Bernese and
+  Zurich courts and cantonal services (each checked by hand) and the reserved `example.com/org/net` addresses.
 
-A saved chunk is reused only when nothing it depends on has changed: its rows, the script, the model and thresholds,
-the stop spans, and the policy of its sources. The NER model is not bit-reproducible across GPUs, so a rerun
-elsewhere can mask a few names differently.
+The stage is safe to run on its own output: a second pass changes nothing. The NER model is not bit-reproducible
+across GPUs, so a first run elsewhere can mask a few names differently.
 
-**3. `email_sweep.py`** replaces every e-mail address with `[EMAIL]`, in place. It keeps seven office mailboxes of
-Bernese and Zurich courts and cantonal services (listed in the script, each checked by hand) and the reserved
-`example.com/org/net` addresses. It changes 36 rows; a second run changes none.
+**`export`** writes one directory of parquet files per dataset config (`default`, `share_alike`) and `SOURCES.csv`. It
+also corrects a row's licence tag where the config says the pool's own tag was wrong (`license_fix`; the two
+parliamentary sources that had been tagged MIT now carry their portals' real terms), and it stops if a share-alike row
+would land in the `default` config. `--flag NAME=FILE` adds a boolean column that is true for the row ids listed in
+the file; the published dataset has `in_votum_8b`, the rows the released checkpoint was trained on.
 
-**4. `build_hf.py`** writes the two parquet configs (`default`, `share_alike`) and `SOURCES.csv`. It also corrects a
-row's licence tag where the policy says the pool's own tag was wrong (`license_fix`; the two parliamentary sources
-that had been tagged MIT now carry their portals' real terms), and it stops if a share-alike row would land in the
-`default` config. With `--trained-ids` (a file with one row id per line) it adds the column `in_votum_8b`, true for
-the rows the released checkpoint was trained on.
+**`audit`** draws 500 masked rows and looks for what `mask` missed, with the stage's own patterns, looser patterns of
+its own, spaCy on English rows and GLiNER at a lower threshold on the others. Its hit files contain residual personal
+data; keep them local.
 
-**5. `audit.py`** draws 500 masked rows and looks for what the pass missed, with the pass's own patterns, looser
-patterns of its own, spaCy on English rows and GLiNER at a lower threshold on the others. Its hit files contain
-residual personal data; keep them local.
+## The code
 
-## Checking the scripts
+| File | Contents |
+|---|---|
+| `pool.py` | the command line |
+| `pool.json`, `pii_stop_spans.txt` | the config of this pool |
+| `poolkit/engine.py` | reading and writing rows in parallel, the config |
+| `poolkit/decontam.py` | `clean` |
+| `poolkit/pii.py` | `mask`: the regular expressions, the model, the span cache |
+| `poolkit/export.py` | `export` |
+| `poolkit/audit.py` | `audit` |
 
-`tests/test_data_clean.py` runs every step on small synthetic inputs on the CPU (`pytest tests/test_data_clean.py`;
-needs numpy and pyarrow, not gliner). On the real pool, steps 1, 3 and 4 reproduce the published files byte for byte.
+`tests/test_data_clean.py` runs every stage on small synthetic inputs on the CPU (`pytest tests/test_data_clean.py`;
+needs numpy and pyarrow, not gliner). On the real pool, `clean` and `export` reproduce the published files byte for
+byte. A fresh `mask` run reproduced the published rows except one, where the model's numerical noise moved a name
+across the threshold.

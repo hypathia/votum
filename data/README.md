@@ -7,7 +7,7 @@ this repository. A cleaned and larger version of the pool is published as the da
 | Path | Contents |
 |---|---|
 | `SOURCES.csv` | every source: licence tags, training rows, whether the second licence review removed it, rows in the cleaned pool |
-| `clean/` | the scripts that turn the converted rows into the cleaned pool used for the re-train |
+| `clean/` | the pipeline that turns the converted rows into the cleaned pool used for the re-train, and into the published dataset |
 
 ## The pool as trained
 
@@ -60,16 +60,16 @@ For training, each source of pool v7 was cut to a limit so that no single source
 such limit: it starts from all the rows the converters produced for those sources, 881,143 training rows after
 duplicates are removed. Every pool v7 row is among them, unchanged.
 
-`clean/build_clean.py` removes three things:
+The `clean` stage of `clean/pool.py` removes three things:
 
 - the sources listed above, together with the 13 sources dropped by the licence review;
 - the ContractNLI test split;
 - every row that overlaps a benchmark: its state shares a word 8-gram with a benchmark item (16-character grams for
   scripts written without spaces), or its question quotes one.
 
-That leaves 744,057 training rows from 188 sources. The PII pass then drops seven more sources and masks personal
+That leaves 744,057 training rows from 188 sources. The `mask` stage then drops seven more sources and masks personal
 data, which gives the published 723,257 training rows from 181 sources; 328,075 of them were in pool v7 (column
-`in_votum_8b` of the dataset). `clean/README.md` describes each step.
+`in_votum_8b` of the dataset). `clean/README.md` describes each stage.
 
 **What is not released.** The code that converted each source into rows stays private. It depends on raw downloads,
 on a per-source specification whose review notes quote personal data from source rows, and on internal review

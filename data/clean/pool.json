@@ -1,0 +1,1903 @@
+{
+ "clean": {
+  "drop_rows": [
+   {
+    "source": "ContractNLI",
+    "field": "upstream_split",
+    "equals": "test",
+    "reason": "ContractNLI test split"
+   }
+  ],
+  "must_drop_patterns": [
+   "hh_redteam",
+   "expertqa",
+   "helpsteer2",
+   "helpsteer3",
+   "aegis",
+   "bias_in_bios"
+  ],
+  "decontaminate": {
+   "word_gram": 8,
+   "char_gram": 16,
+   "stop_min_rows": 50,
+   "stop_min_sources": 5,
+   "question_max_rows": 5,
+   "warn_frac": 0.1,
+   "instruction_fallback": true
+  }
+ },
+ "mask": {
+  "model": "urchade/gliner_multi_pii-v1",
+  "thresholds": {
+   "person": 0.5,
+   "address": 0.5,
+   "username": 0.7
+  },
+  "stop_spans": "pii_stop_spans.txt",
+  "keep_emails": [
+   "coursupreme-penal.berne@justice.be.ch",
+   "handelsgericht.bern@justice.be.ch",
+   "info.ra.bvd@be.ch",
+   "info.ra.gsi@be.ch",
+   "obergericht-straf.bern@justice.be.ch",
+   "obergericht-zivil.bern@justice.be.ch",
+   "vostra-pdf@ji.zh.ch"
+  ],
+  "keep_email_hosts": [
+   "example.com",
+   "example.org",
+   "example.net"
+  ]
+ },
+ "export": {
+  "configs": [
+   "default",
+   "share_alike"
+  ],
+  "license_guard": {
+   "default": [
+    "share-alike",
+    "cc-by-sa",
+    "odbl",
+    "gpl"
+   ]
+  }
+ },
+ "sources": {
+  "01 Stanford Politeness Corpus (ConvoKit wikipedia-politeness-corpus)": {
+   "license": "CC-BY [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",
+   "config": "share_alike",
+   "upstream": "https://convokit.cornell.edu/documentation/wiki_politeness.html",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://convokit.cornell.edu/documentation/wiki_politeness.html); builder regex masking only, no NER",
+   "description": "Requests from Wikipedia talk pages, rated for politeness (polite, neutral, impolite)."
+  },
+  "03 NYC 311 service requests (agency routing)": {
+   "drop": "mask",
+   "drop_reason": "government/portal terms, not an open licence: NYC Open Data (Local Law 11: no restrictions on use)",
+   "license": "NYC Open Data (Local Law 11: no restrictions on use) [commercial]",
+   "config": "default",
+   "upstream": "https://data.cityofnewyork.us/Social-Services/311-Service-Requests-from-2020-to-Present/erm2-nwe9",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://data.cityofnewyork.us/Social-Services/311-Service-Requests-from-2020-to-Present/erm2-nwe9); builder regex masking only, no NER"
+  },
+  "05 UK Employment Tribunal decisions (GOV.UK)": {
+   "license": "OGL-UK-3.0 [commercial]",
+   "config": "default",
+   "upstream": "https://www.gov.uk/employment-tribunal-decisions",
+   "origin": "self-collected",
+   "names": true,
+   "reason": "tribunal decisions about private claimants and respondents; scraped from GOV.UK by the builder",
+   "description": "UK Employment Tribunal judgments; the outcome of the claim (upheld, dismissed, struck out)."
+  },
+  "13 NYC DOHMH restaurant inspection results": {
+   "drop": "mask",
+   "drop_reason": "government/portal terms, not an open licence: NYC Open Data (Local Law 11: no restrictions on use)",
+   "license": "NYC Open Data (Local Law 11: no restrictions on use) [commercial]",
+   "config": "default",
+   "upstream": "https://data.cityofnewyork.us/Health/DOHMH-New-York-City-Restaurant-Inspection-Results/43nn-pn8j",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://data.cityofnewyork.us/Health/DOHMH-New-York-City-Restaurant-Inspection-Results/43nn-pn8j); builder regex masking only, no NER"
+  },
+  "16 Rechtspraak.nl open data (Dutch court decisions)": {
+   "license": "Public-Domain [commercial]",
+   "config": "default",
+   "upstream": "https://www.rechtspraak.nl/uitspraken/open-data",
+   "origin": "self-collected",
+   "names": true,
+   "reason": "court decisions (already pseudonymised upstream) about private parties; fetched from the Rechtspraak open-data service",
+   "description": "Dutch court decisions (in Dutch); what the court decided on the appeal, claim or request."
+  },
+  "AmbiEnt (Liu et al. 2023, EMNLP)": {
+   "license": "CC-BY-4.0 [commercial]",
+   "config": "default",
+   "upstream": "https://github.com/alisawuffles/ambient",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://github.com/alisawuffles/ambient); builder regex masking only, no NER",
+   "description": "Ambiguous premise and hypothesis pairs; entailment, neutral or contradiction."
+  },
+  "Austria RIS Judikatur (VwGH decisions, OGD API)": {
+   "license": "CC-BY-4.0 [commercial]",
+   "config": "default",
+   "upstream": "https://data.bka.gv.at/ris/api/v2.6/Judikatur?Applikation=Vwgh",
+   "origin": "self-collected",
+   "names": true,
+   "reason": "administrative-court decisions about private parties; fetched from the RIS OGD API",
+   "description": "Decisions of the Austrian Supreme Administrative Court (in German); how the appeal was decided."
+  },
+  "Breast Cancer Wisconsin (Diagnostic)": {
+   "license": "CC-BY-4.0 [commercial]",
+   "config": "default",
+   "upstream": "https://archive.ics.uci.edu/dataset/17",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://archive.ics.uci.edu/dataset/17); builder regex masking only, no NER",
+   "description": "Cell-nucleus measurements of breast masses, written out as text; malignant or benign."
+  },
+  "Bundestag DIP (Vorgaenge, petitions and bills)": {
+   "license": "DIP-terms [commercial] | attribution required (Deutscher Bundestag/DIP)",
+   "config": "default",
+   "upstream": "https://dip.bundestag.de/documents/nutzungsbedingungen_dip.pdf",
+   "origin": "self-collected",
+   "names": false,
+   "reason": "legislative records (bills, petitions): public officials and institutions; fetched from the DIP API",
+   "license_fix": [
+    [
+     "",
+     "DIP-terms [commercial] | attribution required (Deutscher Bundestag/DIP)"
+    ]
+   ],
+   "description": "German Bundestag proceedings, bills and petitions (in German); the subject area the parliament's documentation assigns."
+  },
+  "CADA avis et conseils (FR)": {
+   "license": "Etalab-2.0 [commercial]",
+   "config": "default",
+   "upstream": "https://www.data.gouv.fr/datasets/avis-et-conseils-de-la-cada",
+   "origin": "self-collected",
+   "names": true,
+   "reason": "opinions on access requests by private persons; extracted from the data.gouv.fr portal export",
+   "description": "Opinions of the French commission on access to administrative documents (in French); whether the document may be disclosed."
+  },
+  "CANTEMIST (Spanish oncology case reports, ICD-O morphology)": {
+   "license": "CC-BY-4.0 [commercial]",
+   "config": "default",
+   "upstream": "https://zenodo.org/records/3978041",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://zenodo.org/records/3978041); builder regex masking only, no NER",
+   "description": "Spanish oncology case reports; the ICD-O-3 morphology code of the primary tumour."
+  },
+  "CBP CROSS customs rulings (HTS classification)": {
+   "license": "Public-Domain [commercial]",
+   "config": "default",
+   "upstream": "https://rulings.cbp.gov/api/search and https://rulings.cbp.gov/api/ruling/{rulingNumber}",
+   "origin": "self-collected",
+   "names": true,
+   "reason": "rulings addressed to named importers' staff; fetched from the CBP CROSS API; unsure, so mask",
+   "description": "US customs rulings; the tariff (HTSUS) code that applies to the merchandise."
+  },
+  "ContractNLI": {
+   "license": "CC-BY-4.0 [commercial]",
+   "config": "default",
+   "upstream": "https://stanfordnlp.github.io/contract-nli/",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://stanfordnlp.github.io/contract-nli/); builder regex masking only, no NER",
+   "description": "Non-disclosure agreements with a hypothesis; entailed, contradicted or not mentioned (training split only)."
+  },
+  "D3CODE (Davani et al. 2024)": {
+   "license": "CC-BY-4.0 [commercial]",
+   "config": "default",
+   "upstream": "https://github.com/google-research-datasets/D3code",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://github.com/google-research-datasets/D3code); builder regex masking only, no NER",
+   "description": "Social-media comments rated for offensiveness on a five-level scale by annotators from many countries."
+  },
+  "Entity matching benchmark: Abt-Buy (Leipzig, perfect mapping)": {
+   "license": "CC-BY-4.0 [commercial]",
+   "config": "default",
+   "upstream": "https://dbs.uni-leipzig.de/files/datasets/Abt-Buy.zip",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://dbs.uni-leipzig.de/files/datasets/Abt-Buy.zip); builder regex masking only, no NER",
+   "description": "Pairs of product records from two web shops; same product or different products."
+  },
+  "German Wikipedia Löschkandidaten (AfD-style, de)": {
+   "license": "CC-BY-SA [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",
+   "config": "share_alike",
+   "upstream": "https://de.wikipedia.org/wiki/Wikipedia:Löschkandidaten",
+   "origin": "self-collected",
+   "names": true,
+   "reason": "user discussion pages scraped from de.wikipedia (usernames, editors)",
+   "description": "Deletion discussions of the German Wikipedia; kept or deleted."
+  },
+  "Heart Disease (Cleveland)": {
+   "license": "CC-BY-4.0 [commercial]",
+   "config": "default",
+   "upstream": "https://archive.ics.uci.edu/dataset/45",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://archive.ics.uci.edu/dataset/45); builder regex masking only, no NER",
+   "description": "Clinical measurements of patients referred for coronary angiography, written out as text; heart disease present or not."
+  },
+  "MAUD remainder (86 of 92 deal-point questions; pool has 6)": {
+   "license": "CC-BY-4.0 [commercial]",
+   "config": "default",
+   "upstream": "https://huggingface.co/datasets/theatticusproject/maud",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/theatticusproject/maud); builder regex masking only, no NER",
+   "description": "Merger agreement clauses with expert-annotated deal points; which of the listed options the clause provides."
+  },
+  "PMC: Plausibility Machine Commonsense (Nananukul et al. 2024, Data in Brief)": {
+   "license": "CC-BY-4.0 [commercial]",
+   "config": "default",
+   "upstream": "https://doi.org/10.1016/j.dib.2024.110869",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://doi.org/10.1016/j.dib.2024.110869); builder regex masking only, no NER",
+   "description": "Short everyday sentences; plausible or implausible."
+  },
+  "ParlLawSpeech (AT Nationalrat 1996-2019; DE Bundestag 2009-2021)": {
+   "license": "CC-BY-4.0 [commercial]",
+   "config": "default",
+   "upstream": "https://parllawspeech.org/data",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://parllawspeech.org/data); builder regex masking only, no NER",
+   "description": "Bills of the Austrian Nationalrat and the German Bundestag (in German); the committee a bill is assigned to."
+  },
+  "San Francisco 311 cases (routing to agency)": {
+   "license": "PDDL-1.0 [commercial]",
+   "config": "default",
+   "upstream": "https://data.sf.gov/resource/vw6y-z8j6.json",
+   "origin": "self-collected",
+   "names": true,
+   "reason": "citizen service requests pulled from the data.sf.gov API (free text, addresses, reporter details)",
+   "description": "San Francisco 311 service requests; the agency queue responsible for the request."
+  },
+  "UKPConvArg1 (Habernal and Gurevych 2016)": {
+   "license": "CC-BY-4.0 [commercial]",
+   "config": "default",
+   "upstream": "https://github.com/UKPLab/acl2016-convincing-arguments",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://github.com/UKPLab/acl2016-convincing-arguments); builder regex masking only, no NER",
+   "description": "Pairs of arguments on a debate topic; which one is more convincing."
+  },
+  "Wikimedia Commons deletion requests": {
+   "license": "CC-BY-SA [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",
+   "config": "share_alike",
+   "upstream": "https://commons.wikimedia.org/wiki/Commons:Deletion_requests",
+   "origin": "self-collected",
+   "names": true,
+   "reason": "user discussion pages scraped from Commons (usernames, uploaders)",
+   "description": "Deletion requests for files on Wikimedia Commons; keep or delete."
+  },
+  "Wikipedia Articles for Deletion (AfD) corpus 2005-2018 (en)": {
+   "license": "CC-BY-SA [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",
+   "config": "share_alike",
+   "upstream": "https://github.com/emayfield/AFD_Decision_Corpus",
+   "origin": "self-collected",
+   "names": true,
+   "reason": "user discussions re-extracted from the enwiki dump (usernames; biographies of non-notable people)",
+   "description": "English Wikipedia deletion discussions; what the closing administrator decided (keep, delete, redirect, merge, ...)."
+  },
+  "Wikipedia Talk Labels: Aggression": {
+   "license": "CC0-1.0 [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",
+   "config": "share_alike",
+   "upstream": "https://figshare.com/articles/dataset/Wikipedia_Talk_Labels_Aggression/4267550",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://figshare.com/articles/dataset/Wikipedia_Talk_Labels_Aggression/4267550); builder regex masking only, no NER",
+   "description": "Wikipedia talk-page comments; aggressive or not."
+  },
+  "Wikipedia Talk Labels: Personal Attacks (Wulczyn et al. 2017)": {
+   "license": "CC0-1.0 [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",
+   "config": "share_alike",
+   "upstream": "https://figshare.com/articles/dataset/Wikipedia_Talk_Labels_Personal_Attacks/4054689",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://figshare.com/articles/dataset/Wikipedia_Talk_Labels_Personal_Attacks/4054689); builder regex masking only, no NER",
+   "description": "Wikipedia talk-page comments; whether they contain a personal attack."
+  },
+  "Wikipedia Talk Labels: Toxicity": {
+   "license": "CC0-1.0 [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",
+   "config": "share_alike",
+   "upstream": "https://figshare.com/articles/dataset/Wikipedia_Talk_Labels_Toxicity/4563973",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://figshare.com/articles/dataset/Wikipedia_Talk_Labels_Toxicity/4563973); builder regex masking only, no NER",
+   "description": "Wikipedia talk-page comments; toxic or not."
+  },
+  "Wikipedia featured article candidates (FAC) discussions": {
+   "license": "CC-BY-SA [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",
+   "config": "share_alike",
+   "upstream": "https://en.wikipedia.org/wiki/Wikipedia:Featured_article_candidates",
+   "origin": "self-collected",
+   "names": true,
+   "reason": "user discussions extracted from enwiki (usernames, editors)",
+   "description": "Featured-article nomination discussions of the English Wikipedia; promoted or not."
+  },
+  "Wikipedia page-protection requests and admin decisions (RfPP archive)": {
+   "license": "CC-BY-SA [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",
+   "config": "share_alike",
+   "upstream": "https://en.wikipedia.org/wiki/Wikipedia:Requests_for_page_protection/Archive/2012/10",
+   "origin": "self-collected",
+   "names": true,
+   "reason": "user requests and admin decisions extracted from enwiki (usernames)",
+   "description": "Requests to protect a Wikipedia page; what the reviewing administrator decided."
+  },
+  "ZH Kantonsrat Geschaefte (XML, public interface)": {
+   "drop": "mask",
+   "drop_reason": "government/portal terms, not an open licence: portal terms (commercial use allowed)",
+   "license": "portal terms (commercial use allowed) [commercial]",
+   "config": "default",
+   "upstream": "https://parlzhcdws.cmicloud.ch/",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://parlzhcdws.cmicloud.ch/); builder regex masking only, no NER"
+  },
+  "ch_cantonal_parl": {
+   "license": "per row: CC-BY-4.0 (Basel-Stadt), CC0-1.0 (Thurgau), cantonal open-data terms with attribution (Bern, Basel-Landschaft) [commercial]",
+   "config": "default",
+   "upstream": "https://www.gr.be.ch/de/start/grosser-rat/open-data-angebot-gr/nutzungsbedingungen-ogd-gr.html",
+   "origin": "self-collected",
+   "names": false,
+   "reason": "cantonal parliament business records: officials and institutions; from the open-data portals of Basel-Stadt, Basel-Landschaft, Bern and Thurgau",
+   "license_fix": [
+    [
+     "Basel-Stadt",
+     "CC-BY-4.0 [commercial]"
+    ],
+    [
+     "Thurgau",
+     "CC0-1.0 [commercial]"
+    ],
+    [
+     "Kanton Bern",
+     "OGD-terms [commercial] | attribution required (Parlamentsdienste des Grossen Rates des Kantons Bern)"
+    ],
+    [
+     "Basel-Landschaft",
+     "opendata.swiss-BY [commercial] | attribution required (Kanton Basel-Landschaft)"
+    ]
+   ],
+   "description": "Motions and other items of Swiss cantonal parliaments (German and French); the cantonal department responsible, or the topic."
+  },
+  "de_fr_it/fineweb_c": {
+   "license": "ODC-By [commercial]",
+   "config": "default",
+   "upstream": "https://huggingface.co/datasets/data-is-better-together/fineweb-c",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/data-is-better-together/fineweb-c); builder regex masking only, no NER",
+   "description": "Web texts in German, French, Italian and Swiss German, rated for educational value."
+  },
+  "de_fr_it/german_argument_mining": {
+   "license": "CC-BY-4.0 [commercial]",
+   "config": "default",
+   "upstream": "https://zenodo.org/records/3936490",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://zenodo.org/records/3936490); builder regex masking only, no NER",
+   "description": "Sentences from German court decisions; their role in the reasoning (conclusion, definition, subsumption, other)."
+  },
+  "de_fr_it/massive": {
+   "license": "CC-BY-4.0 [commercial]",
+   "config": "default",
+   "upstream": "https://github.com/alexa/massive",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://github.com/alexa/massive); builder regex masking only, no NER",
+   "description": "Voice-assistant requests in German, French and Italian (MASSIVE); the domain of the request and what it mentions."
+  },
+  "de_fr_it/multi_eurlex": {
+   "license": "CC-BY-4.0 [commercial]",
+   "config": "default",
+   "upstream": "https://zenodo.org/records/5363165",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://zenodo.org/records/5363165); builder regex masking only, no NER",
+   "description": "EU legal acts in German, French and Italian; whether the act deals with a given EuroVoc topic."
+  },
+  "de_fr_it/pxcorpus": {
+   "license": "CC-BY-4.0 [commercial]",
+   "config": "default",
+   "upstream": "https://zenodo.org/records/6524162",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://zenodo.org/records/6524162); builder regex masking only, no NER",
+   "description": "Spoken drug-prescription phrases in French; the intent of the phrase."
+  },
+  "de_fr_it/swiss_caselaw_cantonal": {
+   "license": "CC0-1.0 [commercial]",
+   "config": "default",
+   "upstream": "https://huggingface.co/datasets/voilaj/swiss-caselaw",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/voilaj/swiss-caselaw); builder regex masking only, no NER",
+   "description": "Swiss cantonal court decisions (German, French, Italian); the branch of law (civil, criminal, public)."
+  },
+  "de_fr_it/swissspark": {
+   "license": "CC-BY-4.0 [commercial]",
+   "config": "default",
+   "upstream": "https://huggingface.co/datasets/IntelliProcure/SwissSPARK",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/IntelliProcure/SwissSPARK); builder regex masking only, no NER",
+   "description": "Requirements from Swiss public tenders (in German); whether a requirement concerns a given sustainability aspect."
+  },
+  "decider/newsgroups": {
+   "license": "CC-BY-4.0 [commercial]",
+   "config": "default",
+   "upstream": "https://archive.ics.uci.edu/dataset/113/twenty+newsgroups",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://archive.ics.uci.edu/dataset/113/twenty+newsgroups); builder regex masking only, no NER",
+   "description": "Usenet posts (20 Newsgroups); the newsgroup the post was made in."
+  },
+  "eLife open peer review (2023+ reviewed-preprint XML, assessment-based)": {
+   "license": "CC-BY-4.0 [commercial]",
+   "config": "default",
+   "upstream": "https://github.com/elifesciences/elife-article-xml",
+   "origin": "self-collected",
+   "names": false,
+   "reason": "scientific peer-review text extracted from the eLife article XML; named people are authors or cited scientists",
+   "description": "Abstracts and public peer reviews of eLife preprints; how strong the editors judged the evidence."
+  },
+  "entscheidsuche.ch (Swiss court decisions, all cantons + federal)": {
+   "drop": "mask",
+   "drop_reason": "government/portal terms, not an open licence: entscheidsuche.ch terms (free use)",
+   "license": "entscheidsuche.ch terms (free use) [commercial]",
+   "config": "default",
+   "upstream": "https://entscheidsuche.ch",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://entscheidsuche.ch); builder regex masking only, no NER"
+  },
+  "eurotender_cpv": {
+   "license": "CC-BY-4.0 [commercial]",
+   "config": "default",
+   "upstream": "https://ted.europa.eu/en/legal-notice",
+   "origin": "self-collected",
+   "names": true,
+   "reason": "public procurement notices (TED) with contact persons; extracted by the builder",
+   "description": "European public tender notices in 21 languages; the nature of the contract (services, supplies or works)."
+  },
+  "expand/casino": {
+   "license": "CC-BY-4.0 [commercial]",
+   "config": "default",
+   "upstream": "https://raw.githubusercontent.com/kushalchawla/CaSiNo/main/LICENSE",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://raw.githubusercontent.com/kushalchawla/CaSiNo/main/LICENSE); builder regex masking only, no NER",
+   "description": "Campsite negotiation dialogues (CaSiNo); whether an utterance uses a given negotiation strategy."
+  },
+  "expand/claimbuster": {
+   "license": "CC-BY-4.0 [commercial]",
+   "config": "default",
+   "upstream": "https://zenodo.org/records/3836810 and https://zenodo.org/api/records/3836810",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://zenodo.org/records/3836810 and https://zenodo.org/api/records/3836810); builder regex masking only, no NER",
+   "description": "Sentences from US presidential debates; non-factual, unimportant factual, or worth fact-checking."
+  },
+  "expand/cmu_movies": {
+   "license": "CC-BY-SA [commercial] | attribution required | share-alike",
+   "config": "share_alike",
+   "upstream": "http://www.cs.cmu.edu/~ark/personas/",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (http://www.cs.cmu.edu/~ark/personas/); builder regex masking only, no NER",
+   "description": "Film plot summaries (CMU Movie Summary Corpus); whether a given genre is listed for the film."
+  },
+  "expand/convabuse": {
+   "license": "CC-BY-4.0 [commercial]",
+   "config": "default",
+   "upstream": "https://raw.githubusercontent.com/amandacurry/convabuse/master/LICENSE",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://raw.githubusercontent.com/amandacurry/convabuse/master/LICENSE); builder regex masking only, no NER",
+   "description": "Conversations between users and chatbots (ConvAbuse); how abusive the user's last message is."
+  },
+  "expand/cuad_clause": {
+   "license": "CC-BY-4.0 [commercial]",
+   "config": "default",
+   "upstream": "https://www.atticusprojectai.org/cuad/",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://www.atticusprojectai.org/cuad/); builder regex masking only, no NER",
+   "description": "Excerpts from commercial contracts (CUAD); the clause category of the excerpt."
+  },
+  "expand/cve": {
+   "license": "CC0-1.0 [commercial]",
+   "config": "default",
+   "upstream": "https://huggingface.co/datasets/stasvinokur/cve-and-cwe-dataset-1999-2025",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/stasvinokur/cve-and-cwe-dataset-1999-2025); builder regex masking only, no NER",
+   "description": "Vulnerability reports from the US National Vulnerability Database; the assigned CVSS severity and the type of weakness (CWE)."
+  },
+  "expand/dices": {
+   "license": "CC-BY-4.0 [commercial]",
+   "config": "default",
+   "upstream": "https://raw.githubusercontent.com/google-research-datasets/dices-dataset/main/README.md",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://raw.githubusercontent.com/google-research-datasets/dices-dataset/main/README.md); builder regex masking only, no NER",
+   "description": "Conversations with a chatbot (DICES); how a diverse pool of raters judged the safety of the last response."
+  },
+  "expand/fda_recall": {
+   "license": "CC0-1.0 [commercial]",
+   "config": "default",
+   "upstream": "https://open.fda.gov/terms/",
+   "origin": "self-collected",
+   "names": true,
+   "reason": "openFDA enforcement records pulled from the API (firm contacts); unsure, so mask",
+   "description": "FDA product recall notices; the health-hazard class the FDA assigned."
+  },
+  "expand/feverous": {
+   "license": "CC-BY-SA [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",
+   "config": "share_alike",
+   "upstream": "https://fever.ai/download/feverous/license.html",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://fever.ai/download/feverous/license.html); builder regex masking only, no NER",
+   "description": "Claims with evidence from Wikipedia text and tables (FEVEROUS); supported, refuted or not enough information."
+  },
+  "expand/fewrel": {
+   "license": "CC-BY-SA [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",
+   "config": "share_alike",
+   "upstream": "https://raw.githubusercontent.com/thunlp/FewRel/master/LICENSE",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://raw.githubusercontent.com/thunlp/FewRel/master/LICENSE); builder regex masking only, no NER",
+   "description": "Sentences with two marked entities (FewRel); the Wikidata relation between them."
+  },
+  "expand/ghc": {
+   "license": "CC-BY-4.0 [commercial]",
+   "config": "default",
+   "upstream": "https://api.osf.io/v2/nodes/edua3/",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://api.osf.io/v2/nodes/edua3/); builder regex masking only, no NER",
+   "description": "Posts from the social network Gab (Gab Hate Corpus); hate speech or not."
+  },
+  "expand/maven": {
+   "license": "CC-BY-SA [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",
+   "config": "share_alike",
+   "upstream": "https://huggingface.co/datasets/mneb/maven/raw/main/README.md",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/mneb/maven/raw/main/README.md); builder regex masking only, no NER",
+   "description": "Sentences with a marked word (MAVEN); the type of event the word denotes."
+  },
+  "expand/p4g": {
+   "license": "Apache-2.0 [commercial]",
+   "config": "default",
+   "upstream": "https://gitlab.com/ucdavisnlp/persuasionforgood/-/raw/master/LICENSE",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://gitlab.com/ucdavisnlp/persuasionforgood/-/raw/master/LICENSE); builder regex masking only, no NER",
+   "description": "Donation persuasion dialogues (Persuasion for Good); the persuasion strategy used in a sentence."
+  },
+  "expand/personachat": {
+   "license": "CC-BY-4.0 [commercial]",
+   "config": "default",
+   "upstream": "https://raw.githubusercontent.com/facebookresearch/ParlAI/main/parlai/tasks/convai2/README.md",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://raw.githubusercontent.com/facebookresearch/ParlAI/main/parlai/tasks/convai2/README.md); builder regex masking only, no NER",
+   "description": "Chit-chat dialogues between crowdworkers with assigned personas (Persona-Chat); which reply was actually written next."
+  },
+  "ib/alia_stance": {
+   "license": "CC-BY-4.0 [commercial]",
+   "config": "default",
+   "upstream": "https://huggingface.co/datasets/SINAI/ALIA-es-discriminative-stance-detection",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/SINAI/ALIA-es-discriminative-stance-detection); builder regex masking only, no NER",
+   "description": "Comments on citizen proposals in Spanish; in favour, against or neutral."
+  },
+  "ib/camara_br": {
+   "drop": "mask",
+   "drop_reason": "government/portal terms, not an open licence: Câmara dos Deputados Dados Abertos (commercial use allowed)",
+   "license": "Câmara dos Deputados Dados Abertos (commercial use allowed) [commercial]",
+   "config": "default",
+   "upstream": "https://dadosabertos.camara.leg.br/faq/faq-home.html",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://dadosabertos.camara.leg.br/faq/faq-home.html); builder regex masking only, no NER"
+  },
+  "ib/cawikitc": {
+   "license": "CC-BY-SA [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",
+   "config": "share_alike",
+   "upstream": "https://huggingface.co/datasets/projecte-aina/CaWikiTC",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/projecte-aina/CaWikiTC); builder regex masking only, no NER",
+   "description": "Catalan Wikipedia texts; the subject area."
+  },
+  "ib/elkarhizketak": {
+   "license": "CC-BY-SA [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",
+   "config": "share_alike",
+   "upstream": "https://huggingface.co/datasets/HiTZ/elkarhizketak",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/HiTZ/elkarhizketak); builder regex masking only, no NER",
+   "description": "Questions about Basque Wikipedia passages (in Basque); whether the passage answers the question."
+  },
+  "ib/head_qa": {
+   "license": "MIT [commercial]",
+   "config": "default",
+   "upstream": "https://www.mscbs.gob.es/avisoLegal/home.htm",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://www.mscbs.gob.es/avisoLegal/home.htm); builder regex masking only, no NER",
+   "description": "Spanish healthcare exam questions (HEAD-QA); the correct answer."
+  },
+  "ib/nlucat": {
+   "license": "CC-BY-4.0 [commercial]",
+   "config": "default",
+   "upstream": "https://huggingface.co/datasets/projecte-aina/NLUCat",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/projecte-aina/NLUCat); builder regex masking only, no NER",
+   "description": "Voice-assistant requests in Catalan; what the user wants to do."
+  },
+  "ib/parafrases_gl": {
+   "license": "CC-BY-4.0 [commercial] | attribution required (Wikipedia contributors, CC-BY-SA)",
+   "config": "share_alike",
+   "upstream": "https://huggingface.co/datasets/proxectonos/parafrases_gl",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/proxectonos/parafrases_gl); builder regex masking only, no NER",
+   "description": "Sentence pairs in Galician; whether they mean the same."
+  },
+  "ib/parlamento_pt": {
+   "drop": "mask",
+   "drop_reason": "government/portal terms, not an open licence: Assembleia da República open data (free reuse, cite source)",
+   "license": "Assembleia da República open data (free reuse, cite source) [commercial]",
+   "config": "default",
+   "upstream": "https://www.parlamento.pt/Cidadania/Paginas/DadosAbertos.aspx",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://www.parlamento.pt/Cidadania/Paginas/DadosAbertos.aspx); builder regex masking only, no NER"
+  },
+  "ib/wikicat_ca": {
+   "license": "CC-BY-SA-4.0 [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",
+   "config": "share_alike",
+   "upstream": "https://huggingface.co/datasets/projecte-aina/WikiCAT_ca",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/projecte-aina/WikiCAT_ca); builder regex masking only, no NER",
+   "description": "Catalan Wikipedia texts; the subject area."
+  },
+  "ib/wikicat_es": {
+   "license": "CC-BY-SA-3.0 [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",
+   "config": "share_alike",
+   "upstream": "https://huggingface.co/datasets/PlanTL-GOB-ES/WikiCAT_esv2",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/PlanTL-GOB-ES/WikiCAT_esv2); builder regex masking only, no NER",
+   "description": "Spanish Wikipedia texts; the subject area."
+  },
+  "lab/civil_comments": {
+   "license": "CC0-1.0 [commercial]",
+   "config": "default",
+   "upstream": "https://huggingface.co/datasets/google/civil_comments/raw/main/README.md",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/google/civil_comments/raw/main/README.md); builder regex masking only, no NER",
+   "description": "Comments from news sites (Civil Comments); how toxic the comment is."
+  },
+  "lab/doc2dial": {
+   "license": "CC-BY-3.0 [commercial]",
+   "config": "default",
+   "upstream": "https://huggingface.co/datasets/IBM/doc2dial/raw/main/README.md",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/IBM/doc2dial/raw/main/README.md); builder regex masking only, no NER",
+   "description": "Dialogues grounded in government service documents (doc2dial); the dialogue act the agent performs next."
+  },
+  "lab/hwu64": {
+   "license": "CC-BY-4.0 [commercial]",
+   "config": "default",
+   "upstream": "https://github.com/xliuhw/NLU-Evaluation-Data",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://github.com/xliuhw/NLU-Evaluation-Data); builder regex masking only, no NER",
+   "description": "Voice-assistant requests (HWU64); the domain of the request."
+  },
+  "lab/massive": {
+   "license": "CC-BY-4.0 [commercial]",
+   "config": "default",
+   "upstream": "https://github.com/alexa/massive/blob/main/NOTICE.md; https://huggingface.co/datasets/AmazonScience/massive",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://github.com/alexa/massive/blob/main/NOTICE.md; https://huggingface.co/datasets/AmazonScience/massive); builder regex masking only, no NER",
+   "description": "Voice-assistant requests in English and Portuguese (MASSIVE); intents and the slot types mentioned."
+  },
+  "lab/multi_eurlex": {
+   "license": "CC-BY-4.0 [commercial]",
+   "config": "default",
+   "upstream": "https://huggingface.co/datasets/coastalcph/multi_eurlex",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/coastalcph/multi_eurlex); builder regex masking only, no NER",
+   "description": "EU legal acts in English; whether a EuroVoc domain applies."
+  },
+  "lab/multiwoz22": {
+   "license": "Apache-2.0 [commercial]",
+   "config": "default",
+   "upstream": "https://huggingface.co/datasets/pfb30/multi_woz_v22",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/pfb30/multi_woz_v22); builder regex masking only, no NER",
+   "description": "Task-oriented dialogues about travel and booking (MultiWOZ 2.2); requested slots and dialogue acts."
+  },
+  "lab/nhamcs": {
+   "license": "Public-Domain [commercial]",
+   "config": "default",
+   "upstream": "https://www.cdc.gov/other/agencymaterials.html",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://www.cdc.gov/other/agencymaterials.html); builder regex masking only, no NER",
+   "description": "US emergency-department visit records (NHAMCS survey), written out as text; the triage urgency level."
+  },
+  "lab/re_docred": {
+   "license": "MIT [commercial] | attribution required (Wikipedia contributors, CC-BY-SA)",
+   "config": "share_alike",
+   "upstream": "https://raw.githubusercontent.com/tonytan48/Re-DocRED/master/LICENSE",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://raw.githubusercontent.com/tonytan48/Re-DocRED/master/LICENSE); builder regex masking only, no NER",
+   "description": "Wikipedia paragraphs with two entities (Re-DocRED); the relation between them."
+  },
+  "lab/slurp": {
+   "license": "CC-BY-4.0 [commercial]",
+   "config": "default",
+   "upstream": "https://raw.githubusercontent.com/pswietojanski/slurp/master/README.md",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://raw.githubusercontent.com/pswietojanski/slurp/master/README.md); builder regex masking only, no NER",
+   "description": "Voice-assistant requests (SLURP); intents and the slot types mentioned."
+  },
+  "lab/snips": {
+   "license": "CC0-1.0 [commercial]",
+   "config": "default",
+   "upstream": "https://raw.githubusercontent.com/snipsco/nlu-benchmark/master/LICENSE",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://raw.githubusercontent.com/snipsco/nlu-benchmark/master/LICENSE); builder regex masking only, no NER",
+   "description": "Voice-assistant requests (SNIPS); the intent."
+  },
+  "lab/taskmaster": {
+   "license": "CC-BY-4.0 [commercial]",
+   "config": "default",
+   "upstream": "https://raw.githubusercontent.com/google-research-datasets/Taskmaster/master/TM-3-2020/README.md",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://raw.githubusercontent.com/google-research-datasets/Taskmaster/master/TM-3-2020/README.md); builder regex masking only, no NER",
+   "description": "Dialogues with a digital assistant (Taskmaster); the slot types an utterance mentions."
+  },
+  "lab/wands": {
+   "license": "MIT [commercial]",
+   "config": "default",
+   "upstream": "https://raw.githubusercontent.com/wayfair/WANDS/main/LICENSE",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://raw.githubusercontent.com/wayfair/WANDS/main/LICENSE); builder regex masking only, no NER",
+   "description": "Search queries and products from a furniture shop (WANDS); how relevant the product is to the query."
+  },
+  "massive_ml": {
+   "license": "CC-BY-4.0 [commercial]",
+   "config": "default",
+   "upstream": "https://huggingface.co/datasets/AmazonScience/massive/raw/main/README.md",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/AmazonScience/massive/raw/main/README.md); builder regex masking only, no NER",
+   "description": "Voice-assistant requests in 46 languages (MASSIVE); what the user wants the assistant to do."
+  },
+  "miracl": {
+   "license": "Apache-2.0 [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",
+   "config": "share_alike",
+   "upstream": "https://github.com/project-miracl/miracl",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://github.com/project-miracl/miracl); builder regex masking only, no NER",
+   "description": "Questions and Wikipedia passages in 15 languages (MIRACL); whether the passage is relevant to the question."
+  },
+  "morocco_cassation": {
+   "license": "CC-BY-4.0 [commercial]",
+   "config": "default",
+   "upstream": "https://huggingface.co/datasets/OpenDataMoroccanLaw/morocco-cassation-court-decisions/raw/main/README.md",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/OpenDataMoroccanLaw/morocco-cassation-court-decisions/raw/main/README.md); builder regex masking only, no NER",
+   "description": "Decisions of the Moroccan Court of Cassation (in Arabic); the chamber that decided the case."
+  },
+  "multi3nlu": {
+   "license": "CC-BY-4.0 [commercial]",
+   "config": "default",
+   "upstream": "https://github.com/PolyAI-LDN/task-specific-datasets",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://github.com/PolyAI-LDN/task-specific-datasets); builder regex masking only, no NER",
+   "description": "Customer utterances in Spanish, Turkish, Amharic and Marathi (Multi3NLU++); whether an utterance carries a given intent."
+  },
+  "nusaparagraph": {
+   "license": "Apache-2.0 [commercial]",
+   "config": "default",
+   "upstream": "https://github.com/IndoNLP/nusa-writes",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://github.com/IndoNLP/nusa-writes); builder regex masking only, no NER",
+   "description": "Paragraphs in ten languages of Indonesia (NusaParagraph); the topic of the paragraph."
+  },
+  "procedural/arithmetic": {
+   "license": "Apache-2.0 [commercial]",
+   "config": "default",
+   "upstream": "https://huggingface.co/datasets/tasksource/procedural-typed-decisions/raw/main/README.md",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/tasksource/procedural-typed-decisions/raw/main/README.md); builder regex masking only, no NER",
+   "description": "Generated by the project: schedules and quantities to add up; time and arithmetic questions."
+  },
+  "procedural/entity_belief_tracking": {
+   "license": "Apache-2.0 [commercial]",
+   "config": "default",
+   "upstream": "https://huggingface.co/datasets/tasksource/procedural-typed-decisions/raw/main/README.md",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/tasksource/procedural-typed-decisions/raw/main/README.md); builder regex masking only, no NER",
+   "description": "Generated by the project: a sequence of moves seen by some observers; who believes what is where."
+  },
+  "procedural/event_state_reconstruction": {
+   "license": "Apache-2.0 [commercial]",
+   "config": "default",
+   "upstream": "https://huggingface.co/datasets/tasksource/procedural-typed-decisions/raw/main/README.md",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/tasksource/procedural-typed-decisions/raw/main/README.md); builder regex masking only, no NER",
+   "description": "Generated by the project: an event log to replay; the resulting state."
+  },
+  "procedural/event_triggered_execution": {
+   "license": "Apache-2.0 [commercial]",
+   "config": "default",
+   "upstream": "https://huggingface.co/datasets/tasksource/procedural-typed-decisions/raw/main/README.md",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/tasksource/procedural-typed-decisions/raw/main/README.md); builder regex masking only, no NER",
+   "description": "Generated by the project: rules and a sequence of events; which rules fire."
+  },
+  "procedural/evidence_sufficiency": {
+   "license": "Apache-2.0 [commercial]",
+   "config": "default",
+   "upstream": "https://huggingface.co/datasets/tasksource/procedural-typed-decisions/raw/main/README.md",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/tasksource/procedural-typed-decisions/raw/main/README.md); builder regex masking only, no NER",
+   "description": "Generated by the project: a claim, evidence and stated rules; whether the claim is sufficiently supported."
+  },
+  "procedural/goal_directed_planning": {
+   "license": "Apache-2.0 [commercial]",
+   "config": "default",
+   "upstream": "https://huggingface.co/datasets/tasksource/procedural-typed-decisions",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/tasksource/procedural-typed-decisions); builder regex masking only, no NER",
+   "description": "Generated by the project: actions with preconditions and a goal; the shortest valid plan."
+  },
+  "procedural/graph_navigation": {
+   "license": "Apache-2.0 [commercial]",
+   "config": "default",
+   "upstream": "https://huggingface.co/datasets/tasksource/procedural-typed-decisions",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/tasksource/procedural-typed-decisions); builder regex masking only, no NER",
+   "description": "Generated by the project: a graph of open and closed edges with costs; reachability and the cheapest route."
+  },
+  "procedural/instruction_execution": {
+   "license": "Apache-2.0 [commercial]",
+   "config": "default",
+   "upstream": "https://huggingface.co/datasets/tasksource/procedural-typed-decisions",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/tasksource/procedural-typed-decisions); builder regex masking only, no NER",
+   "description": "Generated by the project: a request and an execution policy; how the request should be handled."
+  },
+  "procedural/multi_view_adjudication": {
+   "license": "Apache-2.0 [commercial]",
+   "config": "default",
+   "upstream": "https://huggingface.co/datasets/tasksource/procedural-typed-decisions",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/tasksource/procedural-typed-decisions); builder regex masking only, no NER",
+   "description": "Generated by the project: a case record judged under several stated rules (urgency, eligibility, ...)."
+  },
+  "procedural/needle_retrieval": {
+   "license": "Apache-2.0 [commercial]",
+   "config": "default",
+   "upstream": "https://huggingface.co/datasets/tasksource/procedural-typed-decisions",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/tasksource/procedural-typed-decisions); builder regex masking only, no NER",
+   "description": "Generated by the project: a long table of records; whether a given record is present and what it says."
+  },
+  "procedural/partial_observation_calibration": {
+   "license": "Apache-2.0 [commercial]",
+   "config": "default",
+   "upstream": "https://huggingface.co/datasets/tasksource/procedural-typed-decisions",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/tasksource/procedural-typed-decisions); builder regex masking only, no NER",
+   "description": "Generated by the project: sensor readings with known error rates; the probability that the incident is real."
+  },
+  "procedural/policy_applicability": {
+   "license": "Apache-2.0 [commercial]",
+   "config": "default",
+   "upstream": "https://huggingface.co/datasets/tasksource/procedural-typed-decisions",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/tasksource/procedural-typed-decisions); builder regex masking only, no NER",
+   "description": "Generated by the project: access policies and a request; whether the governing policy allows the action."
+  },
+  "procedural/policy_under_uncertainty": {
+   "license": "Apache-2.0 [commercial]",
+   "config": "default",
+   "upstream": "https://huggingface.co/datasets/tasksource/procedural-typed-decisions",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/tasksource/procedural-typed-decisions); builder regex masking only, no NER",
+   "description": "Generated by the project: access policies and an incomplete request; which policy governs it."
+  },
+  "procedural/record_aggregation": {
+   "license": "Apache-2.0 [commercial]",
+   "config": "default",
+   "upstream": "https://huggingface.co/datasets/tasksource/procedural-typed-decisions",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/tasksource/procedural-typed-decisions); builder regex masking only, no NER",
+   "description": "Generated by the project: a list of records; counts and totals over the records that meet a condition."
+  },
+  "procedural/record_eligibility": {
+   "license": "Apache-2.0 [commercial]",
+   "config": "default",
+   "upstream": "https://huggingface.co/datasets/tasksource/procedural-typed-decisions",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/tasksource/procedural-typed-decisions); builder regex masking only, no NER",
+   "description": "Generated by the project: records and numbered requirements; which requirement decides eligibility."
+  },
+  "procedural/state_perturbation": {
+   "license": "Apache-2.0 [commercial]",
+   "config": "default",
+   "upstream": "https://huggingface.co/datasets/tasksource/procedural-typed-decisions",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/tasksource/procedural-typed-decisions); builder regex masking only, no NER",
+   "description": "Generated by the project: a record before and after a change; which material dimension changed."
+  },
+  "procedural/table_lookup": {
+   "license": "Apache-2.0 [commercial]",
+   "config": "default",
+   "upstream": "https://huggingface.co/datasets/tasksource/procedural-typed-decisions",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/tasksource/procedural-typed-decisions); builder regex masking only, no NER",
+   "description": "Generated by the project: a small table; facts to look up and compare."
+  },
+  "procedural/taxonomy_routing": {
+   "license": "Apache-2.0 [commercial]",
+   "config": "default",
+   "upstream": "https://huggingface.co/datasets/tasksource/procedural-typed-decisions",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/tasksource/procedural-typed-decisions); builder regex masking only, no NER",
+   "description": "Generated by the project: a routing guide and a ticket; the category whose conditions the ticket meets."
+  },
+  "rm_canton_laws": {
+   "license": "CC0-1.0 [commercial]",
+   "config": "default",
+   "upstream": "https://huggingface.co/datasets/ZurichNLP/romansh-canton-laws/raw/main/README.md",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/ZurichNLP/romansh-canton-laws/raw/main/README.md); builder regex masking only, no NER",
+   "description": "Provisions of the laws of the canton of Graubünden (Romansh, Italian, German); the section of the systematic collection."
+  },
+  "semeval2021_t12_postevaluation_bundle": {
+   "license": "CC-BY-4.0 [commercial]",
+   "config": "default",
+   "upstream": "https://zenodo.org/records/5130737",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://zenodo.org/records/5130737); builder regex masking only, no NER",
+   "description": "Documents with a marked mention (SemEval-2021 Task 12 data); whether the mention is new in the discourse."
+  },
+  "tasksource/CONDAQA": {
+   "license": "Apache-2.0 [commercial] | attribution required (Wikipedia contributors, CC-BY-SA)",
+   "config": "share_alike",
+   "upstream": "https://github.com/AbhilashaRavichander/CondaQA",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://github.com/AbhilashaRavichander/CondaQA); builder regex masking only, no NER",
+   "description": "Wikipedia passages with negation and a question (CondaQA); yes, no or don't know."
+  },
+  "tasksource/ambient": {
+   "license": "CC-BY-4.0 [commercial]",
+   "config": "default",
+   "upstream": "https://raw.githubusercontent.com/alisawuffles/ambient/main/README.md",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://raw.githubusercontent.com/alisawuffles/ambient/main/README.md); builder regex masking only, no NER",
+   "description": "Premise and hypothesis pairs (AmbiEnt); whether the hypothesis is ambiguous."
+  },
+  "tasksource/balanced-copa": {
+   "license": "CC-BY-4.0 [commercial]",
+   "config": "default",
+   "upstream": "https://huggingface.co/datasets/pkavumba/balanced-copa/raw/main/README.md",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/pkavumba/balanced-copa/raw/main/README.md); builder regex masking only, no NER",
+   "description": "Everyday situations (Balanced COPA); the more plausible cause or effect."
+  },
+  "tasksource/civil_comments/identity_attack_share": {
+   "license": "CC0-1.0 [commercial]",
+   "config": "default",
+   "upstream": "https://huggingface.co/datasets/google/civil_comments/raw/main/README.md",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/google/civil_comments/raw/main/README.md); builder regex masking only, no NER",
+   "description": "Comments from news sites (Civil Comments); the share of annotators who rated the comment as an identity attack."
+  },
+  "tasksource/civil_comments/insult_share": {
+   "license": "CC0-1.0 [commercial]",
+   "config": "default",
+   "upstream": "https://huggingface.co/datasets/google/civil_comments/raw/main/README.md",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/google/civil_comments/raw/main/README.md); builder regex masking only, no NER",
+   "description": "Comments from news sites (Civil Comments); the share of annotators who rated the comment as insulting."
+  },
+  "tasksource/civil_comments/obscene_share": {
+   "license": "CC0-1.0 [commercial]",
+   "config": "default",
+   "upstream": "https://huggingface.co/datasets/google/civil_comments/raw/main/README.md",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/google/civil_comments/raw/main/README.md); builder regex masking only, no NER",
+   "description": "Comments from news sites (Civil Comments); the share of annotators who rated the comment as obscene."
+  },
+  "tasksource/civil_comments/severe_toxicity_share": {
+   "license": "CC0-1.0 [commercial]",
+   "config": "default",
+   "upstream": "https://huggingface.co/datasets/google/civil_comments/raw/main/README.md",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/google/civil_comments/raw/main/README.md); builder regex masking only, no NER",
+   "description": "Comments from news sites (Civil Comments); the share of annotators who rated the comment as severely toxic."
+  },
+  "tasksource/civil_comments/sexual_explicit_share": {
+   "license": "CC0-1.0 [commercial]",
+   "config": "default",
+   "upstream": "https://huggingface.co/datasets/google/civil_comments/raw/main/README.md",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/google/civil_comments/raw/main/README.md); builder regex masking only, no NER",
+   "description": "Comments from news sites (Civil Comments); the share of annotators who rated the comment as sexually explicit."
+  },
+  "tasksource/civil_comments/threat_share": {
+   "license": "CC0-1.0 [commercial]",
+   "config": "default",
+   "upstream": "https://huggingface.co/datasets/google/civil_comments/raw/main/README.md",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/google/civil_comments/raw/main/README.md); builder regex masking only, no NER",
+   "description": "Comments from news sites (Civil Comments); the share of annotators who rated the comment as threatening."
+  },
+  "tasksource/civil_comments/toxicity_share": {
+   "license": "CC0-1.0 [commercial]",
+   "config": "default",
+   "upstream": "https://huggingface.co/datasets/google/civil_comments/raw/main/README.md",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/google/civil_comments/raw/main/README.md); builder regex masking only, no NER",
+   "description": "Comments from news sites (Civil Comments); the share of annotators who rated the comment as toxic."
+  },
+  "tasksource/commonsense_qa_2.0": {
+   "license": "CC-BY-4.0 [commercial]",
+   "config": "default",
+   "upstream": "https://raw.githubusercontent.com/allenai/csqa2/master/LICENSE",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://raw.githubusercontent.com/allenai/csqa2/master/LICENSE); builder regex masking only, no NER",
+   "description": "Yes/no commonsense statements (CommonsenseQA 2.0)."
+  },
+  "tasksource/cuad/answerability": {
+   "license": "CC-BY-4.0 [commercial]",
+   "config": "default",
+   "upstream": "https://www.atticusprojectai.org/cuad/",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://www.atticusprojectai.org/cuad/); builder regex masking only, no NER",
+   "description": "Commercial contracts with an extraction request (CUAD); whether the contract contains an answer."
+  },
+  "tasksource/dbpedia_14/dbpedia_14": {
+   "license": "CC-BY-SA [commercial] | attribution required | share-alike",
+   "config": "share_alike",
+   "upstream": "https://huggingface.co/datasets/fancyzhx/dbpedia_14/raw/main/README.md",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/fancyzhx/dbpedia_14/raw/main/README.md); builder regex masking only, no NER",
+   "description": "Wikipedia abstracts (DBpedia 14); the type of thing described (company, artist, athlete, ...)."
+  },
+  "tasksource/defeasible-nli/atomic": {
+   "license": "CC-BY-4.0 [commercial]",
+   "config": "default",
+   "upstream": "https://huggingface.co/datasets/allenai/atomic/raw/main/README.md",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/allenai/atomic/raw/main/README.md); builder regex masking only, no NER",
+   "description": "A premise, a hypothesis and an update (Defeasible NLI); whether the update strengthens or weakens the hypothesis."
+  },
+  "tasksource/docred": {
+   "license": "MIT [commercial] | attribution required (Wikipedia contributors, CC-BY-SA)",
+   "config": "share_alike",
+   "upstream": "https://github.com/thunlp/DocRED",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://github.com/thunlp/DocRED); builder regex masking only, no NER",
+   "description": "Wikipedia paragraphs with two entities (DocRED); the relation between them."
+  },
+  "tasksource/dynahate": {
+   "drop": "mask",
+   "drop_reason": "licence tags conflict (canonical CC-BY-4.0, upstream metadata GPL)",
+   "license": "CC-BY-4.0 [commercial]",
+   "config": null,
+   "upstream": "https://github.com/bvidgen/Dynamically-Generated-Hate-Speech-Dataset",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "excluded: licence tags conflict (canonical CC-BY-4.0, upstream metadata GPL)"
+  },
+  "tasksource/dynasent/r2_votes": {
+   "license": "CC-BY-4.0 [commercial]",
+   "config": "default",
+   "upstream": "https://github.com/cgpotts/dynasent",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://github.com/cgpotts/dynasent); builder regex masking only, no NER",
+   "description": "Sentences (DynaSent, round 2); how annotators label the sentiment."
+  },
+  "tasksource/faithdial/grounding": {
+   "license": "MIT [commercial]",
+   "config": "default",
+   "upstream": "https://raw.githubusercontent.com/McGill-NLP/FaithDial/main/README.md",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://raw.githubusercontent.com/McGill-NLP/FaithDial/main/README.md); builder regex masking only, no NER",
+   "description": "Knowledge-grounded dialogues (FaithDial); whether the bot's response is supported by the knowledge."
+  },
+  "tasksource/fool-me-twice": {
+   "license": "Apache-2.0 [commercial] | attribution required (Wikipedia contributors, CC-BY-SA)",
+   "config": "share_alike",
+   "upstream": "https://raw.githubusercontent.com/google-research/fool-me-twice/master/LICENSE",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://raw.githubusercontent.com/google-research/fool-me-twice/master/LICENSE); builder regex masking only, no NER",
+   "description": "Claims with Wikipedia evidence (Fool Me Twice); supported or refuted."
+  },
+  "tasksource/gap": {
+   "license": "Apache-2.0 [commercial] | attribution required (Wikipedia contributors, CC-BY-SA)",
+   "config": "share_alike",
+   "upstream": "https://github.com/google-research-datasets/gap-coreference/blob/master/LICENSE",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://github.com/google-research-datasets/gap-coreference/blob/master/LICENSE); builder regex masking only, no NER",
+   "description": "Wikipedia sentences with an ambiguous pronoun (GAP); which of two people it refers to, or neither."
+  },
+  "tasksource/glue/qnli": {
+   "license": "CC-BY-SA-4.0 [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",
+   "config": "share_alike",
+   "upstream": "https://huggingface.co/datasets/rajpurkar/squad/raw/main/README.md",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/rajpurkar/squad/raw/main/README.md); builder regex masking only, no NER",
+   "description": "Questions and Wikipedia sentences (GLUE QNLI); whether the sentence contains the answer."
+  },
+  "tasksource/glue/wnli": {
+   "license": "CC-BY-4.0 [commercial]",
+   "config": "default",
+   "upstream": "https://cs.nyu.edu/~davise/papers/WinogradSchemas/WS.html",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://cs.nyu.edu/~davise/papers/WinogradSchemas/WS.html); builder regex masking only, no NER",
+   "description": "Sentence pairs built from Winograd schemas (GLUE WNLI); entailment or not."
+  },
+  "tasksource/infotabs": {
+   "license": "Apache-2.0 [commercial] | attribution required (Wikipedia contributors, CC-BY-SA)",
+   "config": "share_alike",
+   "upstream": "https://raw.githubusercontent.com/infotabs/infotabs/master/LICENSE",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://raw.githubusercontent.com/infotabs/infotabs/master/LICENSE); builder regex masking only, no NER",
+   "description": "Wikipedia infobox tables with a statement (InfoTabS); entailed, contradicted or undetermined."
+  },
+  "tasksource/maud/antitrust-efforts": {
+   "license": "CC-BY-4.0 [commercial]",
+   "config": "default",
+   "upstream": "https://huggingface.co/datasets/theatticusproject/maud/raw/main/README.md",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/theatticusproject/maud/raw/main/README.md); builder regex masking only, no NER",
+   "description": "Merger agreement clauses (MAUD); the efforts standard for obtaining antitrust approval."
+  },
+  "tasksource/maud/bringdown-timing": {
+   "license": "CC-BY-4.0 [commercial]",
+   "config": "default",
+   "upstream": "https://huggingface.co/datasets/theatticusproject/maud/raw/main/README.md",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/theatticusproject/maud/raw/main/README.md); builder regex masking only, no NER",
+   "description": "Merger agreement clauses (MAUD); when the target's representations must be accurate."
+  },
+  "tasksource/maud/consideration": {
+   "license": "CC-BY-4.0 [commercial]",
+   "config": "default",
+   "upstream": "https://huggingface.co/datasets/theatticusproject/maud/raw/main/README.md",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/theatticusproject/maud/raw/main/README.md); builder regex masking only, no NER",
+   "description": "Merger agreement clauses (MAUD); the type of consideration."
+  },
+  "tasksource/maud/ordinary-course-consent": {
+   "license": "CC-BY-4.0 [commercial]",
+   "config": "default",
+   "upstream": "https://huggingface.co/datasets/theatticusproject/maud/raw/main/README.md",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/theatticusproject/maud/raw/main/README.md); builder regex masking only, no NER",
+   "description": "Merger agreement clauses (MAUD); the standard for buyer consent under the ordinary-course covenant."
+  },
+  "tasksource/maud/ordinary-course-efforts": {
+   "license": "CC-BY-4.0 [commercial]",
+   "config": "default",
+   "upstream": "https://huggingface.co/datasets/theatticusproject/maud/raw/main/README.md",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/theatticusproject/maud/raw/main/README.md); builder regex masking only, no NER",
+   "description": "Merger agreement clauses (MAUD); the efforts standard of the ordinary-course covenant."
+  },
+  "tasksource/maven/event": {
+   "license": "CC-BY-SA [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",
+   "config": "share_alike",
+   "upstream": "https://raw.githubusercontent.com/THU-KEG/MAVEN-dataset/main/LICENSE",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://raw.githubusercontent.com/THU-KEG/MAVEN-dataset/main/LICENSE); builder regex masking only, no NER",
+   "description": "Sentences with a marked trigger word (MAVEN); the type of event it expresses."
+  },
+  "tasksource/moral_stories/full": {
+   "license": "MIT [commercial]",
+   "config": "default",
+   "upstream": "https://huggingface.co/datasets/demelin/moral_stories/raw/main/README.md",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/demelin/moral_stories/raw/main/README.md); builder regex masking only, no NER",
+   "description": "Short stories with a social norm (Moral Stories); the action that follows the norm."
+  },
+  "tasksource/multidogo/airline/intent": {
+   "license": "CDLA-Permissive-1.0 [commercial]",
+   "config": "default",
+   "upstream": "https://huggingface.co/datasets/jpcorb20/multidogo/raw/main/README.md",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/jpcorb20/multidogo/raw/main/README.md); builder regex masking only, no NER",
+   "description": "Customer-service dialogues, airline domain (MultiDoGO); the intent of the last utterance."
+  },
+  "tasksource/multidogo/fastfood/intent": {
+   "license": "CDLA-Permissive-1.0 [commercial]",
+   "config": "default",
+   "upstream": "https://huggingface.co/datasets/jpcorb20/multidogo/raw/main/README.md",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/jpcorb20/multidogo/raw/main/README.md); builder regex masking only, no NER",
+   "description": "Customer-service dialogues, fast-food domain (MultiDoGO); the intent of the last utterance."
+  },
+  "tasksource/multidogo/finance/intent": {
+   "license": "CDLA-Permissive-1.0 [commercial]",
+   "config": "default",
+   "upstream": "https://huggingface.co/datasets/jpcorb20/multidogo/raw/main/README.md",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/jpcorb20/multidogo/raw/main/README.md); builder regex masking only, no NER",
+   "description": "Customer-service dialogues, finance domain (MultiDoGO); the intent of the last utterance."
+  },
+  "tasksource/multidogo/insurance/intent": {
+   "license": "CDLA-Permissive-1.0 [commercial]",
+   "config": "default",
+   "upstream": "https://huggingface.co/datasets/jpcorb20/multidogo/raw/main/README.md",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/jpcorb20/multidogo/raw/main/README.md); builder regex masking only, no NER",
+   "description": "Customer-service dialogues, insurance domain (MultiDoGO); the intent of the last utterance."
+  },
+  "tasksource/multidogo/media/intent": {
+   "license": "CDLA-Permissive-1.0 [commercial]",
+   "config": "default",
+   "upstream": "https://huggingface.co/datasets/jpcorb20/multidogo/raw/main/README.md",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/jpcorb20/multidogo/raw/main/README.md); builder regex masking only, no NER",
+   "description": "Customer-service dialogues, media domain (MultiDoGO); the intent of the last utterance."
+  },
+  "tasksource/multidogo/software/intent": {
+   "license": "CDLA-Permissive-1.0 [commercial]",
+   "config": "default",
+   "upstream": "https://huggingface.co/datasets/jpcorb20/multidogo/raw/main/README.md",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/jpcorb20/multidogo/raw/main/README.md); builder regex masking only, no NER",
+   "description": "Customer-service dialogues, software domain (MultiDoGO); the intent of the last utterance."
+  },
+  "tasksource/multilingual/massive": {
+   "license": "CC-BY-4.0 [commercial]",
+   "config": "default",
+   "upstream": "https://github.com/alexa/massive",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://github.com/alexa/massive); builder regex masking only, no NER",
+   "description": "Voice-assistant requests (MASSIVE); the intent."
+  },
+  "tasksource/multilingual/paws-x/de": {
+   "license": "Google free-use terms (attribution appreciated) [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",
+   "config": "share_alike",
+   "upstream": "https://huggingface.co/datasets/google-research-datasets/paws-x",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/google-research-datasets/paws-x); builder regex masking only, no NER",
+   "description": "Sentence pairs with high word overlap in German (PAWS-X); paraphrase or not."
+  },
+  "tasksource/multilingual/paws-x/en": {
+   "license": "Google free-use terms (attribution appreciated) [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",
+   "config": "share_alike",
+   "upstream": "https://raw.githubusercontent.com/google-research-datasets/paws/master/LICENSE",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://raw.githubusercontent.com/google-research-datasets/paws/master/LICENSE); builder regex masking only, no NER",
+   "description": "Sentence pairs with high word overlap in English (PAWS-X); paraphrase or not."
+  },
+  "tasksource/multilingual/paws-x/es": {
+   "license": "Google free-use terms (attribution appreciated) [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",
+   "config": "share_alike",
+   "upstream": "https://raw.githubusercontent.com/google-research-datasets/paws/master/LICENSE",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://raw.githubusercontent.com/google-research-datasets/paws/master/LICENSE); builder regex masking only, no NER",
+   "description": "Sentence pairs with high word overlap in Spanish (PAWS-X); paraphrase or not."
+  },
+  "tasksource/multilingual/paws-x/fr": {
+   "license": "Google free-use terms (attribution appreciated) [commercial] | attribution required (Wikipedia contributors, CC-BY-SA)",
+   "config": "share_alike",
+   "upstream": "https://huggingface.co/datasets/google-research-datasets/paws-x/raw/main/README.md",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/google-research-datasets/paws-x/raw/main/README.md); builder regex masking only, no NER",
+   "description": "Sentence pairs with high word overlap in French (PAWS-X); paraphrase or not."
+  },
+  "tasksource/multilingual/paws-x/ja": {
+   "license": "Google free-use terms (attribution appreciated) [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",
+   "config": "share_alike",
+   "upstream": "https://huggingface.co/datasets/google-research-datasets/paws-x",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/google-research-datasets/paws-x); builder regex masking only, no NER",
+   "description": "Sentence pairs with high word overlap in Japanese (PAWS-X); paraphrase or not."
+  },
+  "tasksource/multilingual/paws-x/ko": {
+   "license": "Google free-use terms (attribution appreciated) [commercial] | attribution required (Wikipedia contributors, CC-BY-SA)",
+   "config": "share_alike",
+   "upstream": "https://huggingface.co/datasets/google-research-datasets/paws-x/raw/main/README.md",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/google-research-datasets/paws-x/raw/main/README.md); builder regex masking only, no NER",
+   "description": "Sentence pairs with high word overlap in Korean (PAWS-X); paraphrase or not."
+  },
+  "tasksource/multilingual/paws-x/zh": {
+   "license": "Google free-use terms (attribution appreciated) [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",
+   "config": "share_alike",
+   "upstream": "https://raw.githubusercontent.com/google-research-datasets/paws/master/LICENSE",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://raw.githubusercontent.com/google-research-datasets/paws/master/LICENSE); builder regex masking only, no NER",
+   "description": "Sentence pairs with high word overlap in Chinese (PAWS-X); paraphrase or not."
+  },
+  "tasksource/multilingual/wili_2018": {
+   "license": "ODbL-1.0 [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",
+   "config": "share_alike",
+   "upstream": "https://zenodo.org/api/records/841984",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://zenodo.org/api/records/841984); builder regex masking only, no NER",
+   "description": "Wikipedia paragraphs in 235 languages (WiLI-2018); the language of the text."
+  },
+  "tasksource/multilingual/xcopa/et": {
+   "license": "CC-BY-4.0 [commercial]",
+   "config": "default",
+   "upstream": "https://huggingface.co/datasets/cambridgeltl/xcopa",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/cambridgeltl/xcopa); builder regex masking only, no NER",
+   "description": "Everyday situations in Estonian (XCOPA); the more plausible cause or effect."
+  },
+  "tasksource/multilingual/xcopa/ht": {
+   "license": "CC-BY-4.0 [commercial]",
+   "config": "default",
+   "upstream": "https://huggingface.co/datasets/cambridgeltl/xcopa",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/cambridgeltl/xcopa); builder regex masking only, no NER",
+   "description": "Everyday situations in Haitian Creole (XCOPA); the more plausible cause or effect."
+  },
+  "tasksource/multilingual/xcopa/id": {
+   "license": "CC-BY-4.0 [commercial]",
+   "config": "default",
+   "upstream": "https://huggingface.co/datasets/cambridgeltl/xcopa",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/cambridgeltl/xcopa); builder regex masking only, no NER",
+   "description": "Everyday situations in Indonesian (XCOPA); the more plausible cause or effect."
+  },
+  "tasksource/multilingual/xcopa/it": {
+   "license": "CC-BY-4.0 [commercial]",
+   "config": "default",
+   "upstream": "https://huggingface.co/datasets/cambridgeltl/xcopa",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/cambridgeltl/xcopa); builder regex masking only, no NER",
+   "description": "Everyday situations in Italian (XCOPA); the more plausible cause or effect."
+  },
+  "tasksource/multilingual/xcopa/sw": {
+   "license": "CC-BY-4.0 [commercial]",
+   "config": "default",
+   "upstream": "https://huggingface.co/datasets/cambridgeltl/xcopa",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/cambridgeltl/xcopa); builder regex masking only, no NER",
+   "description": "Everyday situations in Swahili (XCOPA); the more plausible cause or effect."
+  },
+  "tasksource/multilingual/xcopa/ta": {
+   "license": "CC-BY-4.0 [commercial]",
+   "config": "default",
+   "upstream": "https://huggingface.co/datasets/cambridgeltl/xcopa",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/cambridgeltl/xcopa); builder regex masking only, no NER",
+   "description": "Everyday situations in Tamil (XCOPA); the more plausible cause or effect."
+  },
+  "tasksource/multilingual/xcopa/th": {
+   "license": "CC-BY-4.0 [commercial]",
+   "config": "default",
+   "upstream": "https://huggingface.co/datasets/cambridgeltl/xcopa",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/cambridgeltl/xcopa); builder regex masking only, no NER",
+   "description": "Everyday situations in Thai (XCOPA); the more plausible cause or effect."
+  },
+  "tasksource/multilingual/xcopa/tr": {
+   "license": "CC-BY-4.0 [commercial]",
+   "config": "default",
+   "upstream": "https://huggingface.co/datasets/cambridgeltl/xcopa",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/cambridgeltl/xcopa); builder regex masking only, no NER",
+   "description": "Everyday situations in Turkish (XCOPA); the more plausible cause or effect."
+  },
+  "tasksource/multilingual/xcopa/vi": {
+   "license": "CC-BY-4.0 [commercial]",
+   "config": "default",
+   "upstream": "https://huggingface.co/datasets/cambridgeltl/xcopa",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/cambridgeltl/xcopa); builder regex masking only, no NER",
+   "description": "Everyday situations in Vietnamese (XCOPA); the more plausible cause or effect."
+  },
+  "tasksource/multilingual/xcopa/zh": {
+   "license": "CC-BY-4.0 [commercial]",
+   "config": "default",
+   "upstream": "https://huggingface.co/datasets/cambridgeltl/xcopa",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/cambridgeltl/xcopa); builder regex masking only, no NER",
+   "description": "Everyday situations in Chinese (XCOPA); the more plausible cause or effect."
+  },
+  "tasksource/multiwoz22/categorical-slot": {
+   "license": "Apache-2.0 [commercial]",
+   "config": "default",
+   "upstream": "https://huggingface.co/datasets/pfb30/multi_woz_v22",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (see license_detail); builder regex masking only, no NER",
+   "description": "Task-oriented dialogues (MultiWOZ 2.2); the value of a slot after the current turn."
+  },
+  "tasksource/multiwoz22/dialogue-act": {
+   "license": "Apache-2.0 [commercial]",
+   "config": "default",
+   "upstream": "https://huggingface.co/datasets/pfb30/multi_woz_v22",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (see license_detail); builder regex masking only, no NER",
+   "description": "Task-oriented dialogues (MultiWOZ 2.2); the dialogue act of the user's utterance."
+  },
+  "tasksource/nevir": {
+   "license": "MIT [commercial] | attribution required (Wikipedia contributors, CC-BY-SA)",
+   "config": "share_alike",
+   "upstream": "https://raw.githubusercontent.com/orionw/NevIR/main/LICENSE",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://raw.githubusercontent.com/orionw/NevIR/main/LICENSE); builder regex masking only, no NER",
+   "description": "Queries with two passages that differ by a negation (NevIR); which passage answers the query."
+  },
+  "tasksource/nli_fever": {
+   "license": "CC-BY-SA [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",
+   "config": "share_alike",
+   "upstream": "https://fever.ai/download/fever/license.html",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://fever.ai/download/fever/license.html); builder regex masking only, no NER",
+   "description": "Claims and Wikipedia evidence as sentence pairs (FEVER NLI); entailment, contradiction or neutral."
+  },
+  "tasksource/oasst2/creativity": {
+   "license": "Apache-2.0 [commercial]",
+   "config": "default",
+   "upstream": "https://huggingface.co/datasets/OpenAssistant/oasst2/raw/main/README.md",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/OpenAssistant/oasst2/raw/main/README.md); builder regex masking only, no NER",
+   "description": "Prompts and assistant replies (OpenAssistant OASST2); how reviewers rated the reply's creativity."
+  },
+  "tasksource/oasst2/helpfulness": {
+   "license": "Apache-2.0 [commercial]",
+   "config": "default",
+   "upstream": "https://huggingface.co/datasets/OpenAssistant/oasst2",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/OpenAssistant/oasst2); builder regex masking only, no NER",
+   "description": "Prompts and assistant replies (OpenAssistant OASST2); how reviewers rated the reply's helpfulness."
+  },
+  "tasksource/oasst2/humor": {
+   "license": "Apache-2.0 [commercial]",
+   "config": "default",
+   "upstream": "https://huggingface.co/datasets/OpenAssistant/oasst2/raw/main/README.md",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/OpenAssistant/oasst2/raw/main/README.md); builder regex masking only, no NER",
+   "description": "Prompts and assistant replies (OpenAssistant OASST2); how reviewers rated the reply's humour."
+  },
+  "tasksource/oasst2/quality": {
+   "license": "Apache-2.0 [commercial]",
+   "config": "default",
+   "upstream": "https://huggingface.co/datasets/OpenAssistant/oasst2/raw/main/README.md",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/OpenAssistant/oasst2/raw/main/README.md); builder regex masking only, no NER",
+   "description": "Prompts and assistant replies (OpenAssistant OASST2); how reviewers rated the reply's quality."
+  },
+  "tasksource/oasst2/toxicity": {
+   "license": "Apache-2.0 [commercial]",
+   "config": "default",
+   "upstream": "https://huggingface.co/datasets/OpenAssistant/oasst2/raw/main/README.md; https://raw.githubusercontent.com/LAION-AI/Open-Assistant/main/LICENSE",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/OpenAssistant/oasst2/raw/main/README.md; https://raw.githubusercontent.com/LAION-AI/Open-Assistant/main/LICENSE); builder regex masking only, no NER",
+   "description": "Prompts and assistant replies (OpenAssistant OASST2); how reviewers rated the reply's toxicity."
+  },
+  "tasksource/patent-classification/abstract": {
+   "license": "CC-BY-4.0 [commercial]",
+   "config": "default",
+   "upstream": "https://cloud.google.com/blog/topics/public-datasets/google-patents-public-datasets-connecting-public-paid-and-private-patent-data",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://cloud.google.com/blog/topics/public-datasets/google-patents-public-datasets-connecting-public-paid-and-private-patent-data); builder regex masking only, no NER",
+   "description": "Patent abstracts; the patent classification section."
+  },
+  "tasksource/paws/labeled_final": {
+   "license": "Google free-use terms (attribution appreciated) [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",
+   "config": "share_alike",
+   "upstream": "https://github.com/google-research-datasets/paws/blob/master/LICENSE",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://github.com/google-research-datasets/paws/blob/master/LICENSE); builder regex masking only, no NER",
+   "description": "Sentence pairs with high word overlap (PAWS); paraphrase or not."
+  },
+  "tasksource/paws/labeled_swap": {
+   "license": "Google free-use terms (attribution appreciated) [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",
+   "config": "share_alike",
+   "upstream": "https://raw.githubusercontent.com/google-research-datasets/paws/master/LICENSE",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://raw.githubusercontent.com/google-research-datasets/paws/master/LICENSE); builder regex masking only, no NER",
+   "description": "Sentence pairs made by swapping words (PAWS); paraphrase or not."
+  },
+  "tasksource/piqa": {
+   "license": "AFL-3.0 [commercial]",
+   "config": "default",
+   "upstream": "https://huggingface.co/datasets/ybisk/piqa/raw/main/README.md",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/ybisk/piqa/raw/main/README.md); builder regex masking only, no NER",
+   "description": "Everyday physical goals (PIQA); the solution that works."
+  },
+  "tasksource/poem_sentiment": {
+   "license": "CC-BY-4.0 [commercial]",
+   "config": "default",
+   "upstream": "https://huggingface.co/datasets/google-research-datasets/poem_sentiment/raw/main/README.md",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/google-research-datasets/poem_sentiment/raw/main/README.md); builder regex masking only, no NER",
+   "description": "Lines of poetry; their sentiment."
+  },
+  "tasksource/proto_qa/proto_qa": {
+   "license": "CC-BY-4.0 [commercial]",
+   "config": "default",
+   "upstream": "https://huggingface.co/datasets/community-datasets/proto_qa",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/community-datasets/proto_qa); builder regex masking only, no NER",
+   "description": "Survey-style questions (ProtoQA); the answer most respondents gave."
+  },
+  "tasksource/quarel": {
+   "license": "CC-BY-4.0 [commercial]",
+   "config": "default",
+   "upstream": "http://data.allenai.org/quarel",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (http://data.allenai.org/quarel); builder regex masking only, no NER",
+   "description": "Short stories about qualitative relations such as friction and speed (QuaRel); the correct completion."
+  },
+  "tasksource/redial/preference": {
+   "license": "CC-BY-4.0 [commercial]",
+   "config": "default",
+   "upstream": "https://redialdata.github.io/website/",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://redialdata.github.io/website/); builder regex masking only, no NER",
+   "description": "Movie recommendation dialogues (ReDial); whether the seeker liked a movie."
+  },
+  "tasksource/slurp/intent": {
+   "license": "CC-BY-4.0 [commercial]",
+   "config": "default",
+   "upstream": "https://raw.githubusercontent.com/pswietojanski/slurp/master/README.md",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://raw.githubusercontent.com/pswietojanski/slurp/master/README.md); builder regex masking only, no NER",
+   "description": "Voice-assistant requests (SLURP); the intent."
+  },
+  "tasksource/slurp/slot-type": {
+   "license": "CC-BY-4.0 [commercial]",
+   "config": "default",
+   "upstream": "https://raw.githubusercontent.com/pswietojanski/slurp/master/README.md",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://raw.githubusercontent.com/pswietojanski/slurp/master/README.md); builder regex masking only, no NER",
+   "description": "Voice-assistant requests with a marked expression (SLURP); the slot the expression fills."
+  },
+  "tasksource/sms_spam": {
+   "license": "CC-BY-4.0 [commercial]",
+   "config": "default",
+   "upstream": "https://archive.ics.uci.edu/dataset/228/sms+spam+collection",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://archive.ics.uci.edu/dataset/228/sms+spam+collection); builder regex masking only, no NER",
+   "description": "SMS messages; spam or not."
+  },
+  "tasksource/snips_built_in_intents": {
+   "license": "CC0-1.0 [commercial]",
+   "config": "default",
+   "upstream": "https://raw.githubusercontent.com/sonos/nlu-benchmark/master/LICENSE",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://raw.githubusercontent.com/sonos/nlu-benchmark/master/LICENSE); builder regex masking only, no NER",
+   "description": "Voice-assistant requests (SNIPS built-in intents); the intent."
+  },
+  "tasksource/squad-v2/answerability": {
+   "license": "CC-BY-SA-4.0 [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",
+   "config": "share_alike",
+   "upstream": "https://rajpurkar.github.io/SQuAD-explorer/",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://rajpurkar.github.io/SQuAD-explorer/); builder regex masking only, no NER",
+   "description": "Questions and Wikipedia passages (SQuAD 2.0); whether the passage can answer the question."
+  },
+  "tasksource/super_glue/axg": {
+   "license": "MIT [commercial]",
+   "config": "default",
+   "upstream": "https://raw.githubusercontent.com/rudinger/winogender-schemas/master/LICENSE",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://raw.githubusercontent.com/rudinger/winogender-schemas/master/LICENSE); builder regex masking only, no NER",
+   "description": "Sentence pairs that differ in the gender of a pronoun (SuperGLUE AX-g); entailment or not."
+  },
+  "tasksource/tabfact": {
+   "license": "CC-BY-4.0 [commercial] | attribution required (Wikipedia contributors, CC-BY-SA)",
+   "config": "share_alike",
+   "upstream": "https://huggingface.co/datasets/wenhu/tab_fact",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/wenhu/tab_fact); builder regex masking only, no NER",
+   "description": "Wikipedia tables with a statement (TabFact); entailed or refuted."
+  },
+  "tasksource/toxic_conversations": {
+   "license": "CC0-1.0 [commercial]",
+   "config": "default",
+   "upstream": "https://www.tensorflow.org/datasets/catalog/civil_comments",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://www.tensorflow.org/datasets/catalog/civil_comments); builder regex masking only, no NER",
+   "description": "Comments from news sites (Civil Comments, toxic conversations set); toxic or not."
+  },
+  "tasksource/wands": {
+   "license": "MIT [commercial]",
+   "config": "default",
+   "upstream": "https://raw.githubusercontent.com/wayfair/WANDS/main/LICENSE; https://huggingface.co/datasets/napsternxg/wands/raw/main/README.md",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://raw.githubusercontent.com/wayfair/WANDS/main/LICENSE; https://huggingface.co/datasets/napsternxg/wands/raw/main/README.md); builder regex masking only, no NER",
+   "description": "Search queries and products from a furniture shop (WANDS); how relevant the product is to the query."
+  },
+  "tasksource/wikipedia-detox/toxicity": {
+   "license": "CC0-1.0 [commercial] | attribution required (Wikipedia contributors, CC-BY-SA)",
+   "config": "share_alike",
+   "upstream": "https://api.figshare.com/v2/articles/4054689",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://api.figshare.com/v2/articles/4054689); builder regex masking only, no NER",
+   "description": "Wikipedia talk-page comments (Wikipedia Detox); toxic or not."
+  },
+  "tasksource/wikipedia-detox/toxicity_score": {
+   "license": "CC0-1.0 [commercial] | attribution required (Wikipedia contributors, CC-BY-SA)",
+   "config": "share_alike",
+   "upstream": "https://api.figshare.com/v2/articles/4563973",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://api.figshare.com/v2/articles/4563973); builder regex masking only, no NER",
+   "description": "Wikipedia talk-page comments (Wikipedia Detox); rated from very toxic to very healthy."
+  },
+  "tydiqa": {
+   "license": "CC-BY-SA [commercial] | attribution required (Wikipedia contributors, CC-BY-SA) | share-alike",
+   "config": "share_alike",
+   "upstream": "https://raw.githubusercontent.com/google-research-datasets/tydiqa/master/README.md",
+   "origin": "redistributed",
+   "names": false,
+   "reason": "reformatted copy of a published release (https://raw.githubusercontent.com/google-research-datasets/tydiqa/master/README.md); builder regex masking only, no NER",
+   "description": "Questions and Wikipedia articles in ten languages (TyDi QA); which passage of the article answers the question."
+  },
+  "zueri_wie_neu": {
+   "license": "CC0-1.0 [commercial]",
+   "config": "default",
+   "upstream": "https://data.stadt-zuerich.ch/api/3/action/package_show?id=geo_zueri_wie_neu",
+   "origin": "self-collected",
+   "names": true,
+   "reason": "citizen issue reports pulled from the Stadt Zürich CKAN portal (free text, locations)",
+   "description": "Reports from the city of Zurich's «Züri wie neu» platform (in German); the category of the report."
+  },
+  "HopeEDI Tamil + Malayalam (LT-EDI)": {
+   "drop": "clean",
+   "drop_reason": "second licence review (13 sources)"
+  },
+  "de_fr_it/frenchmedmcqa": {
+   "drop": "clean",
+   "drop_reason": "second licence review (13 sources)"
+  },
+  "de_fr_it/medexpqa": {
+   "drop": "clean",
+   "drop_reason": "second licence review (13 sources)"
+  },
+  "decider/bias_in_bios": {
+   "drop": "clean",
+   "drop_reason": "second licence review (13 sources)"
+  },
+  "expand/aegis2": {
+   "drop": "clean",
+   "drop_reason": "Aegis 2.0"
+  },
+  "expand/expertqa": {
+   "drop": "clean",
+   "drop_reason": "expertqa (GPT-4/Bing generated)"
+  },
+  "expand/hh_redteam": {
+   "drop": "clean",
+   "drop_reason": "hh_redteam (card: not for fine-tuning)"
+  },
+  "expand/nhtsa": {
+   "drop": "clean",
+   "drop_reason": "second licence review (13 sources)"
+  },
+  "lab/helpsteer2": {
+   "drop": "clean",
+   "drop_reason": "HelpSteer2 (LLM-generated)"
+  },
+  "lab/helpsteer2_pref": {
+   "drop": "clean",
+   "drop_reason": "HelpSteer2 (LLM-generated)"
+  },
+  "lab/helpsteer3_pref": {
+   "drop": "clean",
+   "drop_reason": "HelpSteer3 (LLM-generated)"
+  },
+  "offenseval_dravidian": {
+   "drop": "clean",
+   "drop_reason": "second licence review (13 sources)"
+  },
+  "prdect_id": {
+   "drop": "clean",
+   "drop_reason": "second licence review (13 sources)"
+  },
+  "rm_quotidiana": {
+   "drop": "clean",
+   "drop_reason": "second licence review (13 sources)"
+  },
+  "tasksource/HelpSteer2/coherence": {
+   "drop": "clean",
+   "drop_reason": "HelpSteer2 (LLM-generated)"
+  },
+  "tasksource/HelpSteer2/complexity": {
+   "drop": "clean",
+   "drop_reason": "HelpSteer2 (LLM-generated)"
+  },
+  "tasksource/HelpSteer2/correctness": {
+   "drop": "clean",
+   "drop_reason": "HelpSteer2 (LLM-generated)"
+  },
+  "tasksource/HelpSteer2/helpfulness": {
+   "drop": "clean",
+   "drop_reason": "HelpSteer2 (LLM-generated)"
+  },
+  "tasksource/HelpSteer2/verbosity": {
+   "drop": "clean",
+   "drop_reason": "HelpSteer2 (LLM-generated)"
+  },
+  "tasksource/HelpSteer3/edit_quality": {
+   "drop": "clean",
+   "drop_reason": "HelpSteer3 (LLM-generated)"
+  },
+  "tasksource/HelpSteer3/feedback": {
+   "drop": "clean",
+   "drop_reason": "HelpSteer3 (LLM-generated)"
+  },
+  "tasksource/HelpSteer3/preference_strength": {
+   "drop": "clean",
+   "drop_reason": "HelpSteer3 (LLM-generated)"
+  },
+  "tasksource/HelpSteer3/principle": {
+   "drop": "clean",
+   "drop_reason": "HelpSteer3 (LLM-generated)"
+  },
+  "tasksource/circa": {
+   "drop": "clean",
+   "drop_reason": "second licence review (13 sources)"
+  },
+  "tasksource/disrpt/eng.dep.scidtb.rels": {
+   "drop": "clean",
+   "drop_reason": "second licence review (13 sources)"
+  },
+  "tasksource/fracas": {
+   "drop": "clean",
+   "drop_reason": "second licence review (13 sources)"
+  },
+  "tasksource/maven-arg/role": {
+   "drop": "clean",
+   "drop_reason": "second licence review (13 sources)"
+  },
+  "tasksource/scone": {
+   "drop": "clean",
+   "drop_reason": "second licence review (13 sources)"
+  }
+ }
+}
