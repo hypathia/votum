@@ -1,6 +1,10 @@
 """HTTP API for Votum on vLLM (request and response shapes of TypeSafe / SystemOne, see votum.request).
 
-    votum serve --model <org>/Votum-8B | <dir> [--name votum-8b] [--host 127.0.0.1] [--port 8011] [--api-key-env VOTUM_API_KEY]
+    votum serve --model <org>/Votum-8B | <org>/Votum-8B-FP8 | <dir> [--host 127.0.0.1] [--port 8011] [--api-key-env VOTUM_API_KEY]
+                [--name <model name in answers>] [--gpu-memory-gb N]
+
+A full-precision and an FP8 checkpoint are served the same way; the format is read from the checkpoint. The server
+reserves the weights plus 3 GiB of GPU memory (about 18 GiB for Votum-8B, 12 for Votum-8B-FP8); --gpu-memory-gb changes it.
 
 POST /v1/systemone   {"model": str, "state": str | object, "questions": {qid: {"type", "instructions", "criteria"}}}
                   -> {"model": str, "answers": {qid: answer}, "usage": {"input_tokens": int, "output_tokens": 0}}
@@ -119,22 +123,33 @@ def build_app(vm, model_name: str, api_key: str | None, window_ms: float, max_ba
     return app
 
 
+def model_name(model: str) -> str:
+    """votum-8b-fp8 for <org>/Votum-8B-FP8 or a directory of that name."""
+    return os.path.basename(os.path.normpath(model)).lower() or "votum"
+
+
 def main(argv=None) -> None:
-    ap = argparse.ArgumentParser(prog="votum serve"); ap.add_argument("--model", required=True); ap.add_argument("--name", default="votum-8b")
+    ap = argparse.ArgumentParser(prog="votum serve"); ap.add_argument("--model", required=True, help="Hub repo id or checkpoint directory (full precision or FP8)")
+    ap.add_argument("--name", help="model name reported by the API (default: from --model, e.g. votum-8b-fp8)")
     ap.add_argument("--host", default="127.0.0.1"); ap.add_argument("--port", type=int, default=8011); ap.add_argument("--api-key-env", default="VOTUM_API_KEY")
     ap.add_argument("--batch-window-ms", type=float, default=5.0); ap.add_argument("--max-batch", type=int, default=256)
-    ap.add_argument("--max-model-len", type=int, default=8192); ap.add_argument("--gpu-memory-utilization", type=float, default=0.75)
+    ap.add_argument("--max-model-len", type=int, default=8192); mem = ap.add_mutually_exclusive_group()
+    mem.add_argument("--gpu-memory-gb", type=float, help="GPU memory to reserve, in GiB (default: the weights plus 3)")
+    mem.add_argument("--gpu-memory-utilization", type=float, help="the same as a share of the card, 0 to 1")
     ap.add_argument("--max-num-seqs", type=int, default=256, help="sequences per engine step (exact/LoRA checkpoints use at most 32)")
     a = ap.parse_args(argv)
     import torch
     if not torch.cuda.is_available(): sys.exit("votum serve needs a CUDA GPU (vLLM); none is visible to torch")
     import uvicorn
     from .client import VotumVLLM
-    vm = VotumVLLM(a.model, max_model_len=a.max_model_len, gpu_memory_utilization=a.gpu_memory_utilization, max_num_seqs=a.max_num_seqs)
+    vm = VotumVLLM(a.model, max_model_len=a.max_model_len, gpu_memory_utilization=a.gpu_memory_utilization, gpu_memory_gb=a.gpu_memory_gb,
+                   max_num_seqs=a.max_num_seqs)
+    name = a.name or model_name(a.model)
+    what = ("FP8" if vm.fp8 else "full-precision") + " weights" + (f", {vm.memory_gib:.1f} GiB of GPU memory reserved" if vm.memory_gib else "")
     key = os.environ.get(a.api_key_env)
     if not key and a.host not in ("127.0.0.1", "localhost", "::1"): print(f"votum serve: no API key ({a.api_key_env} unset) on a non-local host {a.host}: anyone who can reach the port can use the model", file=sys.stderr, flush=True)
-    print(f"votum serve: ready at http://{a.host}:{a.port}/v1/systemone (model {a.name!r}, auth {'Bearer key from $' + a.api_key_env if key else 'off'})", flush=True)
-    uvicorn.run(build_app(vm, a.name, key, a.batch_window_ms, a.max_batch), host=a.host, port=a.port, log_level="warning")
+    print(f"votum serve: ready at http://{a.host}:{a.port}/v1/systemone (model {name!r}: {what}; auth {'Bearer key from $' + a.api_key_env if key else 'off'})", flush=True)
+    uvicorn.run(build_app(vm, name, key, a.batch_window_ms, a.max_batch), host=a.host, port=a.port, log_level="warning")
 
 
 if __name__ == "__main__":

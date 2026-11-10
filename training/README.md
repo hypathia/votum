@@ -227,6 +227,19 @@ get a 160 MB folder instead. It can be measured with `calibrate.py --exact --eva
 computer that still has the original model folder, and it cannot be served. For anything you deploy, use the full
 export.
 
+### A model for 16 GB cards
+
+Your 16 GB model needs a 24 GB card to run. To run it on a 16 GB card, make a compressed copy (about 9 GB) after
+step 4. It takes about a minute and needs no GPU:
+
+```bash
+votum quantize --model ./Votum-8B-tickets --out ./Votum-8B-tickets-FP8
+```
+
+Use the copy like any other model folder (`votum serve --model ./Votum-8B-tickets-FP8`). It gives the same answer
+as the full model on most examples, but not all: measure both with `calibrate.py --eval-only` as above before you
+rely on it.
+
 ### One known difference between training and use
 
 Training and serving treat the very last line break of the prompt slightly differently: serving counts it as part of

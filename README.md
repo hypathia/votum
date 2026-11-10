@@ -36,8 +36,8 @@ pip install "votum @ git+https://github.com/hypathia/votum"            # PyTorch
 pip install "votum[vllm] @ git+https://github.com/hypathia/votum"      # + the vLLM server (install this one directly if you will serve)
 ```
 
-You need Python 3.11 or newer and a CUDA GPU with 24 GB (16 GB is enough for the [FP8 variant](#serve)). It also runs
-on a CPU, slowly.
+You need Python 3.11 or newer and a CUDA GPU with 24 GB, or 16 GB with the [FP8 variant](#on-a-16-gb-card). It also
+runs on a CPU, slowly.
 
 Before the first download, accept the Apertus Acceptable Use Policy on
 [votum-ai/Votum-8B](https://huggingface.co/votum-ai/Votum-8B) and run `hf auth login`. That repository holds everything
@@ -84,9 +84,22 @@ VOTUM_API_KEY=... votum serve --model votum-ai/Votum-8B --host 0.0.0.0 --port 80
 `POST /v1/systemone` takes the same request as `vm.decide` and returns the same answers. Concurrent requests are
 batched. Start-up takes about a minute.
 
-**On a 16 GB card**, serve [votum-ai/Votum-8B-FP8](https://huggingface.co/votum-ai/Votum-8B-FP8) instead: the same model
-in a little over half the memory (9.2 GB), which gives the same answer 96–99 % of the time. It runs on the server only, not in the Python
-quickstart above.
+### On a 16 GB card
+
+Use [votum-ai/Votum-8B-FP8](https://huggingface.co/votum-ai/Votum-8B-FP8): the same model in a little over half the
+memory (9.2 GB), which gives the same answer 96–99 % of the time. Everything above works unchanged with its name:
+
+```bash
+votum serve --model votum-ai/Votum-8B-FP8 --port 8011
+```
+
+```python
+vm = Votum.from_pretrained("votum-ai/Votum-8B-FP8")     # 8.5 GB on the GPU
+```
+
+The server reserves the weights plus 3 GB of GPU memory, so about 12 GB for this variant and 18 GB for the full one;
+`--gpu-memory-gb` changes that. To make an FP8 copy of your own fine-tuned checkpoint, run
+`votum quantize --model <dir> --out <dir>` (about a minute, no GPU needed).
 
 **How fast is it?** A decision costs one read of the prompt. Here it is next to asking the same backbone to write its
 answer, on one RTX 4090:
@@ -164,11 +177,11 @@ model card's Limitations section has the details.
 ## Repository
 
 ```
-src/votum/          prompt rendering · reference model (PyTorch) · request format · checkpoint builder · CLI
+src/votum/          prompt rendering · reference model (PyTorch) · request format · checkpoint builder · FP8 · CLI
 src/votum/vllm/     vLLM 0.33 model · attention layout and cache · client · HTTP server
 training/           fine-tuning kit (prepare_data · finetune · calibrate) and the trainer that produced Votum-8B
 data/               source list with licences · cleaning and PII pipeline
-scripts/            export a checkpoint to the Hub layout · FP8 quantization · smoke fixture · README graphics
+scripts/            export a checkpoint to the Hub layout · smoke fixture · README graphics
 tests/              masks, positions, renderer, request format (CPU) · end-to-end smoke test (GPU)
 ```
 

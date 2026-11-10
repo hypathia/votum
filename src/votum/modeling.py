@@ -24,6 +24,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from . import fp8
 from . import prompt as P
 from .build import HEAD_NAME, TOKENIZER_FILES, adapter_dir, resolve
 from .config import CONFIG_NAME, VotumConfig
@@ -173,12 +174,12 @@ class Votum(nn.Module):
         else:
             rd = resolve(repo, revision, token, ["config.json", CONFIG_NAME, "model*.safetensors", "model.safetensors.index.json", *TOKENIZER_FILES])
             cfg = VotumConfig.load(rd); tcfg = _text_config(rd)
-            if json.loads((rd / "config.json").read_text()).get("quantization_config"):
-                raise ValueError(f"{rd} is a quantized (compressed-tensors) Votum checkpoint; the PyTorch reference path loads bf16 weights only. "
-                                 "Serve it with `votum serve --model ...` or votum.vllm.client.VotumVLLM, or use the bf16 repository here.")
-            kw = dict(config=tcfg, device_map={"": str(device)}); kw["dtype" if _tf_major() >= 5 else "torch_dtype"] = dtype
-            bb = ApertusModel.from_pretrained(str(rd), **kw); bb.eval(); bb.requires_grad_(False)
-            net = _with_adapter(bb, rd / "lora") if (rd / "lora" / "adapter_config.json").exists() else _Wrap(bb)   # votum build --exact
+            if fp8.is_quantized(rd):            # FP8 weights stay FP8 in memory (fp8.FP8Linear)
+                net = _Wrap(fp8.load_backbone(rd, tcfg, device, dtype))
+            else:
+                kw = dict(config=tcfg, device_map={"": str(device)}); kw["dtype" if _tf_major() >= 5 else "torch_dtype"] = dtype
+                bb = ApertusModel.from_pretrained(str(rd), **kw); bb.eval(); bb.requires_grad_(False)
+                net = _with_adapter(bb, rd / "lora") if (rd / "lora" / "adapter_config.json").exists() else _Wrap(bb)   # votum build --exact
             tok = AutoTokenizer.from_pretrained(str(rd))
             wmap = json.loads((rd / "model.safetensors.index.json").read_text())["weight_map"]
             with safe_open(str(rd / wmap["pointer.o.weight"]), framework="pt") as f: o, q0 = f.get_tensor("pointer.o.weight"), f.get_tensor("pointer.q0")

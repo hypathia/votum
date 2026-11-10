@@ -31,3 +31,4 @@ def test_smoke_scores(vm):
             worst = max(worst, max(abs(a - b) for a, b in zip(out["scores"], ref["scores"])))
             assert max(range(len(ref["scores"])), key=ref["scores"].__getitem__) == max(range(len(out["scores"])), key=out["scores"].__getitem__)
     assert worst < 0.5, worst
+

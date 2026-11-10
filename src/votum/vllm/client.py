@@ -21,6 +21,25 @@ from .. import prompt as P
 from .. import request as R
 
 
+WORK_GIB = 3.0     # GPU memory beside the weights (activations, the engine's cache): what Votum-8B has at 0.75 of a 24 GB card
+
+
+def memory_share(path: Path, gpu_memory_gb: float | None = None) -> tuple[float, float]:
+    """(share of the card, GiB) to reserve for the checkpoint in path: its weights plus WORK_GIB unless gpu_memory_gb says
+    otherwise. Stops with a plain message when that much is not free."""
+    import torch
+    free, total = (x / 2**30 for x in torch.cuda.mem_get_info())
+    weights = sum(f.stat().st_size for f in Path(path).glob("model*.safetensors")) / 2**30
+    need = float(gpu_memory_gb) if gpu_memory_gb else weights + WORK_GIB
+    if need <= weights:
+        raise SystemExit(f"votum: {need:.1f} GiB of GPU memory is less than the weights alone ({weights:.1f} GiB)")
+    if need > free:
+        fp8 = json.loads((Path(path) / "config.json").read_text()).get("quantization_config")
+        hint = "" if fp8 else " The FP8 variant (Votum-8B-FP8, or `votum quantize` for your own checkpoint) needs about 12 GiB."
+        raise SystemExit(f"votum: this model needs about {need:.0f} GiB of GPU memory; {free:.1f} of {total:.1f} GiB are free.{hint}")
+    return need / total, need
+
+
 def register() -> None:
     """vLLM plugin hook (entry point vllm.general_plugins) and in-process registration."""
     from vllm import ModelRegistry
@@ -29,8 +48,8 @@ def register() -> None:
 
 
 class VotumVLLM:
-    def __init__(self, path: str | Path, *, max_model_len: int = 8192, gpu_memory_utilization: float = 0.75,
-                 max_num_seqs: int = 256, pack: bool = True, prefix_cache_mb: float | None = None,
+    def __init__(self, path: str | Path, *, max_model_len: int = 8192, gpu_memory_utilization: float | None = None,
+                 gpu_memory_gb: float | None = None, max_num_seqs: int = 256, pack: bool = True, prefix_cache_mb: float | None = None,
                  state_cache_mb: float | None = None, warmup: bool = True, **engine_kwargs: Any) -> None:
         # the client registers prompt layouts in-process, so the engine must run in this process. Set here, not at
         # import: the plugin entry point imports this module for every vLLM run in the environment.
@@ -44,6 +63,7 @@ class VotumVLLM:
         self.path = resolve(str(path), None, None, ["config.json", "votum_config.json", "model*.safetensors", "model.safetensors.index.json",
                                                     "lora/*", *TOKENIZER_FILES])      # a local directory or a Hub repo (not its adapter/)
         self.cfg = json.loads((self.path / "config.json").read_text())
+        self.fp8 = bool(self.cfg.get("quantization_config"))
         self.T = self.cfg["decision_temperatures"]; h = self.cfg["decision_header"]
         self.header = dict(max_q=int(h.get("max_q", 8)), max_opts=h.get("max_opts"),
                            sort=bool(h.get("sort", True)), chunk=os.environ.get("VOTUM_HEADER_CHUNK", "1" if h.get("chunk") else "0") == "1")
@@ -54,6 +74,11 @@ class VotumVLLM:
             self.lora = LoRARequest("votum", 1, str(self.path / "lora"))
             engine_kwargs.update(enable_lora=True, max_lora_rank=max(8, r), max_loras=1)
             max_num_seqs = min(max_num_seqs, 32)   # LoRA buffers + warm-up peak do not fit a 24 GB card at 256 (measured)
+            if gpu_memory_utilization is None and gpu_memory_gb is None: gpu_memory_utilization = 0.75
+        # memory: an explicit share of the card, or an amount in GiB, or by default the weights plus WORK_GIB (so the
+        # FP8 variant reserves about 12 GiB on any card instead of a fixed share)
+        if gpu_memory_utilization is None: gpu_memory_utilization, self.memory_gib = memory_share(self.path, gpu_memory_gb)
+        else: self.memory_gib = None
         self.llm = LLM(model=str(self.path), runner="pooling", max_model_len=max_model_len, dtype="bfloat16",
                        enable_chunked_prefill=False, enable_prefix_caching=False,
                        max_num_batched_tokens=max(max_model_len, engine_kwargs.pop("max_num_batched_tokens", 8192)),

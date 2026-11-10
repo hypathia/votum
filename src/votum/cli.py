@@ -2,6 +2,7 @@
 
     votum decide --repo <org>/Votum-8B [--request req.json | < req.json] [--exact] [--device cuda|cpu]   PyTorch reference, one request
     votum serve  --model <org>/Votum-8B [--host 127.0.0.1] [--port 8011]  vLLM HTTP server (/v1/systemone; more options: votum serve --help)
+    votum quantize --model <org>/Votum-8B --out <dir>                     FP8 copy of a checkpoint, about half the size (votum quantize --help)
     votum build  --adapter <org>/Votum-8B --out <dir> [--exact] [--link] [--base <dir>]   rebuild a checkpoint from the adapter form
 """
 from __future__ import annotations
@@ -16,6 +17,8 @@ def main(argv=None) -> None:
     cmd, rest = argv[0], argv[1:]
     if cmd == "build":
         from .build import main as m; m(rest)
+    elif cmd == "quantize":
+        from .fp8 import main as m; m(rest)
     elif cmd == "serve":
         from .vllm.server import main as m; m(rest)
     elif cmd == "decide":
