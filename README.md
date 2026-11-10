@@ -13,7 +13,7 @@
 
 <p align="center">
   <a href="#quickstart">Quickstart</a> ·
-  <a href="#ask-a-question">Ask a question</a> ·
+  <a href="#request-and-response">Request and response</a> ·
   <a href="#images">Images</a> ·
   <a href="#run-it-as-a-server">Server</a> ·
   <a href="#speed">Speed</a> ·
@@ -131,7 +131,7 @@ print(out["answers"])
 
 Votum returns probabilities, not just a label, so high-confidence answers can be acted on and the rest escalated.
 
-## Ask a question
+## Request and response
 
 A request has two parts:
 
