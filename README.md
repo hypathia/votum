@@ -154,7 +154,7 @@ Three things help the model:
 
 - **Describe the options.** `{"billing": "Billing and payments"}` works better than a bare `"billing"`.
 - **Ask in the language of your text, or in English.** Votum was built for English, German, French and Italian.
-- **Keep it within 8,192 tokens** (roughly 30,000 characters) for the state, one question and its options. A longer
+- **Keep it within 8,192 tokens** for the state, one question and its options. A longer
   request is refused with an error; it is never silently cut short.
 
 The words `noul`, `instructions` and `criteria` come from the request format of the [Jev and Jeff](#acknowledgements)
