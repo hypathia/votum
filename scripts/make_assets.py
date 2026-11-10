@@ -1,5 +1,6 @@
 """Architecture, example and data graphics for the Votum repos (SVG source + 2x PNG), in a product / landing-page style:
-cards with depth, hero numbers, one strong red accent, Inter Display headings, JetBrains Mono for prompts.
+cards with depth, one strong red accent, JetBrains Mono for prompts. Figures carry no title of their own: the page that
+embeds them has the heading.
 Every figure is drawn twice: <name>.png on a light grey backdrop with white elevated cards (light pages, and still legible
 where a viewer falls back to it on a dark background), and <name>_dark.png on a transparent canvas with translucent cards.
 The PNGs are stored as 8-bit palettes: every frequent flat colour keeps an exact palette entry, so only anti-aliased
@@ -118,11 +119,11 @@ def palettize(im, n_flat=96):
 
 
 def head(kicker, title, sub):
-    """eyebrow, display title, one-line subtitle; content starts at y = 96"""
-    return eyebrow(PAD, 36, kicker) + big(PAD, 64, title, 26, INK) + T(PAD, 86, sub, 13, MUTED)
+    """figures carry no title of their own: the page that embeds them has the heading and the caption"""
+    return ""
 
 
-TOP = 104
+TOP = PAD
 
 
 def tile(x, y, w, h, kicker, value, label, hero=False, unit=""):
@@ -229,12 +230,9 @@ def architecture():
             parts.append(bar(cx, yc - 6, 27, 12, SWISS, 3) + T(cx + 13.5, yc + 3.2, "end", 9, WHITE, 600, "middle"))
             opt_y.append((qi, oid, z, a["probs"][oid], yc))
     a_bottom = y
-    cbot = a_bottom + 52; ch = cbot - ctop
-    b.append(card(PAD, ctop, c1w, ch) + step(PAD + 16, ctop + 32, 1, "The request as one prompt"))
+    cbot = a_bottom + 30; ch = cbot - ctop
+    b.append(card(PAD, ctop, c1w, ch) + step(PAD + 16, ctop + 32, 1, "One prompt"))
     b += parts
-    b.append(T(ax + 26, a_bottom + 16, "The prompt verbatim, system turn not shown.", 10.5, MUTED))
-    b.append(T(ax + 26, a_bottom + 30, "The header tells the state what will be asked; the question", 10.5, MUTED))
-    b.append(T(ax + 26, a_bottom + 44, "blocks are where options are scored, each at its end token.", 10.5, MUTED))
 
     # 2 who reads whom
     c2x = PAD + c1w + GAP
@@ -257,15 +255,10 @@ def architecture():
                      f'fill="{(GRID, SUB, RED)[v] if v or c <= k else OFF}"/>')
     ly = my + n * cs + 22; lx = c2x + 20
     b.append(bar(lx, ly - 8, 9, 9, SUB, 2) + T(lx + 14, ly, "row reads column", 10.5, MUTED))
-    b.append(bar(lx, ly + 7, 9, 9, RED, 2) + T(lx + 14, ly + 15, "within a block: causal, or both ways", 10.5, MUTED))
-    b.append(T(lx + 14, ly + 29, "in the 8 bidirectional layers", 10.5, MUTED))
-    b.append(T(lx, ly + 50, "Options never read each other and nothing", 10.5, MUTED))
-    b.append(T(lx, ly + 64, "reads them: each question stands alone.", 10.5, MUTED))
-    b.append(T(lx, ly + 84, "Header + state are identical for every", 10.5, MUTED))
-    b.append(T(lx, ly + 98, "question, so they are computed once.", 10.5, MUTED))
+    b.append(bar(lx, ly + 7, 9, 9, RED, 2) + T(lx + 14, ly + 15, "the block itself", 10.5, MUTED))
 
     # 3 one pass, one score per option: backbone column + scores aligned with the option rows
-    b.append(card(c3x, ctop, c3w, ch) + step(c3x + 16, ctop + 32, 3, "One pass, one score per option"))
+    b.append(card(c3x, ctop, c3w, ch) + step(c3x + 16, ctop + 32, 3, "One score per option"))
     bx, bw = c3x + 24, 40; by = in_top + 2; lh2 = (a_bottom - 2 - by) / 32
     b.append(bar(bx - 8, by - 8, bw + 16, 32 * lh2 + 14, OFF, 8))
     for L in range(32):
@@ -273,15 +266,7 @@ def architecture():
         b.append(bar(bx, by + L * lh2 + (lh2 - 4) / 2, bw, 4, RED if bid else NEUTRAL, 2))
     b.append(T(bx + bw / 2, a_bottom + 16, "Apertus-8B", 10.5, MUTED, 600, "middle"))
     px = bx + bw + 36; pr = c3x + c3w - 20
-    fy = in_top + 16 + (q_y[0] - 20 - in_top - 40) / 2       # formula block centred above the first scores
-    b.append(rich(px, fy, [("z = ⟨q", ""), ("0", "sub"), (", W", ""), ("o", "sub"), (" · LN(h", ""), ("end", "sub"), (")⟩ / 16", "")], 13, INK, 600))
-    b.append(T(px, fy + 18, "h: last-layer state at the option's end token", 10.5, MUTED))
-    b.append(rich(px, fy + 33, [("q", ""), ("0", "sub"), (": learned 256-d query · W", ""), ("o", "sub"), (": 256 × 4096", "")], 10.5, MUTED))
-    b.append(bar(bx - 8, a_bottom + 27, 9, 9, RED, 2) + T(bx + 6, a_bottom + 35, "bidirectional layers (8 of 32) · LoRA r16 in all 32 · nothing generated", 10.5, MUTED))
     zx = px + 46
-    for qi in q_y:
-        first = min(yc for qq, _, _, _, yc in opt_y if qq == qi)      # label just above the question's first option row
-        b.append(T(px, first - 20, "z  →  softmax over the options", 11, MUTED, 600))
     for qi, oid, z, p, yc in opt_y:
         win = p == max(pp for qq, _, _, pp, _ in opt_y if qq == qi)
         b.append(T(zx + 50, yc + 4, f"{z:+.2f}", 10.5, MUTED, 500, "end", f'font-family="{MONO}"'))
@@ -301,7 +286,7 @@ CARDS = [("An email · three questions in one request", [["team"], ["refund", "u
 
 def ex_card(x, y, w, title, state, rows, json_state, h_min=0):
     """one example card; cards of a grid row share a height (h_min) and their question rows line up"""
-    b = [eyebrow(x + 20, y + 28, title)]; yy = y + 36
+    b = []; yy = y + 10
     lim = 82 if json_state else 90; lines = wrap(state, lim)
     if len(lines) == 2 and not json_state:
         sent = [k + 2 for k in range(len(state) - 2) if state[k] == "." and state[k + 1] == " "]   # break at a sentence end if it fits
@@ -363,10 +348,10 @@ def thumb(path, w, h_max):
 
 def vx_card(x, y, w, k, title, req, ans, h_min=0):
     """one image card: the photo and the state's other fields on the left, the request's questions on the right"""
-    b = [eyebrow(x + 20, y + 28, title)]
+    b = []
     src = next(v["image"] for v in req["state"].values() if isinstance(v, dict) and "image" in v)
     uri, dw, dh = thumb(FIX / src, IMG_W, 210)
-    ix, iy = x + 20, y + 44
+    ix, iy = x + 20, y + 22
     b.append(f'<clipPath id="vc{k}"><rect x="{ix:.1f}" y="{iy:.1f}" width="{dw:.1f}" height="{dh:.1f}" rx="8"/></clipPath>'
              f'<image href="{uri}" x="{ix:.1f}" y="{iy:.1f}" width="{dw:.1f}" height="{dh:.1f}" clip-path="url(#vc{k})" preserveAspectRatio="none"/>'
              f'<rect x="{ix + .5:.1f}" y="{iy + .5:.1f}" width="{dw - 1:.1f}" height="{dh - 1:.1f}" rx="7.5" fill="none" stroke="{EDGE}"/>')
@@ -374,7 +359,7 @@ def vx_card(x, y, w, k, title, req, ans, h_min=0):
     yy = iy + dh + 4
     for ln in wrap(rest.replace('"@IMG@"', "<image>"), 32):
         yy += 14; b.append(T(ix, yy, ln, 9.5, MUTED, 400, extra=f'font-family="{MONO}"'))
-    qx = ix + IMG_W + 22; qw = x + w - 20 - qx; yq = y + 44
+    qx = ix + IMG_W + 22; qw = x + w - 20 - qx; yq = y + 22
     longest = max(textw(t, 11) for q in req["questions"].values() for t in option_labels(q).values())
     lab = min(0.62, max(0.42, (longest * 1.12 + 18) / qw))      # one label column per card, wide enough for its longest label
     for qid, q in req["questions"].items():
