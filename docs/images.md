@@ -76,7 +76,7 @@ option:
 | A-OKVQA: questions about photos, 4 options (25 %) | 68.3 % | 68.5 % | 76.0 % |
 | POPE: is this object in the photo? (50 %) | 80.4 % | 79.4 % | 82.8 % |
 | CIFAR-10: what does the photo show? 10 classes (10 %) | 73.1 % | 73.5 % | 71.4 % |
-| RVL-CDIP: which of 16 document types? (6 %) | 25.5 % | | 29.5 % |
+| RVL-CDIP: which of 16 document types? (6 %) | 25.5 % | not measured | 29.5 % |
 
 Everyday photos work well. Reading the text in a scanned document does not yet: the payment reminder in the figure is
 classified correctly, but with little confidence. The figure shows 6 of the 12 image requests written for this page;
