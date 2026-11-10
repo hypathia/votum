@@ -129,8 +129,7 @@ print(out["answers"])
 }
 ```
 
-Votum returns probabilities, not just a label, so your program can act on the confident answers and escalate the
-rest.
+Votum returns probabilities, not just a label, so high-confidence answers can be acted on and the rest escalated.
 
 ## Ask a question
 
