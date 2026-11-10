@@ -36,9 +36,9 @@ The open weights and the open dataset are on Hugging Face: [Votum-8B](https://hu
 
 ## Quickstart
 
-You need Python 3.11 or newer and an NVIDIA graphics card (GPU). Pick the model that fits it:
+You need Python 3.11 or newer and an NVIDIA GPU. Pick the model that fits it:
 
-| Your GPU has | Use | Good to know |
+| GPU memory | Model | Notes |
 |---|---|---|
 | 24 GB or more | [votum-ai/Votum-8B](https://huggingface.co/votum-ai/Votum-8B) | the full model, a 16 GB download |
 | 16 GB | [votum-ai/Votum-8B-FP8](https://huggingface.co/votum-ai/Votum-8B-FP8) | FP8-quantized weights, a 9 GB download; it gives the same answer as the full model 96 to 99 % of the time |
@@ -49,9 +49,8 @@ You need Python 3.11 or newer and an NVIDIA graphics card (GPU). Pick the model 
 pip install "votum @ git+https://github.com/hypathia/votum"
 ```
 
-**2. Get access to the model.** The download needs nothing but this one repository, but it is gated, because it
-contains Apertus weights: open [votum-ai/Votum-8B](https://huggingface.co/votum-ai/Votum-8B), accept the Apertus
-Acceptable Use Policy there once, then log in on your machine:
+**2. Get access to the model.** The model is gated: accept the Apertus Acceptable Use Policy on
+[votum-ai/Votum-8B](https://huggingface.co/votum-ai/Votum-8B), then log in:
 
 ```bash
 hf auth login
@@ -63,7 +62,7 @@ hf auth login
 from votum import Votum
 
 # On a 16 GB GPU, use "votum-ai/Votum-8B-FP8" instead.
-vm = Votum.from_pretrained("votum-ai/Votum-8B")  # downloads the model the first time
+vm = Votum.from_pretrained("votum-ai/Votum-8B")
 
 request = {
     "state": "Hi, I was charged twice for my October invoice (INV-4411). Could you refund one of the two payments?",
@@ -130,9 +129,8 @@ print(out["answers"])
 }
 ```
 
-Read it as: send the ticket to billing (96 % sure); the customer very likely wants a refund (90 %); the urgency is
-around medium, and the model is not sure (41 %). That is why Votum returns probabilities and not just a label: your
-program can act on the confident answers and pass the others to a person.
+Votum returns probabilities, not just a label, so your program can act on the confident answers and pass the others
+to a person.
 
 ## Ask a question
 
@@ -156,8 +154,8 @@ Three things help the model:
 - **Keep it within 8,192 tokens** for the state, one question and its options. A longer
   request is refused with an error; it is never silently cut short.
 
-The words `noul`, `instructions` and `criteria` come from the request format of the [Jev and Jeff](#acknowledgements)
-decision models. Votum follows it so that programs written for those models work unchanged.
+The request format (`noul`, `instructions`, `criteria`) is that of [Jev and Jeff](#acknowledgements), so their clients
+work unchanged.
 
 ## Images
 
@@ -209,8 +207,17 @@ votum serve --model votum-ai/Votum-8B --port 8011
 ```bash
 curl -s localhost:8011/v1/systemone -H 'content-type: application/json' -d '{
   "state": "The printer on floor 3 is jammed again.",
-  "questions": {"team": {"type": "choice", "instructions": "Which team?",
-                         "criteria": {"it": "IT support", "fac": "Facilities"}}}}'
+  "questions": {
+    "team": {
+      "type": "choice",
+      "instructions": "Which team?",
+      "criteria": {
+        "it": "IT support",
+        "fac": "Facilities"
+      }
+    }
+  }
+}'
 ```
 
 The server takes the same request as `vm.decide` and returns the same answers. The address and the format are those
@@ -222,25 +229,24 @@ and the other settings.
 
 Measured on one NVIDIA RTX 4090 (24 GB) with the full Votum-8B, running as a server:
 
-| What is asked | Size of the prompt | Time for one request | Decisions/s, many requests at once |
-|---|---|---:|---:|
-| 1 question about a short text | about 450 tokens | 39 ms | 23.5 |
-| 1 question about a long document | about 3,000 tokens | 323 ms | 3.1 |
-| 8 questions about a long document | about 3,300 tokens | 465 ms | 15.8 |
+| Request | Prompt tokens | Latency | Decisions/s, many requests at once |
+|---|---:|---:|---:|
+| 1 question about a short text | ~450 | 39 ms | 23.5 |
+| 1 question about a long document | ~3,000 | 323 ms | 3.1 |
+| 8 questions about a long document | ~3,300 | 465 ms | 15.8 |
 
 Asking several questions about the same state at once is cheaper than asking them one by one, because the state is
 read only once. With eight questions per request, the long document gives 5 times as many decisions per second as
 with one.
 
 For comparison, the same Apertus model *writing* the answer and its probabilities as JSON takes 1.1 s for the short
-text, about 27 times longer. [docs/benchmarks.md](docs/benchmarks.md) says exactly how each number was measured.
+text, against 39 ms. [docs/benchmarks.md](docs/benchmarks.md) says exactly how each number was measured.
 
 ## How good are the answers?
 
-Votum-8B is a small model, so expect solid everyday judgement, not expert knowledge. Some reference points, on public
-test sets it was not trained on:
+Accuracy on public test sets outside the training data:
 
-| Task | Correct | Correct among the most confident half |
+| Task | Accuracy | Accuracy among the most confident half |
 |---|---:|---:|
 | Yes/no questions about a passage (BoolQ) | 88.9 % | 98.2 % |
 | Topic of a text, in 12 languages (SIB-200) | 82.4 % | 97.4 % |
@@ -248,17 +254,14 @@ test sets it was not trained on:
 | School and university exam questions (MMLU) | 60.4 % | 82.1 % |
 
 The last column is why the probabilities matter: when Votum says it is sure, it is right far more often. The
-[model card](https://huggingface.co/votum-ai/Votum-8B#evaluation) has the full evaluation, and an honest list of
+[model card](https://huggingface.co/votum-ai/Votum-8B#evaluation) has the full evaluation and the
 [limitations](https://huggingface.co/votum-ai/Votum-8B#limitations).
 
 ## How it works
 
-Votum is Apertus-1.5-8B with two additions: a small set of weight changes (a LoRA adapter) and a small extra layer
-that scores answers.
-
 1. **Your request becomes one prompt:** the list of questions, then the state, then each question with its options.
-2. **The model reads it once.** Rules decide which parts of the prompt may look at which. In particular, the options
-   never see each other, so the order in which you list them does not change the answer.
+2. **The model reads it once.** An attention mask keeps the options from seeing each other, so the order in which
+   you list them does not change the answer.
 3. **Each option gets a score,** read off the model at the end of that option. The scores of a question are turned
    into probabilities that sum to one.
 
@@ -280,9 +283,6 @@ enough.
 | [docs/benchmarks.md](docs/benchmarks.md) | speed measurements and how they were made |
 | [docs/internals.md](docs/internals.md) | how the model works inside, the repository layout, tests, reproducing the release |
 | [training/README.md](training/README.md) | fine-tuning on your own data |
-| [Votum-8B model card](https://huggingface.co/votum-ai/Votum-8B) | evaluation, training data, limitations |
-| [Votum-8B-FP8 model card](https://huggingface.co/votum-ai/Votum-8B-FP8) | the compressed model and what it trades away |
-| [Votum-Pool dataset card](https://huggingface.co/datasets/votum-ai/Votum-Pool) | the training data and its sources |
 
 ## Acknowledgements
 
