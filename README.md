@@ -63,6 +63,7 @@ hf auth login
 ```python
 from votum import Votum
 
+# On a 16 GB GPU, use "votum-ai/Votum-8B-FP8" instead.
 vm = Votum.from_pretrained("votum-ai/Votum-8B")  # downloads the model the first time
 
 request = {
