@@ -16,11 +16,10 @@ is compared with Apertus-1.5-8B generating its answer.
 | **Votum-8B** | **single-pass decision** | 1 question, ~445 tokens | **0** | **39 ms** | **23.5** |
 | Apertus-1.5-8B | structured output: choice | 1 question, ~445 tokens | 8 | 206 ms | 21.0 |
 | Apertus-1.5-8B | structured output: choice and probabilities | 1 question, ~445 tokens | 54 | 1.1 s | 10.9 |
-| Apertus-1.5-8B | reasoning, then the answer | 1 question, ~445 tokens | 370 | 10.5 s | 1.9 (64 sent at once) |
 
-The Votum row is the released model on vLLM 0.33, with latency taken over 50 requests. The three Apertus rows were
+The Votum row is the released model on vLLM 0.33, with latency taken over 50 requests. The two Apertus rows were
 measured earlier on the same card, with vLLM 0.12 and a different sample of 256 OpenDecisions items, so the comparison
-is close but not exactly like for like. The reasoning row is free text capped at 512 new tokens.
+is close but not exactly like for like.
 
 ## A long document, several questions
 
