@@ -22,7 +22,9 @@ curl -s localhost:8011/v1/systemone -H 'content-type: application/json' -H "Auth
                          "criteria": {"it": "IT support", "fac": "Facilities"}}}}'
 ```
 
-The body is the request described in the [README](../README.md#request-and-response): a `state` and up to 8 `questions`.
+The body is the request described in the [README](../README.md#request-and-response): a `state` and its `questions`
+(64 per request by default, see [Settings](#settings); the model itself has no limit). Requests of up to 8 questions
+are the fastest per decision: beyond eight, the questions no longer share one reading of the state.
 The response has one entry per question under `answers`, in the same form `vm.decide` returns. Its
 `usage.output_tokens` is always 0, because nothing is generated.
 

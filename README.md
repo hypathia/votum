@@ -164,6 +164,9 @@ Notes:
   state or in English.
 - **Context.** The state, one question and its options must fit in 8,192 tokens. A longer request is refused with an
   error, never truncated.
+- **Questions.** The architecture puts no limit on the number of questions per request: each question is scored in
+  its own pass over the shared state, so only a single question's prompt has to fit. The server accepts 64 per
+  request by default (`VOTUM_MAX_QUESTIONS`).
 
 The request format (`noul`, `instructions`, `criteria`) is that of [Jev and Jeff](#acknowledgements), so their clients
 work unchanged.
