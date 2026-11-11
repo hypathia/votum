@@ -1,8 +1,8 @@
 # The pool pipeline (data/clean). Python 3.11+. The versions in the comments are the ones the published dataset was built with.
 numpy>=1.26          # clean                          (2.5.4)
 pyarrow>=14          # export                         (26.0.1)
-gliner==0.2.30       # mask, audit gliner             (pulls in torch and transformers; torch 2.15.0, transformers 5.22.2)
-torch>=2.1
-# `mask --no-ner` and `audit sample|regex|report` need only the standard library.
+# `mask` (with the NER model off, as for this pool) and `audit sample|regex|report` need only the standard library.
+# Optional, for `mask` with "ner": true and for `audit gliner`:
+#   pip install gliner==0.2.30 "torch>=2.1"     (torch 2.15.0, transformers 5.22.2)
 # Optional, for `mask --flash` (about twice as fast):   pip install flashdeberta      (0.0.9)
 # Optional, for `audit spacy`:                          pip install spacy && python -m spacy download en_core_web_trf

@@ -10,15 +10,16 @@ Each row is handled according to its source's entry in the config:
                    1. regular expressions: [EMAIL] [PHONE] [IBAN] [ID] [CARD] [IP], [URL] for URLs that carry a
                       personal identifier (plain domain URLs are kept), [ADDRESS] for street addresses, and [NAME]
                       for wiki user references (User:xyz, Benutzer:xyz) when the config masks names;
-                   2. the NER model (GLiNER multilingual PII): address spans that contain a digit become [ADDRESS]
-                      in every self-collected source; person and username spans become [NAME] only in the sources
-                      whose entry says `"names": true`.
+                   2. unless the config says "mask": {"ner": false}, the NER model (GLiNER multilingual PII):
+                      address spans that contain a digit become [ADDRESS] in every self-collected source; person and
+                      username spans become [NAME] only in the sources whose entry says `"names": true`.
                    If masking makes two option texts of a row identical, the row is dropped (listed in
                    pii_dropped.tsv).
 
-Last, every e-mail address still left in any row, whatever its source, becomes [EMAIL]; the office mailboxes and the
-placeholder domains listed in the config are kept. This also catches the addresses that the source datasets' own
-masking missed.
+Last, two sweeps run over every row, whatever its source, and also catch what the source datasets' own masking missed:
+every e-mail address still left becomes [EMAIL] (the office mailboxes and the placeholder domains listed in the config
+are kept), and every telephone number in a form that cannot be mistaken for a case number or a code becomes [PHONE]
+(see phone_spans).
 
 The model's work is cached per text. The stage runs in three steps: a parallel pass over the rows that applies the
 regular expressions and collects the texts the model has not seen yet; the model on those texts, its raw output going
@@ -42,7 +43,7 @@ import warnings
 
 from . import engine
 
-DEFAULTS = {"model": "urchade/gliner_multi_pii-v1", "thresholds": {"person": 0.5, "address": 0.5, "username": 0.7},
+DEFAULTS = {"ner": True, "model": "urchade/gliner_multi_pii-v1", "thresholds": {"person": 0.5, "address": 0.5, "username": 0.7},
             "stop_spans": None, "keep_emails": [], "keep_email_hosts": ["example.com", "example.org", "example.net"]}
 G = {}                                              # state shared with the workers (set before a pool is made)
 
@@ -564,6 +565,48 @@ def sweep_emails(x, keep=frozenset(), keep_hosts=()):
     return engine.map_strings(x, lambda s: SWEEP_EMAIL.sub(lambda m: m.group(0) if kept(m.group(0)) else "[EMAIL]", s))
 
 
+# ----------------------------------------------------------------------------------------------- phone sweep
+# Stricter than the regex layer, because it also runs on the redistributed rows, whose numbers are mostly case numbers,
+# tariff codes and tables: a number counts only in international form (+41 31 ...), in North American form
+# ((415) 555-0134, 415-555-0134), or right after a telephone word ("phone number 01223 566388", "call 0906...").
+_PHONE_WORD = re.compile(r"(?i)(?:\btel(?:efon|ephone|éphone|efono|\.)?|\bt[ée]l[ée]phone|\bphone|\bmobile?|\bmob|\bcell(?:ular)?|"
+                         r"\bcellulare|\bnatel|\bhandy|\bfax|\bvoice|\bcall(?:ed|ing)?(?!\s+signs?\b)|\bwhatsapp|\bportable|"
+                         r"\bhotline|\bcontact(?:ez|er)?|\bdial|\bsms|\bnumero|\bnummer|\bnuméro)\b[^\n\d+]{0,25}$")
+_NANP = re.compile(r"(?<![\w.+/-])(?:\+?1[\s.-])?(?:\([2-9]\d\d\)\s?|[2-9]\d\d[.-])[2-9]\d\d[\s.-]\d{4}(?![\w/-])(?!\.\d)")
+
+
+def phone_spans(t):
+    """-> [(start, end)] of the telephone numbers in t that the sweep masks"""
+    out = [m.span() for m in PHONE_INTL.finditer(t) if _phone2_ok(m)]
+    out += [m.span() for m in _NANP.finditer(t)]
+    for rx, ok in ((PHONE, _phone_ok), (PHONE_NATL, _phone2_ok)):
+        out += [m.span() for m in rx.finditer(t) if ok(m) and _PHONE_WORD.search(t[max(0, m.start() - 40):m.start()])]
+    out += [m.span(2) for m in PHONE_BARE.finditer(t)]
+    return out
+
+
+def sweep_phones_text(t):
+    """-> (t with its telephone numbers masked, number masked)"""
+    if sum(c.isdigit() for c in t) < 7:
+        return t, 0
+    spans = sorted(phone_spans(t))
+    if not spans:
+        return t, 0
+    res, pos, n = [], 0, 0
+    for a, b in spans:
+        if a < pos:                                     # overlaps the previous match
+            continue
+        res += [t[pos:a], "[PHONE]"]
+        pos, n = b, n + 1
+    res.append(t[pos:])
+    return "".join(res), n
+
+
+def sweep_phones(x):
+    """Mask the telephone numbers in every string inside x (nested dicts and lists)."""
+    return engine.map_strings(x, lambda s: sweep_phones_text(s)[0])
+
+
 # ----------------------------------------------------------------------------------------------- rows
 def merge_counts(a, b):
     for k, v in b.items():
@@ -641,12 +684,16 @@ def mask_rows(lines, cfg, filters, cache, no_ner=False):
             else:
                 new = None
         stats[r["source"]]["rows_out"] += 1
+        cur = new if new is not None else r
         if new is not None or b"@" in line or b"\\u0040" in line:
-            cur = new if new is not None else r
             swept = dict(cur, **{k: sweep_emails(cur[k], keep, hosts) for k in ("state", "question", "options") if k in cur})
             if swept != cur:
                 stats[r["source"]]["email_sweep_rows"] += 1
-                new = swept
+                cur = new = swept
+        swept = dict(cur, **{k: sweep_phones(cur[k]) for k in ("state", "question", "options") if k in cur})
+        if swept != cur:
+            stats[r["source"]]["phone_sweep_rows"] += 1
+            new = swept
         out.append(line if new is None else engine.dump(new))
     return out, {k: dict(v) for k, v in stats.items()}, dropped, {}
 
@@ -665,10 +712,11 @@ def run(cfg, pool_dir, out_dir, cache_dir=None, workers=None, device="cuda", pre
     into out_dir. With part = (k, N) only the model runs, on the k-th of N shares of the missing texts (one process
     per GPU; run once more without it to write the rows). -> the report, or None with `part`"""
     t_start = time.time()
-    if part and no_ner:
-        raise engine.PoolError("--part runs the model; it cannot be combined with --no-ner")
-    os.makedirs(out_dir, exist_ok=True)
     opt = dict(DEFAULTS, **cfg.get("mask", {}))
+    no_ner = no_ner or not opt["ner"]
+    if part and no_ner:
+        raise engine.PoolError("--part runs the model; it cannot be combined with --no-ner or \"ner\": false")
+    os.makedirs(out_dir, exist_ok=True)
     th = dict(DEFAULTS["thresholds"], **opt.get("thresholds", {}))
     filters = Filters(th["person"], th["address"], th["username"], read_stop_spans(opt["stop_spans"]))
     variant = {"model": opt["model"], "precision": precision, "attention": "flash" if flash else "standard", "labels": LABELS,

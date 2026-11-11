@@ -63,7 +63,7 @@ def parser():
                      help="fp32 is what the published dataset was made with; fp16 is about twice as fast and changes a few borderline spans")
     ner.add_argument("--flash", action="store_true", help="FlashDeBERTa attention (pip install flashdeberta): about twice as fast again")
     ner.add_argument("--batch", type=int, default=24, help="windows per model batch (lower it on a small or shared GPU)")
-    ner.add_argument("--no-ner", action="store_true", help="regular expressions only (tests, dry runs)")
+    ner.add_argument("--no-ner", action="store_true", help="regular expressions only, whatever mask.ner in the config says")
 
     flags = argparse.ArgumentParser(add_help=False)
     flags.add_argument("--flag", type=_flag, action="append", default=[], metavar="NAME=FILE",

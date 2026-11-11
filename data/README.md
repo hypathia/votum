@@ -67,8 +67,8 @@ The `clean` stage of `clean/pool.py` removes three things:
 - every row that overlaps a benchmark: its state shares a word 8-gram with a benchmark item (16-character grams for
   scripts written without spaces), or its question quotes one.
 
-That leaves 744,057 training rows from 188 sources. The `mask` stage then drops seven more sources and masks personal
-data, which gives the published 723,257 training rows from 181 sources; 328,075 of them were in pool v7 (column
+That leaves 744,057 training rows from 188 sources. The `mask` stage then drops seven more sources and masks contact
+details and identifiers (names stay), which gives the published 723,257 training rows from 181 sources; 328,075 of them were in pool v7 (column
 `in_votum_8b` of the dataset). `clean/README.md` describes each stage.
 
 **What is not released.** The code that converted each source into rows stays private. It depends on raw downloads,

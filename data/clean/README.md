@@ -7,7 +7,7 @@ planned re-train. It has three stages and an audit.
 | Stage | In one line | Writes |
 |---|---|---|
 | `clean` | removes sources and rows that should not be in the pool | `clean/` |
-| `mask` | masks personal data, and e-mail addresses everywhere | `clean_pii/` |
+| `mask` | masks contact details and identifiers; e-mail addresses and phone numbers in every row | `clean_pii/` |
 | `export` | writes the dataset files | `dataset/` |
 | `audit` | checks a 500-row sample independently | `audit/` |
 
@@ -23,8 +23,8 @@ happens to each source, and every setting, is in one file, `pool.json`.
 
 ## Requirements
 
-Python 3.11 or newer and `pip install -r requirements.txt` (numpy, pyarrow, gliner with torch). The `mask` stage runs
-a NER model and wants a GPU; everything else runs on the CPU.
+Python 3.11 or newer and `pip install -r requirements.txt` (numpy and pyarrow; gliner with torch only if you turn the
+NER model on). Everything runs on the CPU.
 
 ## Run it
 
@@ -41,7 +41,7 @@ python -I pool.py clean  --pool <pool> --out work/clean --bench <benchmark jsonl
 python -I pool.py mask   --pool work/clean --out work/clean_pii
 python -I pool.py export --pool work/clean_pii --out work/dataset [--flag in_votum_8b=ids.txt.gz]
 python -I pool.py audit sample --pool work/clean_pii --audit-dir work/audit
-python -I pool.py audit regex  --audit-dir work/audit          # then spacy and gliner (optional), then:
+python -I pool.py audit regex  --audit-dir work/audit
 python -I pool.py audit report --audit-dir work/audit
 ```
 
@@ -54,27 +54,22 @@ does not depend on the number of workers. On the whole pool (888,000 rows, 2.4 G
 
 | Stage | Time |
 |---|---:|
-| `clean` | 25 s |
-| `mask`, texts already seen by the model | 14 s |
-| `export` | 7 s |
-| all stages and the audit sample | 56 s |
+| `clean` | 30 s |
+| `mask` | 18 s |
+| `export` | 10 s |
+| all stages and the audit sample | 71 s |
 
-The NER model is the only slow part, so its output is cached per text, in `work/ner_cache`. Only texts the model has
-not seen go through it: adding rows, changing a threshold, the stop spans or a source's entry costs seconds, and a
-run with a complete cache needs no GPU. The cache holds offsets of personal data; keep it local.
+### The NER model (off for this pool)
 
-A first run has to send every text through the model. On one RTX 4090, for the 203,000 distinct texts of the
-self-collected sources:
+`mask` can also mask names and addresses with a NER model (`"ner": true` in the `mask` section). The published
+dataset does not: tested on this pool, the model masked mostly role words ("Ehefrau", "Wykonawca"), companies and
+public figures, while the names it was meant for are published openly by the sources anyway.
 
-| Setting | Time | Rows masked differently |
-|---|---:|---:|
-| default (fp32) | 32 min | reference |
-| `--precision fp16 --flash` | 8 min | 733 of the 216,654 self-collected rows (0.3 %) |
-
-The differences are borderline spans, as many gained as lost.
-
-The published dataset was made with the default. `--flash` needs `pip install flashdeberta`. With several GPUs, run
-`mask --part k/N --device cuda:k` once per GPU, then `mask` once more to write the rows.
+With the model on, its output is cached per text, in `work/ner_cache`, so only texts it has not seen go through it.
+A first run on one RTX 4090 takes 32 min for the 203,000 distinct texts of the self-collected sources, or 8 min with
+`--precision fp16 --flash` (`pip install flashdeberta`), which changes a few borderline spans. With several GPUs, run
+`mask --part k/N --device cuda:k` once per GPU, then `mask` once more to write the rows. The cache holds offsets of
+personal data; keep it local.
 
 ## The row format
 
@@ -100,8 +95,8 @@ records without state text fall back to their `questions.*.instructions`.
 | Key | Meaning |
 |---|---|
 | `drop` | the source is removed: `"clean"` (before anything else) or `"mask"` (not cleared for redistribution; removed after the benchmark comparison). `drop_reason` says why |
-| `origin` | `redistributed` (a copy of a published dataset, left as its authors released it) or `self-collected` (masked) |
-| `names` | `true`: person names are masked too (sources about private people) |
+| `origin` | `redistributed` (a copy of a published dataset, left as its authors released it apart from the two sweeps) or `self-collected` (masked) |
+| `names` | `true`: person names are masked too, when the NER model is on (false everywhere in this pool) |
 | `config` | the dataset config the rows go to (`default` or `share_alike`) |
 | `license`, `upstream`, `description` | the licence tags, the upstream release and one line on what the source is, copied to `SOURCES.csv` |
 | `license_fix` | optional `[[text in license_detail, corrected tag], ...]`, applied by `export` |
@@ -112,7 +107,7 @@ Every source in the data needs an entry. The other sections hold the settings of
 | Section | Keys |
 |---|---|
 | `clean` | `drop_rows` (rows to drop by source, field and value), `must_drop_patterns` (a safety net: the run stops if a source name contains one of them and is not dropped), `decontaminate` (gram lengths and stop-list thresholds), and optionally `benchmarks` and `info_labels` |
-| `mask` | `model`, `thresholds`, `stop_spans` (a file of role words the model wrongly tags as names: Claimant, Antragsteller, she, ...), `keep_emails` and `keep_email_hosts` (addresses that are not masked) |
+| `mask` | `ner` (the NER model on or off), `keep_emails` and `keep_email_hosts` (addresses that are not masked); for the model: `model`, `thresholds`, `stop_spans` (a file of role words the model wrongly tags as names: Claimant, Antragsteller, she, ...) |
 | `export` | `configs`, `license_guard` (licence tags a config must not contain), and optionally `flags` |
 
 ## What each stage does
@@ -133,15 +128,15 @@ Kept rows are copied byte for byte. `REPORT.md` and `REPORT.json` give the count
 
 - drops the sources whose terms were not cleared for redistribution: six portal and government sources, and one
   source with conflicting licence tags;
-- leaves rows from already-published datasets as their authors released them;
-- masks the 17 sources the builder collected itself: structured identifiers by regular expression, names and
-  addresses with the NER model `urchade/gliner_multi_pii-v1`. Names are masked only in the sources about private
-  people;
-- replaces every e-mail address still left in any row with `[EMAIL]`. It keeps seven office mailboxes of Bernese and
-  Zurich courts and cantonal services (each checked by hand) and the reserved `example.com/org/net` addresses.
+- leaves rows from already-published datasets as their authors released them, apart from the two sweeps below;
+- masks the 17 sources the builder collected itself with regular expressions: e-mail addresses, phone numbers, IBANs,
+  card and ID numbers, IP addresses, URLs that carry a personal identifier, and street addresses. Names stay;
+- sweeps every row of every source: e-mail addresses become `[EMAIL]`, except seven office mailboxes of Bernese and
+  Zurich courts and cantonal services (each checked by hand) and the reserved `example.com/org/net` addresses; phone
+  numbers become `[PHONE]` when their form cannot be mistaken for a case number or a code (international `+41 31 ...`,
+  North American `(415) 555-0134`, or right after a word such as "phone", "Tel." or "call").
 
-The stage is safe to run on its own output: a second pass changes nothing. The NER model is not bit-reproducible
-across GPUs, so a first run elsewhere can mask a few names differently.
+The stage is safe to run on its own output: a second pass changes nothing.
 
 **`export`** writes one directory of parquet files per dataset config (`default`, `share_alike`) and `SOURCES.csv`. It
 also corrects a row's licence tag where the config says the pool's own tag was wrong (`license_fix`; the two
@@ -149,9 +144,9 @@ parliamentary sources that had been tagged MIT now carry their portals' real ter
 would land in the `default` config. `--flag NAME=FILE` adds a boolean column that is true for the row ids listed in
 the file; the published dataset has `in_votum_8b`, the rows the released checkpoint was trained on.
 
-**`audit`** draws 500 masked rows and looks for what `mask` missed, with the stage's own patterns, looser patterns of
-its own, spaCy on English rows and GLiNER at a lower threshold on the others. Its hit files contain residual personal
-data; keep them local.
+**`audit`** draws 500 masked rows and looks for what `mask` missed, with the stage's own patterns and looser patterns
+of its own. When names are masked, `audit spacy` and `audit gliner` also look for missed names. Its hit files contain
+residual personal data; keep them local.
 
 ## The code
 
@@ -161,11 +156,10 @@ data; keep them local.
 | `pool.json`, `pii_stop_spans.txt` | the config of this pool |
 | `poolkit/engine.py` | reading and writing rows in parallel, the config |
 | `poolkit/decontam.py` | `clean` |
-| `poolkit/pii.py` | `mask`: the regular expressions, the model, the span cache |
+| `poolkit/pii.py` | `mask`: the regular expressions, the sweeps, the model and its span cache |
 | `poolkit/export.py` | `export` |
 | `poolkit/audit.py` | `audit` |
 
 `tests/test_data_clean.py` runs every stage on small synthetic inputs on the CPU (`pytest tests/test_data_clean.py`;
-needs numpy and pyarrow, not gliner). On the real pool, `clean` and `export` reproduce the published files byte for
-byte. A fresh `mask` run reproduced the published rows except one, where the model's numerical noise moved a name
-across the threshold.
+needs numpy and pyarrow, not gliner). On the real pool, a run from the converted rows reproduces the published files
+byte for byte.

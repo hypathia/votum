@@ -305,7 +305,7 @@ def test_mask_rows(mask_state):
     cfg, filters = mask_state
     rows = [
         row("p/1", source="pub", state="Anna Muster wrote to x@gmail.com"),                          # only the e-mail sweep
-        row("p/2", source="pub", state="Anna Muster called 0791234567"),                             # copied as is
+        row("p/2", source="pub", state="Anna Muster, case 135-2022-03"),                             # copied as is
         row("s/1", source="scraped", state={"body": "Anna Muster, Tel. 0791234567"}),
         row("s/2", source="scraped", options=("Anna Muster", "Peter Muster")),                        # still distinct
         row("s/3", source="scraped", options=("Anna Muster", "[NAME]")),                              # collapses
@@ -344,6 +344,44 @@ def test_mask_rows(mask_state):
 def test_sweep_emails():
     assert pii.sweep_emails({"a": ["mail jane@uni.edu", "Office@Court.ch", "x@sub.example.org"]}, frozenset({"office@court.ch"}),
                             ("example.org",)) == {"a": ["mail [EMAIL]", "Office@Court.ch", "x@sub.example.org"]}
+
+
+@pytest.mark.parametrize("text,expected", [
+    ("Telefon +41 31 635 48 08 Fax +41 31 634 50 54", "Telefon [PHONE] Fax [PHONE]"),
+    ("or call me at (415) 497-3719.", "or call me at [PHONE]."),
+    ("Hurst, TX 76054 817-282-9376. NDC", "Hurst, TX 76054 [PHONE]. NDC"),
+    ("the phone number is 01223 315232.", "the phone number is [PHONE]."),
+    ("to claim, call 09050000327 now", "to claim, call [PHONE] now"),
+    ("Former call signs | KRGO (1984-1986) KRPN", None),             # year ranges
+    ("in the file 351-011-1402 the court", None),                      # not a North American number
+    ("dossier no. 135-2022-03 of 24 August", None),
+    ("tariff 5516 11 00 5516 12 00", None),
+    ("through 2021-03-22 allows attackers", None),
+])
+def test_sweep_phones(text, expected):
+    assert pii.sweep_phones_text(text)[0] == (text if expected is None else expected)
+
+
+def test_phone_sweep_reaches_redistributed_rows(mask_state):
+    cfg = {"sources": dict(MASK_SOURCES), "mask": {}}
+    lines = [engine.dump(row("p/1", source="pub", state="Call me at (617) 277-9234, Jason")), engine.dump(row("p/2", source="pub"))]
+    out, stats, _, _ = pii.mask_rows(lines, cfg, pii.Filters(), None, no_ner=True)
+    assert json.loads(out[0])["state"] == "Call me at [PHONE], Jason" and out[1] == lines[1]
+    assert stats["pub"] == {"rows_out": 2, "phone_sweep_rows": 1}
+
+
+def test_mask_stage_without_the_model_by_config(tmp_path, monkeypatch):
+    def boom(*a, **k):
+        raise AssertionError("mask.ner is false: the model must not be loaded")
+
+    monkeypatch.setattr(pii, "Model", boom)
+    pool = _write_pool(tmp_path / "pool", [row("s/1", source="scraped", state="Anna Muster called +41 79 123 45 67")])
+    cfg = engine.load_config(_config(tmp_path / "pool.json", MASK_SOURCES, mask={"ner": False}))
+    rep = pii.run(cfg, pool, tmp_path / "out", tmp_path / "cache", workers=1)
+    assert _read_jsonl_gz(tmp_path / "out" / "train.jsonl.gz")[0]["state"] == "Anna Muster called [PHONE]"
+    assert rep["model"] is None and not (tmp_path / "cache").exists()
+    with pytest.raises(engine.PoolError):
+        pii.run(cfg, pool, tmp_path / "out", tmp_path / "cache", workers=1, part=(0, 2))
 
 
 def test_mask_stage_uses_the_model_once_per_text(tmp_path, monkeypatch):

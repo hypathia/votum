@@ -203,13 +203,16 @@ def run(cfg, pool_dir, out_dir, flags=(), shard_mb=200, workers=None):
                 for c, wr in writers.items():
                     shards[(c, hf)] = wr.finish()
 
+    names_col = cfg.get("mask", {}).get("ner", True)       # whether names can be masked at all
     with open(os.path.join(out_dir, "SOURCES.csv"), "w", newline="") as f:
         wr = csv.writer(f)
-        wr.writerow(["source", "config", "origin", "licence_tags", "train_rows", "validation_rows", "names_masked", "upstream_release", "description"])
+        wr.writerow(["source", "config", "origin", "licence_tags", "train_rows", "validation_rows"] + (["names_masked"] if names_col else [])
+                    + ["upstream_release", "description"])
         for s in sorted(per_src):
             p = cfg["sources"][s]
-            wr.writerow([s, p["config"], p["origin"], p["license"], per_src[s]["train"], per_src[s]["validation"],
-                         "yes" if (p["origin"] == "self-collected" and p.get("names")) else "no", p.get("upstream", ""), p.get("description", "")])
+            names = ["yes" if (p["origin"] == "self-collected" and p.get("names")) else "no"] if names_col else []
+            wr.writerow([s, p["config"], p["origin"], p["license"], per_src[s]["train"], per_src[s]["validation"]] + names
+                        + [p.get("upstream", ""), p.get("description", "")])
     lic = collections.defaultdict(dict)
     for (c, tag), v in total["lic"].items():
         lic[c][tag] = v

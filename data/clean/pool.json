@@ -24,9 +24,13 @@
    "question_max_rows": 5,
    "warn_frac": 0.1,
    "instruction_fallback": true
-  }
+  },
+  "info_labels": [
+   "items_s2/val"
+  ]
  },
  "mask": {
+  "ner": false,
   "model": "urchade/gliner_multi_pii-v1",
   "thresholds": {
    "person": 0.5,
@@ -88,7 +92,7 @@
    "config": "default",
    "upstream": "https://www.gov.uk/employment-tribunal-decisions",
    "origin": "self-collected",
-   "names": true,
+   "names": false,
    "reason": "tribunal decisions about private claimants and respondents; scraped from GOV.UK by the builder",
    "description": "UK Employment Tribunal judgments; the outcome of the claim (upheld, dismissed, struck out)."
   },
@@ -107,7 +111,7 @@
    "config": "default",
    "upstream": "https://www.rechtspraak.nl/uitspraken/open-data",
    "origin": "self-collected",
-   "names": true,
+   "names": false,
    "reason": "court decisions (already pseudonymised upstream) about private parties; fetched from the Rechtspraak open-data service",
    "description": "Dutch court decisions (in Dutch); what the court decided on the appeal, claim or request."
   },
@@ -125,7 +129,7 @@
    "config": "default",
    "upstream": "https://data.bka.gv.at/ris/api/v2.6/Judikatur?Applikation=Vwgh",
    "origin": "self-collected",
-   "names": true,
+   "names": false,
    "reason": "administrative-court decisions about private parties; fetched from the RIS OGD API",
    "description": "Decisions of the Austrian Supreme Administrative Court (in German); how the appeal was decided."
   },
@@ -158,7 +162,7 @@
    "config": "default",
    "upstream": "https://www.data.gouv.fr/datasets/avis-et-conseils-de-la-cada",
    "origin": "self-collected",
-   "names": true,
+   "names": false,
    "reason": "opinions on access requests by private persons; extracted from the data.gouv.fr portal export",
    "description": "Opinions of the French commission on access to administrative documents (in French); whether the document may be disclosed."
   },
@@ -176,7 +180,7 @@
    "config": "default",
    "upstream": "https://rulings.cbp.gov/api/search and https://rulings.cbp.gov/api/ruling/{rulingNumber}",
    "origin": "self-collected",
-   "names": true,
+   "names": false,
    "reason": "rulings addressed to named importers' staff; fetched from the CBP CROSS API; unsure, so mask",
    "description": "US customs rulings; the tariff (HTSUS) code that applies to the merchandise."
   },
@@ -212,7 +216,7 @@
    "config": "share_alike",
    "upstream": "https://de.wikipedia.org/wiki/Wikipedia:Löschkandidaten",
    "origin": "self-collected",
-   "names": true,
+   "names": false,
    "reason": "user discussion pages scraped from de.wikipedia (usernames, editors)",
    "description": "Deletion discussions of the German Wikipedia; kept or deleted."
   },
@@ -257,7 +261,7 @@
    "config": "default",
    "upstream": "https://data.sf.gov/resource/vw6y-z8j6.json",
    "origin": "self-collected",
-   "names": true,
+   "names": false,
    "reason": "citizen service requests pulled from the data.sf.gov API (free text, addresses, reporter details)",
    "description": "San Francisco 311 service requests; the agency queue responsible for the request."
   },
@@ -275,7 +279,7 @@
    "config": "share_alike",
    "upstream": "https://commons.wikimedia.org/wiki/Commons:Deletion_requests",
    "origin": "self-collected",
-   "names": true,
+   "names": false,
    "reason": "user discussion pages scraped from Commons (usernames, uploaders)",
    "description": "Deletion requests for files on Wikimedia Commons; keep or delete."
   },
@@ -284,7 +288,7 @@
    "config": "share_alike",
    "upstream": "https://github.com/emayfield/AFD_Decision_Corpus",
    "origin": "self-collected",
-   "names": true,
+   "names": false,
    "reason": "user discussions re-extracted from the enwiki dump (usernames; biographies of non-notable people)",
    "description": "English Wikipedia deletion discussions; what the closing administrator decided (keep, delete, redirect, merge, ...)."
   },
@@ -320,7 +324,7 @@
    "config": "share_alike",
    "upstream": "https://en.wikipedia.org/wiki/Wikipedia:Featured_article_candidates",
    "origin": "self-collected",
-   "names": true,
+   "names": false,
    "reason": "user discussions extracted from enwiki (usernames, editors)",
    "description": "Featured-article nomination discussions of the English Wikipedia; promoted or not."
   },
@@ -329,7 +333,7 @@
    "config": "share_alike",
    "upstream": "https://en.wikipedia.org/wiki/Wikipedia:Requests_for_page_protection/Archive/2012/10",
    "origin": "self-collected",
-   "names": true,
+   "names": false,
    "reason": "user requests and admin decisions extracted from enwiki (usernames)",
    "description": "Requests to protect a Wikipedia page; what the reviewing administrator decided."
   },
@@ -466,7 +470,7 @@
    "config": "default",
    "upstream": "https://ted.europa.eu/en/legal-notice",
    "origin": "self-collected",
-   "names": true,
+   "names": false,
    "reason": "public procurement notices (TED) with contact persons; extracted by the builder",
    "description": "European public tender notices in 21 languages; the nature of the contract (services, supplies or works)."
   },
@@ -538,7 +542,7 @@
    "config": "default",
    "upstream": "https://open.fda.gov/terms/",
    "origin": "self-collected",
-   "names": true,
+   "names": false,
    "reason": "openFDA enforcement records pulled from the API (firm contacts); unsure, so mask",
    "description": "FDA product recall notices; the health-hazard class the FDA assigned."
   },
@@ -1783,7 +1787,7 @@
    "config": "default",
    "upstream": "https://data.stadt-zuerich.ch/api/3/action/package_show?id=geo_zueri_wie_neu",
    "origin": "self-collected",
-   "names": true,
+   "names": false,
    "reason": "citizen issue reports pulled from the Stadt Zürich CKAN portal (free text, locations)",
    "description": "Reports from the city of Zurich's «Züri wie neu» platform (in German); the category of the report."
   },
