@@ -1,8 +1,6 @@
-<h1 align="center"><img src="assets/flag.svg" width="28" height="28" alt=""> votum</h1>
+<h1 align="center">votum</h1>
 
 <p align="center"><b>A decision model on a fully open LLM backbone.</b></p>
-
-<p align="center"><sub>Independent project, built on Apertus-1.5-8B (Swiss AI Initiative) · not affiliated</sub></p>
 
 <p align="center">
   <a href="https://huggingface.co/votum-ai/Votum-8B"><img alt="Model: Votum-8B on Hugging Face" src="https://img.shields.io/badge/model-Votum--8B-DA291C?logo=huggingface&logoColor=white"></a>
