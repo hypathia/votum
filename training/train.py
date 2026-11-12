@@ -95,6 +95,7 @@ class Trainer:
         if a.tok_field != "n_tok":   # pack the plan with another token count (e.g. the span-rendered length)
             assert all(a.tok_field in r for r in rows[:1000]), f"{a.tok_field} missing from {a.train}"
             for r in rows: r["n_tok"] = r[a.tok_field]
+        SP.SERVE_LAYOUT = bool(a.serve_layout)
         self.hdr_groups = None
         if a.header != "none":
             SP.HEADER_MAX_OPTS = a.header_max_opts   # header: the questions of the same state (whole --train file) are listed before the state
@@ -347,6 +348,7 @@ def build_parser():
     ap.add_argument("--opt-block", action="store_true", help="in causal layers, option blocks cannot see each other (bidigate.set_option_blocks)")
     ap.add_argument("--header", default="none", choices=["none", "own", "group"], help="layout header: the request's questions listed before the state, which never attends to the question block (bidigate.set_state_ends). own: the row's question only; group: every question on the same state in --train. Needs --bidir-layers")
     ap.add_argument("--header-max-q", type=int, default=8)
+    ap.add_argument("--serve-layout", action="store_true", help="train in the layout the released code serves: header options sorted by text (not shuffled) and the final line break inside the last option block (votum_config.json: header.sort, close_last)")
     ap.add_argument("--clip-scale", default="fixed", choices=["fixed", "sqrt"], help="gradient-clip threshold: fixed (the recipe's grad_clip, default) or sqrt: grad_clip x sqrt(questions in step / loss_norm_n), with --loss-norm constant")
     ap.add_argument("--grad-clip", type=float, default=None, help="override the recipe's grad_clip (1.0)")
     ap.add_argument("--header-blind", action="store_true", help="system + header never attend to the state or anything after it (bidigate.set_header_ends): the header prefix is cacheable across requests with the same question set")

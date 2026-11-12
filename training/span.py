@@ -52,6 +52,8 @@ def option_text(o, typ):
 
 HEADER_TITLE = "Questions in this request:"
 HEADER_MAX_OPTS = 32      # a choice question lists its option texts in the header only up to this many (larger label sets: question only)
+SERVE_LAYOUT = False      # train.py --serve-layout: the layout the released code serves (votum.prompt defaults): header options
+                          # sorted by text instead of shuffled, and the prompt's final line break inside the last option block
 
 
 def header_text(qs, rng=None):
@@ -63,7 +65,8 @@ def header_text(qs, rng=None):
         lines.append(f"{k}. {clean(q['question'])}")
         if q["type"] == "choice" and len(q["options"]) <= HEADER_MAX_OPTS:
             o = list(q["options"])
-            if rng is not None: rng.shuffle(o)
+            if SERVE_LAYOUT: o.sort(key=lambda x: option_text(x, "choice"))
+            elif rng is not None: rng.shuffle(o)
             lines += [f"   - {clean(option_text(x, 'choice'))}" for x in o]
     return "\n".join(lines) + "\n\n"
 
@@ -120,7 +123,7 @@ def option_blocks(e):
     if P is None: return out
     s = P
     for k, en in enumerate(e.ends):
-        stop = en + 1 if en + 1 < e.last else en
+        stop = en + 1 if (en + 1 < e.last or (SERVE_LAYOUT and en + 1 == e.last == n - 1)) else en
         for t in range(s, stop + 1): out[t] = k
         s = stop + 1
     return out
@@ -134,7 +137,7 @@ def shared_positions(e):
     if P is None: return list(range(n))
     pos = list(range(P)); s = P; L = 0
     for en in e.ends:                                   # block = "- <text><end>\n" (the newline after each end marker is its own token)
-        stop = en + 1 if en + 1 < e.last else en        # include the newline, except the prompt's final one
+        stop = en + 1 if (en + 1 < e.last or (SERVE_LAYOUT and en + 1 == e.last == n - 1)) else en   # include the newline (the prompt's final one only in the serve layout)
         blen = stop - s + 1; pos += list(range(P, P + blen)); L = max(L, blen); s = stop + 1
     pos += list(range(P + L, P + L + (n - s)))
     return pos
