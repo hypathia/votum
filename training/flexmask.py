@@ -75,8 +75,11 @@ class FlexMasks:
         for li in range(len(b)):
             assert float(b[li]) == 0.0 or float(b[li]) <= -1e8, \
                 f"flexmask supports beta 0 (bidirectional) or <= -1e8 (causal) only; layer {li} has beta {float(b[li])}"
+        frozen = not any(p.requires_grad for p in gate.parameters())
+        self._kinds = [float(x) == 0.0 for x in b] if frozen else None   # a frozen gate: read once (reading the GPU tensor per layer call waits for the GPU each time)
 
     def _kind(self, layer):
+        if self._kinds is not None: return self._kinds[layer]
         return float(self.gate.betas()[layer]) == 0.0   # True: bidirectional layer
 
     def _batch(self, T, device):
