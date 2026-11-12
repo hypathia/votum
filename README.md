@@ -23,8 +23,8 @@
 into a decision model. You give it some context (an email, a document, a JSON record, a photo), a question about it and
 the possible answers. It gives back a probability for each answer.
 
-It does not write text. It reads the prompt once and scores the answers, so a decision takes about 40 ms on an
-RTX 4090, the result is always one of your options, and the probabilities always sum to one.
+It does not write text. It reads the prompt once and scores the answers, so a decision takes under 100 ms,
+the result is always one of your options, and the probabilities always sum to one.
 
 <picture><source media="(prefers-color-scheme: dark)" srcset="assets/examples_dark.png"><img src="assets/examples.png" alt="Four requests answered by Votum-8B. An email about a double charge: team is Billing and payments (0.96), the customer asks for money back (0.90), urgency is medium (0.41). A JSON order record: the total is 65.0 (0.73), no discount was applied (0.91). A photo of a derailed locomotive: a locomotive derailed (0.46), people are at the scene (0.76), the damage is serious (0.47). A photo of a market in front of a church: a street market (0.76), fruit or vegetables are for sale (0.79), the large building is a church (0.79)."></picture>
 
