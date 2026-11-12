@@ -1,6 +1,6 @@
 # Training data
 
-Votum-8B was trained on "pool v7": public decision data converted to one row format. The rows themselves are not in
+Votum-8B was trained on a pool of public decision data converted to one row format. The rows themselves are not in
 this repository. A cleaned and larger version of the pool is published as the dataset
 [votum-ai/Votum-Pool](https://huggingface.co/datasets/votum-ai/Votum-Pool).
 
@@ -56,9 +56,9 @@ A review after training found the following. The cleaned pool removes or address
 
 ## The cleaned pool
 
-For training, each source of pool v7 was cut to a limit so that no single source dominates. The cleaned pool has no
+For training, each source was cut to a limit so that no single source dominates. The cleaned pool has no
 such limit: it starts from all the rows the converters produced for those sources, 881,143 training rows after
-duplicates are removed. Every pool v7 row is among them, unchanged.
+duplicates are removed. Every row of the training pool is among them, unchanged.
 
 The `clean` stage of `clean/pool.py` removes three things:
 
@@ -68,7 +68,7 @@ The `clean` stage of `clean/pool.py` removes three things:
   scripts written without spaces), or its question quotes one.
 
 That leaves 744,057 training rows from 188 sources. The `mask` stage then drops seven more sources and masks contact
-details and identifiers (names stay), which gives the published 723,257 training rows from 181 sources; 328,075 of them were in pool v7 (column
+details and identifiers (names stay), which gives the published 723,257 training rows from 181 sources; 328,075 of them were in the training pool (column
 `in_votum_8b` of the dataset). `clean/README.md` describes each stage.
 
 **What is not released.** The code that converted each source into rows stays private. It depends on raw downloads,
