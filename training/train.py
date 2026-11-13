@@ -251,7 +251,7 @@ class Trainer:
             a.loss_norm_n = float(np.mean([sum(len(mb) for mb in mbs) for mbs in itertools.islice(iter(self.plan), 500)]))
         print(f"[{a.tag}] loss normalisation: {a.loss_norm}" + (f" (n = {a.loss_norm_n:.1f} questions/step)" if a.loss_norm == "constant" else ""), flush=True)
         plan = iter(self.plan)
-        for _ in range(self.step): next(plan)                 # deterministic replay of the data order
+        for _ in range(self.step - a.plan_origin): next(plan)  # deterministic replay of the data order (from --plan-origin)
         log = open(self.out / "log.jsonl", "a")
         torch.cuda.reset_peak_memory_stats(); t_run = time.time(); tok_run = 0; self.start_step = self.step
         self.model.train()
@@ -356,6 +356,7 @@ def build_parser():
     ap.add_argument("--init-from", default=None, help="state_<step>.pt of another run to continue from (used only when this tag has no state of its own)")
     ap.add_argument("--init-weights", default=None, help="light checkpoint dir (adapter/, span_head.pt, gate.pt) to start from with a FRESH optimizer (when the optimizer state is gone); used only when this tag has no state of its own")
     ap.add_argument("--init-step", type=int, default=0, help="with --init-weights: the step to resume the data plan / schedule at")
+    ap.add_argument("--plan-origin", type=int, default=0, help="the step at which this run's data plan starts (default 0). With --init-from and a new --train file, set it to the step of the state you continue from, so the new data is read from its beginning")
     ap.add_argument("--rewarm", type=int, default=0, help="linear learning-rate re-warm-up over this many steps from the resume / --init-from step (0 = off)")
     ap.add_argument("--opt-isolate", action="store_true", help="full option isolation: option blocks masked from each other in EVERY layer and the prefix blind to option tokens (bidigate.set_isolate); implies --opt-block")
     ap.add_argument("--shared-positions", action="store_true", help="every option block gets the same position ids (span.shared_positions)")
