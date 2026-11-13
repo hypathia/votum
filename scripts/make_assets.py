@@ -428,25 +428,27 @@ def vision_examples():
 def pool():
     steps = [("All converted rows", 881143), ("13 sources: licence review", -57169), ("LLM-generated sets", -53620),
              ("ContractNLI test split", -1982), ("benchmark overlap (8-gram)", -24315), ("portal / government terms", -20059),
-             ("conflicting licence tags", -741), ("Votum Pool", 723257)]
+             ("conflicting licence tags", -741), ("11 sources added later", 219414), ("Votum Pool", 942671)]
     b = [head("Data", "From training pool to dataset", "Training rows removed at each step, and the licence mix of what remains")]
     tw = (W - 2 * PAD - 3 * GAP) / 4; th = 108
-    for i, (k, v, lab) in enumerate([("Training rows", "723,257", "plus 6,087 validation rows"), ("Sources", "181", "164 public datasets, 17 collected"),
-                                     ("Languages", "73", "language codes; about 41 % English"), ("Configs", "2", "default · share_alike")]):
+    for i, (k, v, lab) in enumerate([("Training rows", "942,671", "plus 12,381 validation rows"), ("Sources", "192", "170 public datasets, 22 collected"),
+                                     ("Languages", "73", "language codes; about 46 % English"), ("Configs", "2", "default · share_alike")]):
         b.append(tile(PAD + i * (tw + GAP), TOP, tw, th, k, v, lab, hero=i == 0))
     cy = TOP + th + GAP; rh = 24; ch = 40 + rh * len(steps) + 76
     b.append(card(PAD, cy, W - 2 * PAD, ch))
-    top = cy + 40; x0, x1 = PAD + 270, W - PAD - 130; X = lambda v: x0 + v / 881143 * (x1 - x0); cur = 0
+    top = cy + 40; x0, x1 = PAD + 270, W - PAD - 130; X = lambda v: x0 + v / 942671 * (x1 - x0); cur = 0
     for i, (lab, v) in enumerate(steps):
         y = top + i * rh; end = i in (0, len(steps) - 1)
         b.append(T(PAD + 22, y + 4, lab, 12.5, INK, 650 if end else 400))
         if end:
             cur = v; b.append(bar(x0, y - 7, X(v) - x0, 14, RED if i else NEUTRAL, 4))
             b.append(pill(X(v) + 62, y, f"{v:,}", 11) if i else T(X(v) + 9, y + 4, f"{v:,}", 12.5, INK, 700))
+        elif v > 0:   # rows added: drawn in the accent colour to the right of the running total
+            nxt = cur + v; b.append(bar(X(cur), y - 7, X(nxt) - X(cur), 14, RED, 4)); b.append(T(X(cur) - 9, y + 4, f"+{v:,}", 11.5, MUTED, 500, anchor="end")); cur = nxt
         else:
             nxt = cur + v; b.append(bar(X(nxt), y - 7, X(cur) - X(nxt), 14, PINK, 4)); b.append(T(X(cur) + 9, y + 4, f"−{-v:,}", 11.5, MUTED, 500)); cur = nxt
-    fams = [("CC-BY", 208579, FAM[0]), ("Apache / MIT / AFL", 128234, FAM[1]), ("CC0 / PDDL / PD", 130272, FAM[2]),
-            ("other open", 14316, FAM[3]), ("CC-BY-SA / ODbL · share_alike", 241856, RED)]
+    fams = [("CC-BY", 237713, FAM[0]), ("Apache / MIT / AFL", 156598, FAM[1]), ("CC0 / PDDL / PD", 170981, FAM[2]),
+            ("other open", 64895, FAM[3]), ("CC-BY-SA / ODbL · share_alike", 312484, RED)]
     y0 = top + rh * len(steps) + 14; tot = sum(v for _, v, _ in fams); x = PAD + 22; ww_all = W - 2 * PAD - 44
     for lab, v, c in fams:
         ww = ww_all * v / tot; b.append(bar(x, y0, ww - 2, 12, c, 3)); x += ww

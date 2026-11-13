@@ -16,6 +16,7 @@ planned re-train. It has three stages and an audit.
 | all converted rows | 881,143 |
 | after `clean` | 744,057 (188 sources) |
 | after `mask` | 723,257 (181 sources) |
+| with the 11 sources added later | 942,671 (192 sources) |
 
 The converted rows themselves are not public (see `../README.md`). The pipeline is shared to show exactly what was
 done, and so that you can run the same stages on your own rows: nothing in the code is specific to this pool. What

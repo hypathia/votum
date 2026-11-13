@@ -71,6 +71,14 @@ That leaves 744,057 training rows from 188 sources. The `mask` stage then drops 
 details and identifiers (names stay), which gives the published 723,257 training rows from 181 sources; 328,075 of them were in the training pool (column
 `in_votum_8b` of the dataset). `clean/README.md` describes each stage.
 
+**Sources added later.** Eleven sources were added to the dataset after this build (219,414 training rows): ShARC,
+NTSB aviation accident reports, Transport Canada and RappelConso recalls, ABCD, MTOP, NatCS, written questions of the
+French National Assembly, the Dolly task categories, Polis deliberations and public-domain verse. They went through
+the same `clean` and `mask` stages with their entries in `clean/pool.json`, and through a second benchmark comparison
+on the full text of each row (state, question and options). The published dataset has 942,671 training rows from 192
+sources. None of the added rows was in the training pool of the released checkpoint; the dataset card lists them under
+"Sources added later".
+
 **What is not released.** The code that converted each source into rows stays private. It depends on raw downloads,
 on a per-source specification whose review notes quote personal data from source rows, and on internal review
 records. `SOURCES.csv` and the published dataset record its result.
