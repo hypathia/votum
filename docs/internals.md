@@ -47,8 +47,8 @@ Votum is a LoRA adapter and a pointer head on top of Apertus-1.5-8B.
 - **Two paths.** The PyTorch reference runs one pass per question. The server packs a request's questions into one
   prompt, each at the positions it would have alone; the two agree on 97 to 99 % of answers (the numbers are on the
   [model card](https://huggingface.co/votum-ai/Votum-8B#speed)).
-- **Load it with `votum`.** Plain transformers or plain vLLM would run the network without the mask and without
-  the head, and give wrong answers.
+- **Run it with `votum`.** The package adds the attention mask and the pointer head, which plain transformers or
+  vLLM don't have. Without them the model still loads, but its answers are meaningless.
 
 The exact definition of every part is in the model card's
 [How it works](https://huggingface.co/votum-ai/Votum-8B#how-it-works) section.
