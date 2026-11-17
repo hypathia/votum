@@ -47,7 +47,7 @@ jobs:
           path: dist/
       - uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          skip-existing: true   # 0.1.0 was uploaded by hand to create the project
+          skip-existing: true   # a re-run after a partial release does not fail on files already there
 
   github-release:
     needs: pypi

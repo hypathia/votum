@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "votum"
-version = "0.1.0"
+version = "0.1.1"
 description = "Votum: a single-pass decision model on Apertus-1.5-8B (probabilities over the options of a question, no generation)"
 readme = "README.md"
 license = "Apache-2.0"

@@ -9,4 +9,4 @@ from .config import VotumConfig
 from .modeling import Votum
 
 __all__ = ["Votum", "VotumConfig"]
-__version__ = "0.1.0"
+__version__ = "0.1.1"
