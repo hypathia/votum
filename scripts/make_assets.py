@@ -385,14 +385,20 @@ def vx_card(x, y, w, k, title, req, ans, h_min=0):
     b = []
     src = next(v["image"] for v in req["state"].values() if isinstance(v, dict) and "image" in v)
     uri, dw, dh = thumb(FIX / src, IMG_W, 210)
-    ix, iy = x + 20, y + 22
+    ix, iy = x + 20, y + 40                                           # room for the field name above the image
     b.append(f'<clipPath id="vc{k}"><rect x="{ix:.1f}" y="{iy:.1f}" width="{dw:.1f}" height="{dh:.1f}" rx="8"/></clipPath>'
              f'<image href="{uri}" x="{ix:.1f}" y="{iy:.1f}" width="{dw:.1f}" height="{dh:.1f}" clip-path="url(#vc{k})" preserveAspectRatio="none"/>'
              f'<rect x="{ix + .5:.1f}" y="{iy + .5:.1f}" width="{dw - 1:.1f}" height="{dh - 1:.1f}" rx="7.5" fill="none" stroke="{EDGE}"/>')
-    rest = json.dumps({kk: ("@IMG@" if isinstance(v, dict) and "image" in v else v) for kk, v in req["state"].items()}, ensure_ascii=False)
-    yy = iy + dh + 4
-    for ln in wrap(rest.replace('"@IMG@"', "<image>"), 32):
-        yy += 14; b.append(T(ix, yy, ln, 9.5, MUTED, 400, extra=f'font-family="{MONO}"'))
+    ikey = next(kk for kk, v in req["state"].items() if isinstance(v, dict) and "image" in v)   # the image's field, above it
+    b.append(T(ix, iy - 8, ikey, 10, MUTED, 400, extra=f'font-family="{MONO}"'))
+    yy = iy + dh + 4                                                   # the other fields below it, one "key value" line each
+    for kk, v in req["state"].items():
+        if kk == ikey: continue
+        val = v if isinstance(v, str) else json.dumps(v, ensure_ascii=False)
+        for j, ln in enumerate(wrap(val, 30)):
+            yy += 15
+            if j == 0: b.append(T(ix, yy, kk, 10, MUTED, 400, extra=f'font-family="{MONO}"'))
+            b.append(T(ix + textw(kk, 10) * 1.1 + 10, yy, ln, 10.5, INK, 400))
     qx = ix + IMG_W + 22; qw = x + w - 20 - qx; yq = y + 22
     longest = max(textw(t, 11) for q in req["questions"].values() for t in option_labels(q).values())
     lab = min(0.62, max(0.42, (longest * 1.12 + 18) / qw))      # one label column per card, wide enough for its longest label
