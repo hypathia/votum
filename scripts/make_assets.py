@@ -426,9 +426,9 @@ def vision_examples():
 
 # ---------------------------------------------------------------------------------------------------------- pool
 def pool():
-    steps = [("All converted rows", 881143), ("13 sources: licence review", -57169), ("LLM-generated sets", -53620),
+    steps = [("All converted rows", 1100557), ("13 sources: licence review", -57169), ("LLM-generated sets", -53620),
              ("ContractNLI test split", -1982), ("benchmark overlap (8-gram)", -24315), ("portal / government terms", -20059),
-             ("conflicting licence tags", -741), ("11 sources added later", 219414), ("Votum Pool", 942671)]
+             ("conflicting licence tags", -741), ("Votum Pool", 942671)]
     b = [head("Data", "From training pool to dataset", "Training rows removed at each step, and the licence mix of what remains")]
     tw = (W - 2 * PAD - 3 * GAP) / 4; th = 108
     for i, (k, v, lab) in enumerate([("Training rows", "942,671", "plus 12,381 validation rows"), ("Sources", "192", "170 public datasets, 22 collected"),
@@ -436,7 +436,7 @@ def pool():
         b.append(tile(PAD + i * (tw + GAP), TOP, tw, th, k, v, lab, hero=i == 0))
     cy = TOP + th + GAP; rh = 24; ch = 40 + rh * len(steps) + 76
     b.append(card(PAD, cy, W - 2 * PAD, ch))
-    top = cy + 40; x0, x1 = PAD + 270, W - PAD - 130; X = lambda v: x0 + v / 942671 * (x1 - x0); cur = 0
+    top = cy + 40; x0, x1 = PAD + 270, W - PAD - 130; X = lambda v: x0 + v / 1100557 * (x1 - x0); cur = 0
     for i, (lab, v) in enumerate(steps):
         y = top + i * rh; end = i in (0, len(steps) - 1)
         b.append(T(PAD + 22, y + 4, lab, 12.5, INK, 650 if end else 400))
@@ -509,27 +509,27 @@ class Sankey:
 
 def selection():
     """how the sources and the rows were selected: two Sankey diagrams (numbers: data/README.md and the dataset card)"""
-    b = [head("Data", "From 1,289 candidate sources to 729,344 rows", "How sources were selected, and what happened to the rows converted from them")]
+    b = [head("Data", "From about 1,300 candidate sources to 955,052 rows", "How sources were selected, and what happened to the rows converted from them")]
     ch = 392; b.append(card(PAD, TOP, W - 2 * PAD, ch)); y0, y1 = TOP + 62, TOP + ch - 44
     b.append(T(PAD + 22, TOP + 32, "Sources", 14, INK, 700)); b.append(T(PAD + 775, TOP + 32, "Rows", 14, INK, 700))
-    s = Sankey(y0, y1, 1289, 5); xa, xb, xc = PAD + 172, PAD + 290, PAD + 525
-    s.column(xa, [("cand", 1289, True, "1,289", "candidates", "catalogues, hubs, portals")], "left")
-    s.column(xb, [("pub", 181, True, "181", "published"), ("late", 36, False, "36", "removed before release"),
+    s = Sankey(y0, y1, 1300, 5); xa, xb, xc = PAD + 172, PAD + 290, PAD + 525
+    s.column(xa, [("cand", 1300, True, "1,300", "candidates", "catalogues, hubs, portals")], "left")
+    s.column(xb, [("pub", 192, True, "192", "published"), ("late", 36, False, "36", "removed after review"),
                   ("out", 1072, False, "1,072", "not selected")], "right")
     reasons = [("lic", 372, "372", "licence or commercial use"), ("qual", 337, "337", "quality"), ("text", 174, "174", "third-party text rights"),
                ("fake", 84, "84", "not real decisions"), ("crawl", 49, "49", "AI-crawler opt-out"), ("other", 56, "56", "duplicates and other reasons")]
     s.column(xc, [(k, v, False, n, t) for k, v, n, t in reasons], "right")
-    for k, v in (("pub", 181), ("late", 36), ("out", 1072)): s.link("cand", k, v)
+    for k, v in (("pub", 192), ("late", 36), ("out", 1072)): s.link("cand", k, v)
     for k, v, *_ in reasons: s.link("out", k, v)
     b.append(s.draw())
-    r = Sankey(y0, y1, 901098, 2); xr, xs = PAD + 775, PAD + 900
-    r.column(xr, [("conv", 901098, True, "901,098", "rows converted")], None)
-    r.column(xs, [("pub", 729344, True, "729,344", "published", "723,257 training, 6,087 validation"),
-                  ("late", 159015, False, "159,015", "removed before release", "licence review, benchmark overlap"),
+    r = Sankey(y0, y1, 1126806, 2); xr, xs = PAD + 775, PAD + 900
+    r.column(xr, [("conv", 1126806, True, "1,126,806", "rows converted")], None)
+    r.column(xs, [("pub", 955052, True, "955,052", "published", "942,671 training, 12,381 validation"),
+                  ("late", 159015, False, "159,015", "removed after review", "licence review, benchmark overlap"),
                   ("dup", 12739, False, "12,739", "duplicates and other filters")], "right")
-    for k, v in (("pub", 729344), ("late", 159015), ("dup", 12739)): r.link("conv", k, v)
+    for k, v in (("pub", 955052), ("late", 159015), ("dup", 12739)): r.link("conv", k, v)
     b.append(r.draw())
-    b.append(f'<text x="{xr + 3.5:.1f}" y="{y1 + 24:.1f}" font-size="12.5" text-anchor="middle" xml:space="preserve"><tspan font-weight="700" fill="{INK}">901,098</tspan>'
+    b.append(f'<text x="{xr + 3.5:.1f}" y="{y1 + 24:.1f}" font-size="12.5" text-anchor="middle" xml:space="preserve"><tspan font-weight="700" fill="{INK}">1,126,806</tspan>'
              f'<tspan fill="{MUTED}"> rows converted</tspan></text>')
     save("selection", TOP + ch + PAD, "".join(b))
 
