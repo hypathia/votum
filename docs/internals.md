@@ -82,4 +82,4 @@ hours on one 96 GB GPU. The training data is published as
 model repository byte for byte.
 
 The released model was trained before the pool was cleaned. Its known training-data issues are listed in
-[`data/README.md`](../data/README.md), and a re-train on the published pool is planned.
+[`data/README.md`](../data/README.md).

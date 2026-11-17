@@ -236,9 +236,9 @@ model against the original, measure both with the same tool, as step 4 does.
 
 How the released Votum-8B was trained from Apertus, for reproduction or audit.
 
-The released model was trained for 600 steps, about seven hours, on a single 96 GB GPU. The training data was an
-earlier, smaller version of the public [Votum Pool](https://huggingface.co/datasets/votum-ai/Votum-Pool); that exact
-file is not published. The published pool marks the rows the released model was trained on (column `in_votum_8b`),
+The released model was trained for 600 steps, about seven hours, on a single 96 GB GPU. The training data was
+drawn from the public [Votum Pool](https://huggingface.co/datasets/votum-ai/Votum-Pool), with large sources cut to a
+limit, and also held some rows the published pool leaves out; that exact file is not published. The published pool marks the rows the released model was trained on (column `in_votum_8b`),
 and `prepare_data.py --pool` converts the pool for training. The command was:
 
 ```

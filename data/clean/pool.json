@@ -1910,7 +1910,7 @@
    "upstream": "https://sharc-data.github.io/",
    "description": "Government rule text with a user's situation and question: yes, no, not covered, or more information needed (training split; gov.uk and US federal sites only).",
    "names": false,
-   "reason": "reformatted copy of a published release (https://sharc-data.github.io/); added after the first build"
+   "reason": "reformatted copy of a published release (https://sharc-data.github.io/)"
   },
   "tc_recalls": {
    "license": "OGL-Canada-2.0 [commercial]",
@@ -1919,7 +1919,7 @@
    "upstream": "https://open.canada.ca/data/en/dataset/1ec92326-47ef-4110-b7ca-959fab03f96d",
    "description": "Canadian vehicle recalls in English and French: vehicle system, safety defect or compliance recall.",
    "names": false,
-   "reason": "built from the official open data (https://open.canada.ca/data/en/dataset/1ec92326-47ef-4110-b7ca-959fab03f96d); regex masking; added after the first build"
+   "reason": "built from the official open data (https://open.canada.ca/data/en/dataset/1ec92326-47ef-4110-b7ca-959fab03f96d); regex masking"
   },
   "rappelconso": {
    "license": "Licence-Ouverte-2.0 [commercial]",
@@ -1928,7 +1928,7 @@
    "upstream": "https://data.economie.gouv.fr/explore/dataset/rappelconso-v2-gtin-espaces/",
    "description": "French product recalls: category, risk and what the consumer should do.",
    "names": false,
-   "reason": "built from the official open data (https://data.economie.gouv.fr/explore/dataset/rappelconso-v2-gtin-espaces/); regex masking; added after the first build"
+   "reason": "built from the official open data (https://data.economie.gouv.fr/explore/dataset/rappelconso-v2-gtin-espaces/); regex masking"
   },
   "ntsb_aviation": {
    "license": "Public-Domain [commercial]",
@@ -1937,7 +1937,7 @@
    "upstream": "https://data.ntsb.gov/avdata",
    "description": "US aviation accident reports by the NTSB: phase of flight, injury severity, cause category, damage, weather.",
    "names": false,
-   "reason": "built from the official open data (https://data.ntsb.gov/avdata); regex masking; added after the first build"
+   "reason": "built from the official open data (https://data.ntsb.gov/avdata); regex masking"
   },
   "abcd": {
    "license": "MIT [commercial]",
@@ -1946,7 +1946,7 @@
    "upstream": "https://github.com/asappresearch/abcd",
    "description": "Customer-service chats (training split): issue type, flow, the agent's next action.",
    "names": false,
-   "reason": "reformatted copy of a published release (https://github.com/asappresearch/abcd); added after the first build"
+   "reason": "reformatted copy of a published release (https://github.com/asappresearch/abcd)"
   },
   "natcs": {
    "license": "CDLA-Permissive-2.0 [commercial]",
@@ -1955,7 +1955,7 @@
    "upstream": "https://github.com/amazon-science/dstc11-track2-intent-induction",
    "description": "Role-played insurance customer-service dialogues (development set): customer intent.",
    "names": false,
-   "reason": "reformatted copy of a published release (https://github.com/amazon-science/dstc11-track2-intent-induction); added after the first build"
+   "reason": "reformatted copy of a published release (https://github.com/amazon-science/dstc11-track2-intent-induction)"
   },
   "mtop": {
    "license": "CC-BY-SA-4.0 [commercial]",
@@ -1964,7 +1964,7 @@
    "upstream": "https://fb.me/mtop_dataset",
    "description": "Assistant requests in six languages (training split): intent and domain.",
    "names": false,
-   "reason": "reformatted copy of a published release (https://fb.me/mtop_dataset); added after the first build"
+   "reason": "reformatted copy of a published release (https://fb.me/mtop_dataset)"
   },
   "dolly_category": {
    "license": "CC-BY-SA-3.0 [commercial]",
@@ -1973,7 +1973,7 @@
    "upstream": "https://huggingface.co/datasets/databricks/databricks-dolly-15k",
    "description": "Employee-written instructions: task type among eight categories.",
    "names": false,
-   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/databricks/databricks-dolly-15k); added after the first build"
+   "reason": "reformatted copy of a published release (https://huggingface.co/datasets/databricks/databricks-dolly-15k)"
   },
   "an_questions": {
    "license": "Licence-Ouverte-2.0 [commercial]",
@@ -1982,7 +1982,7 @@
    "upstream": "https://data.assemblee-nationale.fr/travaux-parlementaires/questions/questions-ecrites",
    "description": "Written questions of the French National Assembly: ministry addressed and subject heading.",
    "names": false,
-   "reason": "built from the official open data (https://data.assemblee-nationale.fr/travaux-parlementaires/questions/questions-ecrites); regex masking; added after the first build"
+   "reason": "built from the official open data (https://data.assemblee-nationale.fr/travaux-parlementaires/questions/questions-ecrites); regex masking"
   },
   "polis": {
    "license": "CC-BY-4.0 [commercial]",
@@ -1991,7 +1991,7 @@
    "upstream": "https://github.com/compdemocracy/openData",
    "description": "Statements from public Polis deliberations with their agree, disagree and pass votes: which statement a group endorses most, whether a majority agrees, how divided the group is (vote shares as targets).",
    "names": false,
-   "reason": "reformatted copy of a published release (https://github.com/compdemocracy/openData); added after the first build"
+   "reason": "reformatted copy of a published release (https://github.com/compdemocracy/openData)"
   },
   "verse_original": {
    "license": "Public-Domain [commercial]",
@@ -2000,7 +2000,7 @@
    "upstream": "https://www.gutenberg.org/",
    "description": "Stanzas of public-domain rhymed verse from Project Gutenberg next to procedurally altered copies: which version is the original, judged on rhyme and metre.",
    "names": false,
-   "reason": "built from the official open data (https://www.gutenberg.org/); regex masking; added after the first build"
+   "reason": "built from the official open data (https://www.gutenberg.org/); regex masking"
   }
  }
 }

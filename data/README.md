@@ -7,7 +7,7 @@ this repository. A cleaned and larger version of the pool is published as the da
 | Path | Contents |
 |---|---|
 | `SOURCES.csv` | every source: licence tags, training rows, whether the second licence review removed it, rows in the cleaned pool |
-| `clean/` | the pipeline that turns the converted rows into the cleaned pool used for the re-train, and into the published dataset |
+| `clean/` | the pipeline that turns the converted rows into the cleaned pool and the published dataset |
 
 ## The pool as trained
 
@@ -57,31 +57,25 @@ A review after training found the following. The cleaned pool removes or address
 ## The cleaned pool
 
 For training, each source was cut to a limit so that no single source dominates. The cleaned pool has no
-such limit: it starts from all the rows the converters produced for those sources, 881,143 training rows after
-duplicates are removed. Every row of the training pool is among them, unchanged.
+such limit: it starts from all the rows the converters produced, 1,100,557 training rows after duplicates are
+removed. Every row of the training pool is among them, unchanged.
 
 The `clean` stage of `clean/pool.py` removes three things:
 
 - the sources listed above, together with the 13 sources dropped by the licence review;
 - the ContractNLI test split;
 - every row that overlaps a benchmark: its state shares a word 8-gram with a benchmark item (16-character grams for
-  scripts written without spaces), or its question quotes one.
+  scripts written without spaces), or its question quotes one. For eleven sources (ShARC, NTSB aviation accident
+  reports, Transport Canada and RappelConso recalls, ABCD, MTOP, NatCS, written questions of the French National
+  Assembly, the Dolly task categories, Polis deliberations and public-domain verse) a second comparison covers the
+  full text of each row: state, question and options.
 
-That leaves 744,057 training rows from 188 sources. The `mask` stage then drops seven more sources and masks contact
-details and identifiers (names stay), which gives the published 723,257 training rows from 181 sources; 328,075 of them were in the training pool (column
-`in_votum_8b` of the dataset). `clean/README.md` describes each stage.
-
-**Sources added later.** Eleven sources were added to the dataset after this build (219,414 training rows): ShARC,
-NTSB aviation accident reports, Transport Canada and RappelConso recalls, ABCD, MTOP, NatCS, written questions of the
-French National Assembly, the Dolly task categories, Polis deliberations and public-domain verse. They went through
-the same `clean` and `mask` stages with their entries in `clean/pool.json`, and through a second benchmark comparison
-on the full text of each row (state, question and options). The published dataset has 942,671 training rows from 192
-sources. None of the added rows was in the training pool of the released checkpoint; the dataset card lists them under
-"Sources added later".
+The `mask` stage then drops seven more sources and masks contact details and identifiers (names stay), which gives
+the published 942,671 training rows from 192 sources; 328,075 of them were in the training pool (column `in_votum_8b`
+of the dataset). `clean/README.md` describes each stage.
 
 **What is not released.** The code that converted each source into rows stays private. It depends on raw downloads,
 on a per-source specification whose review notes quote personal data from source rows, and on internal review
 records. `SOURCES.csv` and the published dataset record its result.
 
-**Source names.** A name keeps the prefix of the conversion batch it was added in (`tasksource/`, `lab/`, `expand/`,
-…). The prefix carries no other meaning.
+**Source names.** The prefixes in source names (`tasksource/`, `lab/`, `expand/`, …) carry no meaning.

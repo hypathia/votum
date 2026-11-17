@@ -1,8 +1,7 @@
 # From converted rows to the Votum Pool dataset
 
 `pool.py` turns the converted rows of the pool (without the per-source limit that was applied for
-training the released checkpoint) into the published dataset `votum-ai/Votum-Pool`, which is also the input of the
-planned re-train. It has three stages and an audit.
+training the released checkpoint) into the published dataset `votum-ai/Votum-Pool`. It has three stages and an audit.
 
 | Stage | In one line | Writes |
 |---|---|---|
@@ -13,10 +12,8 @@ planned re-train. It has three stages and an audit.
 
 | Stage | Training rows |
 |---|---:|
-| all converted rows | 881,143 |
-| after `clean` | 744,057 (188 sources) |
-| after `mask` | 723,257 (181 sources) |
-| with the 11 sources added later | 942,671 (192 sources) |
+| all converted rows | 1,100,557 |
+| published, after `clean` and `mask` | 942,671 (192 sources) |
 
 The converted rows themselves are not public (see `../README.md`). The pipeline is shared to show exactly what was
 done, and so that you can run the same stages on your own rows: nothing in the code is specific to this pool. What
