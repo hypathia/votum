@@ -45,7 +45,7 @@ This works with the released model as it is. **Votum-8B was never trained on ima
 Images need two more packages:
 
 ```bash
-pip install "votum[vision] @ git+https://github.com/hypathia/votum"
+pip install "votum[vision]"
 ```
 
 The first image you send downloads the Apertus image tokenizer (0.9 GB) from the

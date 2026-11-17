@@ -4,7 +4,7 @@
 as `vm.decide` and batches concurrent ones.
 
 ```bash
-pip install "votum[vllm] @ git+https://github.com/hypathia/votum"
+pip install "votum[vllm]"
 VOTUM_API_KEY=... votum serve --model votum-ai/Votum-8B --host 0.0.0.0 --port 8011
 ```
 

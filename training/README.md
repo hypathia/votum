@@ -19,7 +19,7 @@ Install the package, log in to Hugging Face, and download the model once. The mo
 Acceptable Use Policy on the Votum-8B model page first.
 
 ```bash
-pip install "votum @ git+https://github.com/hypathia/votum" pyarrow
+pip install votum pyarrow
 hf auth login
 cd training
 hf download votum-ai/Votum-8B --local-dir ./Votum-8B

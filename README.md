@@ -44,7 +44,7 @@ Requirements: Python 3.11 or newer and an NVIDIA GPU.
 **1. Install the package.**
 
 ```bash
-pip install "votum @ git+https://github.com/hypathia/votum"
+pip install votum
 ```
 
 **2. Get access to the model.** The model is gated: accept the Apertus Acceptable Use Policy on
@@ -202,7 +202,7 @@ In Python, the image can be a file path (as here), raw bytes, a PIL image or a b
 base64-encoded, either plain or as a data URL (`"data:image/png;base64,..."`): the server never opens files or URLs
 named in a request.
 
-This needs two more packages: `pip install "votum[vision] @ git+https://github.com/hypathia/votum"`.
+This needs two more packages: `pip install "votum[vision]"`.
 
 Image support is a preview. Votum-8B was never trained on images: everyday photos work well, text inside scanned
 documents does not yet. [docs/images.md](docs/images.md) has more examples, the measured accuracy and the settings.
@@ -212,7 +212,7 @@ documents does not yet. [docs/images.md](docs/images.md) has more examples, the 
 `votum serve` starts an HTTP server built on vLLM, which batches concurrent requests:
 
 ```bash
-pip install "votum[vllm] @ git+https://github.com/hypathia/votum"
+pip install "votum[vllm]"
 votum serve --model votum-ai/Votum-8B --port 8011
 ```
 
