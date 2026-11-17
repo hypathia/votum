@@ -75,3 +75,30 @@ def test_same_token_prompts_never_share_an_engine_call():
         for j in w: assert isolate.lookup(prompts[j]) is layouts[j]
         isolate.unregister(keys)
     assert isolate.lookup(a) is None and isolate.waves([]) == [] and isolate.waves([a]) == [[0]]
+
+
+def test_engine_calls_are_bounded_in_tokens():
+    """a call holds at most the token budget; a prompt longer than the budget goes alone; order is kept; 0 = no bound."""
+    prompts = [[i] * n for i, n in enumerate([5, 4, 3, 20, 2, 2])]
+    assert isolate.waves(prompts, 10) == [[0, 1], [2], [3], [4, 5]]
+    assert isolate.waves(prompts, 0) == [list(range(6))] and isolate.waves(prompts, 10 ** 9) == [list(range(6))]
+    same = [[7, 7, 7], [7, 7, 7], [8] * 9]                      # the repeat still goes to a call of its own
+    assert isolate.waves(same, 10) == [[0], [2], [1]]
+
+
+@pytest.mark.parametrize("bidir", [False, True])
+def test_block_mask_built_in_chunks_equals_the_whole(bidir, monkeypatch):
+    """the block tables of a step do not depend on how many query rows are evaluated at a time."""
+    rng = random.Random(3); ids, qsl = [], [0]
+    for _ in range(24):
+        ids += make(rng).ids; qsl.append(len(ids))
+    st = isolate.batch_layout(ids, qsl, END, True, OPT_HDR, Q_HDR, VotumConfig().close_last)
+    try:
+        monkeypatch.setattr(isolate, "MASK_CHUNK", 1 << 30); whole = isolate.StepMasks(st, "cpu").block_mask(bidir)
+        monkeypatch.setattr(isolate, "MASK_CHUNK", isolate.PAD); parts = isolate.StepMasks(st, "cpu").block_mask(bidir)
+    except Exception as e:   # no compiler for the compiled mask on this machine
+        pytest.skip(f"create_block_mask not available on CPU here: {type(e).__name__}")
+    assert len(ids) > 3 * isolate.PAD and parts.seq_lengths == whole.seq_lengths
+    for name in ("kv_num_blocks", "kv_indices", "full_kv_num_blocks", "full_kv_indices"):
+        a, b = getattr(whole, name), getattr(parts, name)
+        assert (a is None) == (b is None) and (a is None or torch.equal(a, b)), name

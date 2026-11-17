@@ -103,6 +103,12 @@ class VotumVLLM:
                 rows = [{"type": "choice", "state": st, "question": f"Warm-up question {j}?",
                          "options": [{"id": "a", "text": "first"}, {"id": "b", "text": "second"}]} for j in range(n_q)]
                 self.decide_rows(rows, keys=[f"warmup{n_words}-{n_q}-{rep}"] * n_q)
+        from . import isolate
+        per = isolate.MASK_CHUNK // 6   # one step of more than MASK_CHUNK tokens (eight requests, a state each): the chunked block mask
+        if per + 200 < self.max_model_len and (isolate.STEP_TOKENS <= 0 or 9 * per < isolate.STEP_TOKENS):
+            rows = [{"type": "choice", "state": " ".join(words[(i + j) % len(words)] for i in range(per)), "question": "Warm-up question?",
+                     "options": [{"id": "a", "text": "first"}, {"id": "b", "text": "second"}]} for j in range(8)]
+            self.decide_rows(rows, keys=[f"warmup-step-{j}" for j in range(8)])
 
     def headers(self, rows: list[dict], keys: list | None = None) -> list[str | None]:
         h = self.header
@@ -135,6 +141,13 @@ class VotumVLLM:
                     isolate.unregister(keys_reg)
                 for j, o in zip(wave, res): outs[j] = o
             ok = True
+        except Exception as e:
+            # a failed step (e.g. out of GPU memory) leaves its tensors referenced by the traceback's frames; without this
+            # they stay allocated and every later step starts with less memory and fails too
+            import gc, traceback, torch
+            traceback.clear_frames(e.__traceback__); gc.collect()
+            if torch.cuda.is_available(): torch.cuda.empty_cache()
+            raise
         finally:
             if cache is not None: cache.finish(used, saved, ok)
         res: list[dict | None] = [None] * len(rows)

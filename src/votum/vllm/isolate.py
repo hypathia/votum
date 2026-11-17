@@ -20,7 +20,7 @@ across question blocks are skipped. KV-cache writes are skipped (a one-step pool
 and chunked prefill stay off)."""
 from __future__ import annotations
 
-import hashlib, logging, threading
+import hashlib, logging, os, threading
 from collections import OrderedDict
 
 import numpy as np
@@ -48,15 +48,35 @@ def register(ids, layout: dict) -> bytes:
     return k
 
 
-def waves(id_lists) -> list[list[int]]:
+# An engine call is scheduled by vLLM as steps of up to max_num_batched_tokens tokens, which cannot be set below the context
+# limit. The attention working memory of a step grows with its token count, so the calls themselves are bounded here: a
+# call holds at most STEP_TOKENS tokens (a longer prompt goes alone). VOTUM_STEP_TOKENS=0 turns the bound off.
+STEP_TOKENS = int(os.environ.get("VOTUM_STEP_TOKENS", "16384"))
+# create_block_mask materialises a dense bool [queries, keys] tensor: quadratic in the step (16 GiB at 131,072 tokens).
+# The block mask is built MASK_CHUNK query rows at a time instead (same block tables, [MASK_CHUNK, keys] bytes at a time).
+MASK_CHUNK = max(PAD, int(os.environ.get("VOTUM_MASK_CHUNK", "4096")) // PAD * PAD)
+
+
+def waves(id_lists, step_tokens: int | None = None) -> list[list[int]]:
     """indices of the prompts, split into engine calls so that no call holds two prompts with the same token ids (the
-    registry is keyed by them). Almost always a single call; the k-th repeat of a prompt goes to call k."""
+    registry is keyed by them; the k-th repeat of a prompt goes to call k) and no call holds more than step_tokens tokens
+    (default STEP_TOKENS; a prompt longer than that goes alone). Usually a single call."""
     seen: dict = {}; out: list[list[int]] = []
     for j, ids in enumerate(id_lists):
         d = digest(ids); k = seen.get(d, 0); seen[d] = k + 1
         if k == len(out): out.append([])
         out[k].append(j)
-    return out
+    budget = STEP_TOKENS if step_tokens is None else step_tokens
+    if budget <= 0: return out
+    split: list[list[int]] = []
+    for w in out:
+        cur: list[int] = []; tot = 0
+        for j in w:
+            n = len(id_lists[j])
+            if cur and tot + n > budget: split.append(cur); cur, tot = [], 0
+            cur.append(j); tot += n
+        if cur: split.append(cur)
+    return split
 
 
 def unregister(keys) -> None:
@@ -354,9 +374,19 @@ class StepMasks:
 
     def block_mask(self, bidir: bool):
         if bidir not in self._bm:
-            from torch.nn.attention.flex_attention import create_block_mask
-            x = self.a; mm = mask_rule(x["kind"], x["hid"], x["gid"], x["qb"], x["blk"], x["ordk"], bidir, self.qa)
-            self._bm[bidir] = create_block_mask(mm, 1, None, self.NQ, self.NK, device=x["kind"].device, BLOCK_SIZE=PAD, _compile=True)
+            from torch.nn.attention.flex_attention import BlockMask, create_block_mask
+            x = self.a; mm = mask_rule(x["kind"], x["hid"], x["gid"], x["qb"], x["blk"], x["ordk"], bidir, self.qa); dev = x["kind"].device
+            if self.NQ <= MASK_CHUNK:
+                self._bm[bidir] = create_block_mask(mm, 1, None, self.NQ, self.NK, device=dev, BLOCK_SIZE=PAD, _compile=True)
+            else:   # MASK_CHUNK query rows at a time (a multiple of the block size), block tables joined along the query axis
+                parts = []
+                for q0 in range(0, self.NQ, MASK_CHUNK):
+                    off = torch.tensor(q0, device=dev, dtype=torch.int32)
+                    parts.append(create_block_mask(lambda b, h, q, kv, off=off: mm(b, h, q + off, kv), 1, None, min(MASK_CHUNK, self.NQ - q0),
+                                                   self.NK, device=dev, BLOCK_SIZE=PAD, _compile=True))
+                cat = lambda name: None if getattr(parts[0], name) is None else torch.cat([getattr(p, name) for p in parts], dim=2)
+                self._bm[bidir] = BlockMask.from_kv_blocks(cat("kv_num_blocks"), cat("kv_indices"), cat("full_kv_num_blocks"), cat("full_kv_indices"),
+                                                           BLOCK_SIZE=PAD, mask_mod=mm, seq_lengths=(self.NQ, self.NK))
         return self._bm[bidir]
 
 

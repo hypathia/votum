@@ -53,10 +53,24 @@ All settings are environment variables:
 | `VOTUM_MAX_QUESTIONS` | 64 | questions per request; beyond it HTTP 400 |
 | `VOTUM_MAX_OPTIONS` | 2000 | options per question; beyond it HTTP 400 |
 | `VOTUM_MAX_QUEUE` | 4096 | questions waiting for the GPU; beyond it HTTP 503 |
+| `VOTUM_STEP_TOKENS` | 16384 | most tokens the server puts into one GPU step; a longer prompt runs alone (`0` = no limit) |
+| `VOTUM_MASK_CHUNK` | 4096 | rows of the attention mask built at a time; smaller saves memory on long steps |
 | `VOTUM_HEADER_CHUNK` | 0 (off) | `1` splits requests of more than 8 questions into separate headers (not measured on labelled data) |
 
 vLLM's own prefix cache and chunked prefill stay off, because some of Votum's layers read the prompt in both
-directions and need all of it at once. The two caches above take their place, and they return exactly what a fresh
-computation would.
+directions and need all of it at once. The two caches above take their place. They compute the same function as a
+fresh run, but not bit for bit (next section).
+
+## Reproducible scores
+
+A question's scores depend slightly on which other prompts share its GPU step and on whether its question list came
+from the cache, because the FP8 and bf16 kernels round differently for different step sizes. On one RTX 4090 with
+Votum-8B-FP8, 40 short questions sent twice to the same server moved by 0.07 on average and at most 0.17 in raw score;
+that is 0.5 percentage points of probability on average and at most 1.5. The answer changed only where two options
+were almost tied. A different context limit or a new server process can move scores by the same amount.
+
+For evaluations that must repeat exactly, set `VOTUM_PREFIX_CACHE_MB=0` and keep `VOTUM_STATE_CACHE_MB` at 0: the same
+requests in the same order on the same server then return identical scores. Results still differ by this small
+amount when other requests share the step.
 
 Image settings (`--vision`, `--max-image-codes`, `--image-device`) are described in [images.md](images.md).
