@@ -47,8 +47,9 @@ Requirements: Python 3.11 or newer and an NVIDIA GPU.
 pip install votum
 ```
 
-**2. Get access to the model.** The model is gated. Signed in to Hugging Face, accept the Apertus Acceptable Use
-Policy on [votum-ai/Votum-8B](https://huggingface.co/votum-ai/Votum-8B); access is granted at once. Then connect your
+**2. Get access to the model.** The model is gated. Signed in to Hugging Face, open
+[votum-ai/Votum-8B](https://huggingface.co/votum-ai/Votum-8B) and accept the Apertus Acceptable Use Policy in the
+access form above the model card; access is granted at once. Then connect your
 machine to your account with an access token ([huggingface.co/settings/tokens](https://huggingface.co/settings/tokens),
 read access is enough):
 
